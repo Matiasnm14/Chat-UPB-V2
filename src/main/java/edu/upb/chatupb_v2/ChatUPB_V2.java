@@ -5,6 +5,8 @@ package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.repository.Contact;
 import edu.upb.chatupb_v2.repository.ContactDao;
+import edu.upb.chatupb_v2.bl.server.ChatServer;
+import edu.upb.chatupb_v2.bl.server.SocketClient;
 
 import java.util.List;
 
@@ -14,15 +16,22 @@ import java.util.List;
  */
 public class ChatUPB_V2 {
 
-    public static void main(String[] args) {
+   public static void main(String[] args) {
         ContactDao contactDao = new ContactDao();
         try {
-            List<Contact> contacts = contactDao.findAll();
-            for (Contact contact : contacts) {
-                System.out.println(contact.getName());
-            }
-        }catch (Exception e) {
+            ChatServer chatServer = new ChatServer();
+            chatServer.start();
+        } catch (Exception e) {
             e.printStackTrace();
         }
+        System.out.println("ChatServer started..");
     }
+/*
+        try {
+            SocketClient socketClient = new SocketClient("localhost");
+            socketClient.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }*/
 }
