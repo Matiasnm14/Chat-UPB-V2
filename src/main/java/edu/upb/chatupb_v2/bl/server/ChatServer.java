@@ -16,6 +16,8 @@ import java.net.Socket;
 public class ChatServer extends Thread {
 
     private static final int port = 1900;
+    private static DataOutputStream dout;
+    private static Socket socketClient;
 
     private final ServerSocket server;
     public ChatServer() throws IOException {
@@ -25,8 +27,11 @@ public class ChatServer extends Thread {
     
     public void run(String mensaje) {
             try {
-                Socket socketClient = this.server.accept();
-                DataOutputStream dout = new DataOutputStream(socketClient.getOutputStream());
+                if(socketClient == null)
+                    socketClient = this.server.accept();
+                if(dout == null)
+                    dout = new DataOutputStream(socketClient.getOutputStream());
+
                 String message = mensaje+" "+System.lineSeparator();
                 dout.write(message.getBytes("UTF-8") );
                 dout.flush();
@@ -34,6 +39,5 @@ public class ChatServer extends Thread {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        
     }
 }
