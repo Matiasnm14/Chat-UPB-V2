@@ -8,36 +8,62 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.UUID;
 
 /**
  *
  * @author rlaredo
  */
 public class ChatServer extends Thread {
-
     private static final int port = 1900;
-    private static DataOutputStream dout;
-    private static Socket socketClient;
+    private DataOutputStream dout;
+    private Socket socketClient;
+    private ServerSocket server;
+    private UUID id = UUID.randomUUID();
+    private String name;
 
-    private final ServerSocket server;
     public ChatServer() throws IOException {
         this.server = new ServerSocket(port);
+        this.start();
     }
 
-    
-    public void run(String mensaje) {
-            try {
-                if(socketClient == null)
-                    socketClient = this.server.accept();
-                if(dout == null)
-                    dout = new DataOutputStream(socketClient.getOutputStream());
+    @Override
+    public void run() {
+        try {
+            System.out.println("Esperando conexión...");
+            this.socketClient = server.accept();
+            this.dout = new DataOutputStream(socketClient.getOutputStream());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-                String message = mensaje+" "+System.lineSeparator();
-                dout.write(message.getBytes("UTF-8") );
+    public void enviarMensaje(String mensaje) {
+        try {
+            if (dout != null) {
+                String message = id + "|" + mensaje + System.lineSeparator();
+                dout.write(message.getBytes("UTF-8"));
                 dout.flush();
-                //BufferedReader br = new BufferedReader(new InputStreamReader(socketClient.getInputStream()));
-            } catch (Exception e) {
-                e.printStackTrace();
+            } else {
+                System.out.println("Error: El cliente aún no se ha conectado.");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void enviarHello(){
+        try {
+            if (server != null) {
+                if (dout != null) {
+                    dout.writeBoolean(true);
+                    dout.flush();
+                } else {
+                    System.out.println("Cliente no conectado");
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

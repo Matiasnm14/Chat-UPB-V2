@@ -38,7 +38,9 @@ public class SocketClient extends Thread {
         try {
             String message;
             while ((message = br.readLine()) != null) {
-                System.out.println(message);
+                String[] incoming_message = message.split("\\|");
+                System.out.print("Mensaje de " + incoming_message[0] + ": ");
+                System.out.println(incoming_message[1]);
             }
 
             send("Hola Server!!!. "+System.lineSeparator());
