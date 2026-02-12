@@ -6,7 +6,7 @@ package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.bl.server.ChatServer;
 import edu.upb.chatupb_v2.bl.server.SocketClient;
-import edu.upb.chatupb_v2.repository.comands.Invitation;
+import edu.upb.chatupb_v2.repository.comands.*;
 
 import javax.swing.*;
 import java.io.DataOutputStream;
@@ -151,6 +151,66 @@ public class JUi extends javax.swing.JFrame {
                     jOnline.setText("Status: Rechazado");
                 }
             });
+        }
+
+        @Override
+        public void onAcceptReceived(Accept accept){
+
+        }
+
+        @Override
+        public void onDeclineReceived(Decline decline) {
+
+        }
+
+        @Override
+        public void onHelloReceived(Hello hello) {
+
+        }
+
+        @Override
+        public void onAcceptHelloReceived(AcceptHello acceptHello) {
+
+        }
+
+        @Override
+        public void onDeclineHelloReceived(DeclineHello declineHello) {
+
+        }
+
+        @Override
+        public void onChatReceived(Chat chat) {
+
+        }
+
+        @Override
+        public void onConfirmedReceived(ConfirmRecived confirmRecived) {
+
+        }
+
+        @Override
+        public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
+
+        }
+
+        @Override
+        public void onBuzzingReceived(Buzzing buzzing) {
+
+        }
+
+        @Override
+        public void onPinMessageReceived(PinMessage pinMessage) {
+
+        }
+
+        @Override
+        public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+
+        }
+
+        @Override
+        public void onThemeReceived(Theme theme) {
+
         }
     };
 

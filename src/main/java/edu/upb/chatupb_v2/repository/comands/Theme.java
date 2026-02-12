@@ -24,7 +24,7 @@ public class Theme extends Command{
         this.idUser = idUser;
         this.idTheme = idTheme;
     }
-    public static Command parse(String command){
+    public static Theme parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 3){
             throw new IllegalArgumentException("Formato de trama erroneo");

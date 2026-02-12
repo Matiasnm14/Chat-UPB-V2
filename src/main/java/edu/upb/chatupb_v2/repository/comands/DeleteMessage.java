@@ -22,7 +22,7 @@ public class DeleteMessage extends Command{
         super("009");
         this.idMessage = idMessage;
     }
-    public static Command parse(String command){
+    public static DeleteMessage parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 2){
             throw new IllegalArgumentException("Formato de trama erroneo");

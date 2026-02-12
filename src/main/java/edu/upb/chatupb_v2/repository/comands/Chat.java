@@ -25,7 +25,7 @@ public class Chat extends Command{
         this.idMessage = idMessage;
         this.message = message;
     }
-    public static Command parse(String command){
+    public static Chat parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 4){
             throw new IllegalArgumentException("Formato de trama erroneo");
