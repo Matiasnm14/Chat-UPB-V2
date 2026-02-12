@@ -6,9 +6,11 @@ package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.bl.server.ChatServer;
 import edu.upb.chatupb_v2.bl.server.SocketClient;
+import edu.upb.chatupb_v2.repository.comands.Invitation;
 
 import javax.swing.*;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -30,7 +32,14 @@ public class JUi extends javax.swing.JFrame {
      * Creates new form JUi
      */
     public JUi() {
+
         initComponents();
+        try {
+            // Le pasamos "connectionListener" que creamos en el Paso 1
+            server = new ChatServer(connectionListener);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -121,33 +130,58 @@ public class JUi extends javax.swing.JFrame {
     private void jTextUserActionPerformed(java.awt.event.ActionEvent evt){
 
     }
+    // Define el listener como un campo de la clase
+    private SocketClient.SocketListener connectionListener = new SocketClient.SocketListener() {
+        @Override
+        public void onInvitationReceived(Invitation invitation) {
+            SwingUtilities.invokeLater(() -> {
+                int respuesta = javax.swing.JOptionPane.showConfirmDialog(JUi.this,
+                        "Invitación recibida de: " + invitation.getUserName() +
+                                " (ID: " + invitation.getIdUser() + "). ¿Aceptar?",
+                        "Nueva Conexión Entrante",
+                        javax.swing.JOptionPane.YES_NO_OPTION);
+
+                if (respuesta == javax.swing.JOptionPane.YES_OPTION) {
+                    jOnline.setText("Status: Conectado con " + invitation.getUserName());
+                    System.out.println("Invitación aceptada.");
+                    // Aquí podrías guardar la referencia al socket si necesitas responder
+                } else {
+                    System.out.println("Invitación rechazada.");
+                    jOnline.setText("Status: Rechazado");
+                }
+            });
+        }
+    };
 
     private void jbConectarActionPerformed(java.awt.event.ActionEvent evt) {
         String ip = jIP.getText();
         String user = jTextUserName.getText();
+        String myUserId = String.valueOf(System.currentTimeMillis());
 
         new Thread(() -> {
             try {
                 if (server == null) {
                     server = new ChatServer();
                 }
+                // 1. Crear la conexión saliente
                 SocketClient socketClient = new SocketClient(ip);
 
-                int dialogResult = javax.swing.JOptionPane.showConfirmDialog(this,
-                        "Incoming connection from " + server.getId() + " " + user + ". Accept?", "Connection",
-                        javax.swing.JOptionPane.YES_NO_OPTION);
+                // 2. Asignar EL MISMO listener que usa el servidor
+                socketClient.setListener(connectionListener);
 
-                if (dialogResult == javax.swing.JOptionPane.YES_OPTION) {
-                    System.out.println("Client accepted.");
-                    jOnline.setText("Online");
-                    socketClient.start();
-                } else {
-                    socketClient.close();
-                    System.out.println("Connection rejected.");
-                }
+                // 3. Iniciar escucha
+                socketClient.start();
+
+                // 4. Enviar invitación
+                Invitation myInvite = new Invitation(myUserId, user);
+                socketClient.send(myInvite.createFormat());
+
+                SwingUtilities.invokeLater(() -> jOnline.setText("Status: Enviando invitación..."));
+
             } catch (Exception e) {
-                javax.swing.JOptionPane.showMessageDialog(this, "Connection Error: " + e.getMessage());
-                e.printStackTrace();
+                SwingUtilities.invokeLater(() ->
+                        javax.swing.JOptionPane.showMessageDialog(this, "Error: " + e.getMessage())
+                );
             }
         }).start();
         if (server != null) {

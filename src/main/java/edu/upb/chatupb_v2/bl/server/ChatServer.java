@@ -21,6 +21,13 @@ public class ChatServer extends Thread {
     private ServerSocket server;
     private UUID id = UUID.randomUUID();
     private String name;
+    private SocketClient.SocketListener uiListener;
+
+    public ChatServer(SocketClient.SocketListener uiListener) throws IOException {
+        this.uiListener = uiListener;
+        server = new ServerSocket(1900);
+        this.start(); // Inicia el hilo automáticamente al crear
+    }
 
     public ChatServer() throws IOException {
         this.server = new ServerSocket(port);
@@ -30,9 +37,20 @@ public class ChatServer extends Thread {
     @Override
     public void run() {
         try {
-            System.out.println("Esperando conexión...");
-            this.socketClient = server.accept();
-            this.dout = new DataOutputStream(socketClient.getOutputStream());
+            // 1. Esperar conexión
+            Socket socket = server.accept();
+            System.out.println("Conexión entrante aceptada.");
+
+            // 2. Crear el wrapper SocketClient para esta conexión
+            SocketClient client = new SocketClient(socket);
+
+            // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
+            if (uiListener != null) {
+                client.setListener(uiListener);
+            }
+
+            // 4. Iniciar el hilo de lectura del cliente
+            client.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -59,7 +77,7 @@ public class ChatServer extends Thread {
                     dout.writeBoolean(true);
                     dout.flush();
                 } else {
-                    System.out.println("Cliente no conectado");
+//                    System.out.println("Cliente no conectado");
                 }
             }
         } catch (IOException e) {
