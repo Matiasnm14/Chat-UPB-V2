@@ -17,10 +17,18 @@ import java.util.UUID;
 public class ChatServer extends Thread {
     private static final int port = 1900;
     private DataOutputStream dout;
-    private Socket socketClient;
+    private Socket socket;
     private ServerSocket server;
     private UUID id = UUID.randomUUID();
     private String name;
+    private SocketClient.SocketListener uiListener;
+    SocketClient socketClient;
+
+    public ChatServer(SocketClient.SocketListener uiListener) throws IOException {
+        this.uiListener = uiListener;
+        server = new ServerSocket(1900);
+        this.start(); // Inicia el hilo automáticamente al crear
+    }
 
     public ChatServer() throws IOException {
         this.server = new ServerSocket(port);
@@ -30,25 +38,40 @@ public class ChatServer extends Thread {
     @Override
     public void run() {
         try {
-            System.out.println("Esperando conexión...");
-            this.socketClient = server.accept();
-            this.dout = new DataOutputStream(socketClient.getOutputStream());
+            // 1. Esperar conexión
+            Socket socket = server.accept();
+            System.out.println("Conexión entrante aceptada.");
+
+            // 2. Crear el wrapper SocketClient para esta conexión
+            this.socketClient = new SocketClient(socket);
+
+            // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
+            if (uiListener != null) {
+                this.socketClient.setListener(uiListener);
+            }
+
+            // 4. Iniciar el hilo de lectura del cliente
+            this.socketClient.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public void enviarMensaje(String mensaje) {
-        try {
-            if (dout != null) {
-                String message = id + "|" + mensaje + System.lineSeparator();
-                dout.write(message.getBytes("UTF-8"));
-                dout.flush();
-            } else {
-                System.out.println("Error: El cliente aún no se ha conectado.");
+        // En lugar de buscar 'dout' aquí, usamos el currentClient
+        if (this.socketClient != null) {
+            // Asumiendo que quieres enviar un mensaje de chat normal (protocolo 002 por ejemplo)
+            // O si tu SocketClient.send envía texto plano, úsalo directo.
+            // Ejemplo formateado: "002|TuMensaje"
+            String mensajeFormateado = "007|" + mensaje + System.lineSeparator();
+
+            try {
+                this.socketClient.send(mensajeFormateado);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } else {
+            System.out.println("Error: No hay cliente conectado para enviar.");
         }
     }
 
@@ -59,7 +82,7 @@ public class ChatServer extends Thread {
                     dout.writeBoolean(true);
                     dout.flush();
                 } else {
-                    System.out.println("Cliente no conectado");
+//                    System.out.println("Cliente no conectado");
                 }
             }
         } catch (IOException e) {

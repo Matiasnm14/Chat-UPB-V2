@@ -21,7 +21,6 @@ public class SocketClient extends Thread {
     private final String ip;
     private final DataOutputStream dout;
     private final BufferedReader br;
-    private SocketListener listener;
 
     public SocketClient(Socket socket) throws IOException {
         this.socket = socket;
@@ -37,38 +36,28 @@ public class SocketClient extends Thread {
         br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
     }
 
-    public interface SocketListener {
-        void onInvitationReceived(Invitation invitation);
-    }
-    public void setListener(SocketListener listener) {
-        this.listener = listener;
-    }
-
     @Override
     public void run() {
         try {
             String message;
             while ((message = br.readLine()) != null) {
-                System.out.println("Mensaje recibido: " + message);
+                System.out.println(message);
+            }
+            String split[] = message.split(Pattern.quote("|"));
+            if(split.length == 0) {
+                return;
+            }
+            switch (split[0]) {
+                case "001": {
+                    Invitation inv = Invitation.parse(message);
+                    System.out.println(inv.createFormat());
+                }
+                case "002":{
 
-                String split[] = message.split(Pattern.quote("|"));
-                if(split.length == 0) continue;
-
-                switch (split[0]) {
-                    case "001": {
-
-                        Invitation inv = Invitation.parse(message);
-
-                        if (listener != null) {
-                            listener.onInvitationReceived(inv);
-                        }
-                        break;
-                    }
-                    case "002": {
-                        break;
-                    }
                 }
             }
+
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -93,4 +82,5 @@ public class SocketClient extends Thread {
             e.printStackTrace();
         }
     }
+
 }
