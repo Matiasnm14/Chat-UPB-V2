@@ -4,11 +4,15 @@
  */
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.bl.fm.Aceptar;
+import edu.upb.chatupb_v2.bl.fm.Invitacion;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.regex.Pattern;
 
 /**
  * @author rlaredo
@@ -42,10 +46,26 @@ public class SocketClient extends Thread {
                 System.out.print("Mensaje de " + incoming_message[0] + ": ");
                 System.out.println(incoming_message[1]);
             }
-
-            send("Hola Server!!!. "+System.lineSeparator());
+            String[] split = message.split(Pattern.quote("|"));
+            if (split.length == 0) {
+                return;
+            }
+            switch (split[0]) {
+                case "001": {
+                    Invitacion inv = Invitacion.parse(message);
+                    System.out.println(inv.generarTrama());
+                }
+                case "002":
+                    Aceptar acp = Aceptar.parse(message);
+                    System.out.println(acp.generarTrama());
+                default:
+                    throw new IllegalStateException("Unexpected value: " + split[0]);
+            }
+            //send("Hola Server!!!. "+System.lineSeparator());
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
