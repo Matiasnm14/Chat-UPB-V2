@@ -27,7 +27,7 @@ public class UniqueMessage extends Command{
         this.idUser = idUser;
         this.message = message;
     }
-    public static Command parse(String command){
+    public static UniqueMessage parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 4){
             throw new IllegalArgumentException("Formato de trama erroneo");

@@ -16,7 +16,8 @@ public class Decline extends Command{
     public Decline() {
         super("003");
     }
-    public static Command parse(String command){
+
+    public static Decline parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 1){
             throw new IllegalArgumentException("Formato de trama erroneo");

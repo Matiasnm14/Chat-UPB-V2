@@ -19,6 +19,7 @@ public class Invitation extends Command{
     public Invitation(){
         super("001");
     }
+
     public Invitation(String idUser,String userName){
         super("001");
         this.idUser = idUser;

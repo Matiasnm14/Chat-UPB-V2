@@ -16,16 +16,19 @@ public class Accept extends Command{
     public String createFormat() {
         return null;
     }
-    public static Command parse(String command){
+
+    public static Accept parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 3){
             throw new IllegalArgumentException("Formato de trama erroneo");
         }
         return new Accept(parses[1],parses[2]);
     }
+
     public Accept() {
         super("002");
     }
+
     public Accept(String idUser,String userName){
         super("002");
         this.idUser = idUser;

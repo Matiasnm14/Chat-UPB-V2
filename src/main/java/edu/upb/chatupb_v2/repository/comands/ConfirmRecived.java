@@ -22,7 +22,7 @@ public class ConfirmRecived extends Command{
         super("008");
         this.idMessage = idMessage;
     }
-    public static Command parse(String command){
+    public static ConfirmRecived parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 2){
             throw new IllegalArgumentException("Formato de trama erroneo");

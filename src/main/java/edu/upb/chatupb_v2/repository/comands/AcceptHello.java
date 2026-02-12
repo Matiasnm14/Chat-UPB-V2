@@ -21,7 +21,7 @@ public class AcceptHello extends Command{
         super("005");
         this.idUser = idUser;
     }
-    public static Command parse(String command){
+    public static AcceptHello parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 2){
             throw new IllegalArgumentException("Formato de trama erroneo");

@@ -24,7 +24,7 @@ public class Hello extends Command{
         super("004");
         this.idUser = idUser;
     }
-    public static Command parse(String command){
+    public static Hello parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 3){
             throw new IllegalArgumentException("Formato de trama erroneo");
