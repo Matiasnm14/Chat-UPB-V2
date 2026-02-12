@@ -24,6 +24,7 @@ import java.util.Scanner;
 public class JUi extends javax.swing.JFrame {
 
     ChatServer server;
+    SocketClient socketClient;
     Scanner scan = new Scanner(System.in);
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
@@ -164,7 +165,7 @@ public class JUi extends javax.swing.JFrame {
                     server = new ChatServer();
                 }
                 // 1. Crear la conexión saliente
-                SocketClient socketClient = new SocketClient(ip);
+                socketClient = new SocketClient(ip);
 
                 // 2. Asignar EL MISMO listener que usa el servidor
                 socketClient.setListener(connectionListener);
