@@ -11,8 +11,8 @@ public class PinMessage extends Command{
     private String idMessage;
 
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
 
     public PinMessage() {

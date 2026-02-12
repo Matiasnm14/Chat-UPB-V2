@@ -12,8 +12,8 @@ public class Invitation extends Command{
     private String userName;
 
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return getID() +"|" +idUser +"|" +  userName + System.lineSeparator();
     }
 
     public Invitation(){
@@ -24,7 +24,7 @@ public class Invitation extends Command{
         this.idUser = idUser;
         this.userName = userName;
     }
-    public static Command parse(String command){
+    public static Invitation parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 3){
             throw new IllegalArgumentException("Formato de trama erroneo");

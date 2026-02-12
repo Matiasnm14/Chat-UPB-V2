@@ -12,8 +12,8 @@ public class Chat extends Command{
     private String idMessage;
     private String message;
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
 
     public Chat() {

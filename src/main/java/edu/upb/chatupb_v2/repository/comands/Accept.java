@@ -13,8 +13,8 @@ public class Accept extends Command{
 
 
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
     public static Command parse(String command){
         String[] parses = command.split(Pattern.quote("|"));

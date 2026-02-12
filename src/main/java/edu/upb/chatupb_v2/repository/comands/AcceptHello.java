@@ -10,8 +10,8 @@ import java.util.regex.Pattern;
 public class AcceptHello extends Command{
     private String idUser;
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
 
     public AcceptHello() {

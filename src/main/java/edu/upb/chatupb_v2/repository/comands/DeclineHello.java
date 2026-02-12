@@ -10,8 +10,8 @@ import java.util.regex.Pattern;
 public class DeclineHello extends Command{
 
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
 
     public DeclineHello() {

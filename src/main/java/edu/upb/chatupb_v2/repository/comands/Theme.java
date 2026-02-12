@@ -12,8 +12,8 @@ public class Theme extends Command{
     private String idTheme;
 
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
 
     public Theme() {

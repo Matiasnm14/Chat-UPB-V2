@@ -6,7 +6,7 @@ import lombok.Getter;
 public abstract class Command {
     @Getter
     String ID;
-    public abstract void createFormat();
+    public abstract String createFormat();
 
 
 }

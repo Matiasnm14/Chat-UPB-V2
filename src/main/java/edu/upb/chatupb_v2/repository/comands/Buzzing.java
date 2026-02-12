@@ -13,8 +13,8 @@ public class Buzzing extends Command{
 
 
     @Override
-    public void createFormat() {
-
+    public String createFormat() {
+        return null;
     }
 
 
