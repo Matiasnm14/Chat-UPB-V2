@@ -34,7 +34,7 @@ public class ChatServer extends Thread {
         this.server = new ServerSocket(port);
         this.start();
     }
-
+    //ALGO
     @Override
     public void run() {
         try {

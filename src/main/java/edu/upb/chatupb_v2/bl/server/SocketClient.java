@@ -36,7 +36,7 @@ public class SocketClient extends Thread {
         dout = new DataOutputStream(socket.getOutputStream());
         br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
     }
-
+    //ALGO
     public interface SocketListener {
         void onInvitationReceived(Invitation invitation);
         void onAcceptReceived(Accept accept);
