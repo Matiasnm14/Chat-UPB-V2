@@ -6,8 +6,10 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException {
+
         ChatServer cs = new ChatServer();
         JUi jUi = new JUi(cs);
+        cs.setUiListener(jUi.getConnectionListener());
         jUi.init();
     }
 }

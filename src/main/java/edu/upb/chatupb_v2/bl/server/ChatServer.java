@@ -50,6 +50,7 @@ public class ChatServer extends Thread {
             this.socketClient = new SocketClient(socket);
 
             // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
+
             if (uiListener != null) {
                 this.socketClient.setListener(uiListener);
             }

@@ -54,6 +54,7 @@ public class SocketClient extends Thread {
     }
 
     public void setListener(SocketListener listener) {
+
         this.listener = listener;
     }
 

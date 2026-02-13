@@ -7,6 +7,7 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.bl.server.ChatServer;
 import edu.upb.chatupb_v2.bl.server.SocketClient;
 import edu.upb.chatupb_v2.repository.comands.*;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.io.DataOutputStream;
@@ -126,9 +127,11 @@ public class JUi extends javax.swing.JFrame {
 
     }
     // Define el listener como un campo de la clase
+    @Getter
     private SocketClient.SocketListener connectionListener = new SocketClient.SocketListener() {
         @Override
         public void onInvitationReceived(Invitation invitation) {
+            System.out.println("invis");
             SwingUtilities.invokeLater(() -> {
                 int respuesta = javax.swing.JOptionPane.showConfirmDialog(JUi.this,
                         "Invitación recibida de: " + invitation.getUserName() +
