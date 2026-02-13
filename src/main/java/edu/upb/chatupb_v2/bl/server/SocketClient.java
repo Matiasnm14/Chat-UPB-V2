@@ -75,7 +75,8 @@ public class SocketClient extends Thread {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
                         for (SocketListener socketListener : listener) {
-                            socketListener.onInvitationReceived(inv);
+                            java.awt.EventQueue.invokeLater(() -> {socketListener.onInvitationReceived(inv);});
+                            System.out.println("hola");
                         }
                         break;
                     }

@@ -42,24 +42,26 @@ public class ChatServer extends Thread {
     //ALGO
     @Override
     public void run() {
-        try {
-            // 1. Esperar conexión
-            Socket socket = server.accept();
-            System.out.println("Conexión entrante aceptada.");
+        while (true) {
+            try {
+                // 1. Esperar conexión
+                Socket socket = server.accept();
+                System.out.println("Conexión entrante aceptada.");
 
-            // 2. Crear el wrapper SocketClient para esta conexión
-            this.socketClient = new SocketClient(socket);
+                // 2. Crear el wrapper SocketClient para esta conexión
+                this.socketClient = new SocketClient(socket);
 
-            // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
+                // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
 
-            if (uiListener != null) {
-                this.socketClient.setListener(uiListener);
+                if (uiListener != null) {
+                    this.socketClient.setListener(uiListener);
+                }
+
+                // 4. Iniciar el hilo de lectura del cliente
+                this.socketClient.start();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-
-            // 4. Iniciar el hilo de lectura del cliente
-            this.socketClient.start();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 

@@ -129,7 +129,7 @@ public class JUi extends javax.swing.JFrame {
     private SocketClient.SocketListener connectionListener = new SocketClient.SocketListener() {
         @Override
         public void onInvitationReceived(Invitation invitation) {
-            System.out.println("invis");
+
             SwingUtilities.invokeLater(() -> {
                 int respuesta = javax.swing.JOptionPane.showConfirmDialog(JUi.this,
                         "Invitación recibida de: " + invitation.getUserName() +
@@ -210,36 +210,40 @@ public class JUi extends javax.swing.JFrame {
     };
 
     private void jbConectarActionPerformed(java.awt.event.ActionEvent evt) {
-        String ip = jIP.getText();
-        String user = jTextUserName.getText();
-        String myUserId = String.valueOf(System.currentTimeMillis());
 
-        new Thread(() -> {
-            try {
+
+
+            String ip = jIP.getText();
+            String user = jTextUserName.getText();
+            String myUserId = String.valueOf(System.currentTimeMillis());
+
+            new Thread(() -> {
+                try {
 //                if (server == null) {
 //                    server = new ChatServer();
 //                }
-                // 1. Crear la conexión saliente
-                socketClient = new SocketClient(ip);
+                    // 1. Crear la conexión saliente
+                    socketClient = new SocketClient(ip);
 
-                // 2. Asignar EL MISMO listener que usa el servidor
-                socketClient.setListener(connectionListener);
+                    // 2. Asignar EL MISMO listener que usa el servidor
+                    socketClient.setListener(connectionListener);
 
-                // 3. Iniciar escucha
-                socketClient.start();
+                    // 3. Iniciar escucha
+                    socketClient.start();
 
-                // 4. Enviar invitación
-                Invitation myInvite = new Invitation(myUserId, user);
-                socketClient.send(myInvite.createFormat());
+                    // 4. Enviar invitación
+                    Invitation myInvite = new Invitation(myUserId, user);
+                    socketClient.send(myInvite.createFormat());
 
-                SwingUtilities.invokeLater(() -> jOnline.setText("Status: Enviando invitación..."));
+                    SwingUtilities.invokeLater(() -> jOnline.setText("Status: Enviando invitación..."));
 
-            } catch (Exception e) {
-                SwingUtilities.invokeLater(() ->
-                        javax.swing.JOptionPane.showMessageDialog(this, "Error: " + e.getMessage())
-                );
-            }
-        }).start();
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() ->
+                            javax.swing.JOptionPane.showMessageDialog(this, "Error: " + e.getMessage())
+                    );
+                }
+            }).start();
+
 //        if (server != null) {
 //            new Thread(() -> {
 //                while (true) {
