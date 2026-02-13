@@ -5,6 +5,7 @@
 package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
+import lombok.Getter;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -21,6 +22,7 @@ public class SocketClient extends Thread {
     private final String ip;
     private final DataOutputStream dout;
     private final BufferedReader br;
+    @Getter
     private SocketListener listener;
 
     public SocketClient(Socket socket) throws IOException {
@@ -73,6 +75,8 @@ public class SocketClient extends Thread {
                         Invitation inv = Invitation.parse(message);
                         if (listener != null) {
                             listener.onInvitationReceived(inv);
+                        }else {
+                            System.out.println("Listener no seteado");
                         }
                         break;
                     }

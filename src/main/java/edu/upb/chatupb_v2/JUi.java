@@ -23,8 +23,8 @@ import java.util.Scanner;
  * @author USER 1
  */
 public class JUi extends javax.swing.JFrame {
-
-    ChatServer server;
+    //YA NO HAY CHAT SERVER!
+//    ChatServer server;
     SocketClient socketClient;
     Scanner scan = new Scanner(System.in);
 
@@ -35,7 +35,7 @@ public class JUi extends javax.swing.JFrame {
      */
     public JUi(ChatServer cs) {
         initComponents();
-        server = cs;
+//        server = cs;
     }
 
     /**
@@ -111,7 +111,7 @@ public class JUi extends javax.swing.JFrame {
                                         .addComponent(jbEnviar))
                                 .addContainerGap(120, Short.MAX_VALUE))
         );
-        jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
+//        jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
         jbConectar.addActionListener(evt -> jbConectarActionPerformed(evt));
         pack();
     }
@@ -218,9 +218,9 @@ public class JUi extends javax.swing.JFrame {
 
         new Thread(() -> {
             try {
-                if (server == null) {
-                    server = new ChatServer();
-                }
+//                if (server == null) {
+//                    server = new ChatServer();
+//                }
                 // 1. Crear la conexión saliente
                 socketClient = new SocketClient(ip);
 
@@ -242,32 +242,32 @@ public class JUi extends javax.swing.JFrame {
                 );
             }
         }).start();
-        if (server != null) {
-            new Thread(() -> {
-                while (true) {
-                    try {
-                        server.enviarHello();
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }).start();
-        }
+//        if (server != null) {
+//            new Thread(() -> {
+//                while (true) {
+//                    try {
+//                        server.enviarHello();
+//                        Thread.sleep(100);
+//                    } catch (InterruptedException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
+//            }).start();
+//        }
     }//GEN-LAST:event_jbConectarActionPerformed
 
-    private void jbEnviarActionPerformed(java.awt.event.ActionEvent evt) {
-        try {
-            if (server != null) { // Verifica que haya conexión
-                server.enviarMensaje(jTextMensaje.getText());
-                jTextMensaje.setText(""); // Limpia el campo después de enviar
-            } else {
-                System.out.println("Error: No hay ningún cliente conectado para enviar el mensaje.");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }//GEN-LAST:event_jbEnviarActionPerformed
+//    private void jbEnviarActionPerformed(java.awt.event.ActionEvent evt) {
+//        try {
+//            if (server != null) { // Verifica que haya conexión
+//                server.enviarMensaje(jTextMensaje.getText());
+//                jTextMensaje.setText(""); // Limpia el campo después de enviar
+//            } else {
+//                System.out.println("Error: No hay ningún cliente conectado para enviar el mensaje.");
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }//GEN-LAST:event_jbEnviarActionPerformed
 
     /**
      */

@@ -35,6 +35,7 @@ public class ChatServer extends Thread {
     }
 
     public ChatServer() throws IOException {
+//        this.uiListener = socketClient.getListener();
         this.server = new ServerSocket(port);
         this.start();
     }
