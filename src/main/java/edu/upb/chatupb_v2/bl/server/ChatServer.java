@@ -30,6 +30,10 @@ public class ChatServer extends Thread {
         this.start(); // Inicia el hilo automáticamente al crear
     }
 
+    public void setUiListener(SocketClient.SocketListener uiListener) {
+        this.uiListener = uiListener;
+    }
+
     public ChatServer() throws IOException {
         this.server = new ServerSocket(port);
         this.start();

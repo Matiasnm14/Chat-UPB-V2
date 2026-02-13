@@ -32,15 +32,9 @@ public class JUi extends javax.swing.JFrame {
     /**
      * Creates new form JUi
      */
-    public JUi() {
-
+    public JUi(ChatServer cs) {
         initComponents();
-        try {
-            // Le pasamos "connectionListener" que creamos en el Paso 1
-            server = new ChatServer(connectionListener);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        server = cs;
     }
 
     /**
@@ -273,9 +267,8 @@ public class JUi extends javax.swing.JFrame {
     }//GEN-LAST:event_jbEnviarActionPerformed
 
     /**
-     * @param args the command line arguments
      */
-    public static void main(String args[]) {
+    public void init() {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
@@ -294,7 +287,9 @@ public class JUi extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new JUi().setVisible(true));
+        java.awt.EventQueue.invokeLater(() -> {
+            this.setVisible(true);
+        });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
