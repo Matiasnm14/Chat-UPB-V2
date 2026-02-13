@@ -21,36 +21,31 @@ public class JUi extends javax.swing.JFrame {
     private static final java.util.logging.Logger logger =
             java.util.logging.Logger.getLogger(JUi.class.getName());
 
-    // ======= NUEVO: UI moderna =======
+    // Instancia A: myPort=1900, targetPort=1901
+    // Instancia B: myPort=1901, targetPort=1900
+    private int myPort = 1900;
+    private int targetPort = 1901;
     private DefaultListModel<ContactItem> contactsModel = new DefaultListModel<>();
     private JList<ContactItem> contactsList = new JList<>(contactsModel);
 
-    private JTextPane chatPane = new JTextPane(); // mejor que JTextArea para estilo
+    private JTextPane chatPane = new JTextPane();
     private JScrollPane chatScroll;
-
-    // guardamos contactos por key (id o ip)
     private final Map<String, ContactItem> contactsIndex = new LinkedHashMap<>();
 
-    /**
-     * Creates new form JUi
-     */
     public JUi() {
-        initComponents();     // crea tus componentes (los mismos)
-        buildModernUI();      // monta el layout bonito encima
-
+        initComponents();
+        buildModernUI();
         try {
-            server = new ChatServer(connectionListener);
+            server = new ChatServer(myPort, connectionListener);
+            appendChat("Sistema", "Servidor escuchando en puerto " + myPort);
         } catch (IOException e) {
             e.printStackTrace();
+            appendChat("Sistema", "ERROR: No se pudo abrir el puerto " + myPort + " (" + e.getMessage() + ")");
         }
     }
 
-    /**
-     * SOLO INSTANCIA COMPONENTES (NO layout viejo), para que no choque con el diseño nuevo.
-     */
     @SuppressWarnings("unchecked")
     private void initComponents() {
-
         jLabelIP = new javax.swing.JLabel("Dirección IP");
         jLabelUser = new javax.swing.JLabel("Usuario");
 
@@ -68,19 +63,12 @@ public class JUi extends javax.swing.JFrame {
         jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
         jbConectar.addActionListener(evt -> jbConectarActionPerformed(evt));
     }
-
-    // =========================================================
-    // UI BONITA (CONTACTOS IZQ + CHAT DER + INPUT ABAJO)
-    // =========================================================
+    //UI Chat izq
     private void buildModernUI() {
 
-        // Ventana
         setTitle("Chat UPB");
         setSize(980, 560);
         setLocationRelativeTo(null);
-
-        // Tipografía base
-        Font uiFont = new Font("Segoe UI", Font.PLAIN, 13);
 
         // ===== Panel Izquierdo (Contactos) =====
         JPanel left = new JPanel(new BorderLayout(10, 10));
@@ -104,12 +92,12 @@ public class JUi extends javax.swing.JFrame {
         left.add(titleContacts, BorderLayout.NORTH);
         left.add(contactsScroll, BorderLayout.CENTER);
 
-        // ===== Panel Derecho (Chat) =====
+        // Panel Derecho
         JPanel right = new JPanel(new BorderLayout());
         right.setBackground(new Color(245, 246, 248));
         right.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
 
-        // Header (tu status + campos de conexión)
+        // campo de conexion
         JPanel header = new JPanel(new BorderLayout(10, 10));
         header.setOpaque(false);
 
@@ -126,7 +114,7 @@ public class JUi extends javax.swing.JFrame {
 
         connectRow.add(jLabelIP);
         connectRow.add(jLabelUser);
-        connectRow.add(new JLabel("")); // espacio
+        connectRow.add(new JLabel(""));
         connectRow.add(jIP);
         connectRow.add(jTextUserName);
         connectRow.add(jbConectar);
@@ -146,7 +134,7 @@ public class JUi extends javax.swing.JFrame {
         chatScroll.setBorder(new SoftRoundBorder());
         chatScroll.getViewport().setBackground(Color.WHITE);
 
-        // Input bottom (mensaje + enviar)
+        // Input bottom
         JPanel input = new JPanel(new BorderLayout(10, 0));
         input.setOpaque(false);
 
@@ -160,18 +148,15 @@ public class JUi extends javax.swing.JFrame {
         input.add(jTextMensaje, BorderLayout.CENTER);
         input.add(jbEnviar, BorderLayout.EAST);
 
-        // Right layout
-        right.add(header, BorderLayout.NORTH);
-        right.add(Box.createVerticalStrut(10), BorderLayout.CENTER);
-
         JPanel center = new JPanel(new BorderLayout(10, 10));
         center.setOpaque(false);
         center.add(chatScroll, BorderLayout.CENTER);
         center.add(input, BorderLayout.SOUTH);
 
+        right.add(header, BorderLayout.NORTH);
         right.add(center, BorderLayout.CENTER);
 
-        // ===== Split =====
+        // split
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         split.setDividerLocation(280);
         split.setDividerSize(2);
@@ -181,11 +166,8 @@ public class JUi extends javax.swing.JFrame {
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(split, BorderLayout.CENTER);
 
-        // Carga contactos demo (puedes borrar)
+        // contactos demo
         addOrUpdateContact("127.0.0.1", "Localhost", true);
-        addOrUpdateContact("192.168.0.10", "Host 10", false);
-        addOrUpdateContact("192.168.0.11", "Host 11", true);
-
         revalidate();
         repaint();
     }
@@ -219,10 +201,7 @@ public class JUi extends javax.swing.JFrame {
         b.setCursor(new Cursor(Cursor.HAND_CURSOR));
         b.setPreferredSize(new Dimension(120, 36));
     }
-
-    // =========================================================
     // Contactos con punto verde/rojo
-    // =========================================================
     private void addOrUpdateContact(String key, String displayName, boolean online) {
         ContactItem existing = contactsIndex.get(key);
         if (existing == null) {
@@ -252,10 +231,7 @@ public class JUi extends javax.swing.JFrame {
             v.setValue(v.getMaximum());
         });
     }
-
-    // =========================================================
-    // TU LISTENER (lo mantengo) + lo conecto al chat y contactos
-    // =========================================================
+    // Listener de SocketClient
     private SocketClient.SocketListener connectionListener = new SocketClient.SocketListener() {
 
         @Override
@@ -267,7 +243,6 @@ public class JUi extends javax.swing.JFrame {
                         "Nueva Conexión Entrante",
                         JOptionPane.YES_NO_OPTION);
 
-                // usamos idUser como key (porque es lo que llega)
                 String key = invitation.getIdUser();
                 addOrUpdateContact(key, invitation.getUserName(), true);
 
@@ -290,8 +265,6 @@ public class JUi extends javax.swing.JFrame {
 
         @Override
         public void onChatReceived(Chat chat) {
-            // No sé exactamente cómo viene tu Chat (depende tu clase),
-            // así que te lo dejo “seguro” usando toString().
             appendChat("Otro", String.valueOf(chat));
         }
 
@@ -303,24 +276,21 @@ public class JUi extends javax.swing.JFrame {
         @Override public void onThemeReceived(Theme theme) { }
     };
 
-    // =========================================================
-    // TU BOTÓN CONECTAR (igual que el tuyo, solo agrego UI updates)
-    // =========================================================
     private void jbConectarActionPerformed(java.awt.event.ActionEvent evt) {
-        String ip = jIP.getText();
-        String user = jTextUserName.getText();
+        String ip = jIP.getText().trim();
+        String user = jTextUserName.getText().trim();
         String myUserId = String.valueOf(System.currentTimeMillis());
 
-        // agrega/actualiza el contacto de destino (ip)
+        if (ip.isEmpty() || user.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Completa IP y Usuario.");
+            return;
+        }
+
         addOrUpdateContact(ip, ip, false);
 
         new Thread(() -> {
             try {
-                if (server == null) {
-                    server = new ChatServer();
-                }
-
-                socketClient = new SocketClient(ip);
+                socketClient = new SocketClient(ip, targetPort);
                 socketClient.setListener(connectionListener);
                 socketClient.start();
 
@@ -330,7 +300,7 @@ public class JUi extends javax.swing.JFrame {
                 SwingUtilities.invokeLater(() -> {
                     jOnline.setText("Status: Enviando invitación...");
                     setContactOnline(ip, true);
-                    appendChat("Sistema", "Invitación enviada a " + ip);
+                    appendChat("Sistema", "Invitación enviada a " + ip + ":" + targetPort);
                 });
 
             } catch (Exception e) {
@@ -340,24 +310,8 @@ public class JUi extends javax.swing.JFrame {
                 setContactOnline(ip, false);
             }
         }).start();
-
-        if (server != null) {
-            new Thread(() -> {
-                while (true) {
-                    try {
-                        server.enviarHello();
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }).start();
-        }
     }
 
-    // =========================================================
-    // TU BOTÓN ENVIAR (igual + agrega texto a chat visual)
-    // =========================================================
     private void jbEnviarActionPerformed(java.awt.event.ActionEvent evt) {
         try {
             String msg = jTextMensaje.getText().trim();
@@ -375,9 +329,6 @@ public class JUi extends javax.swing.JFrame {
         }
     }
 
-    // =========================================================
-    // MAIN (el tuyo)
-    // =========================================================
     public static void main(String args[]) {
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
@@ -393,8 +344,6 @@ public class JUi extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(() -> new JUi().setVisible(true));
     }
 
-    // =========================================================
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField jIP;
     private javax.swing.JLabel jOnline;
     private javax.swing.JLabel jLabelIP;
@@ -403,14 +352,11 @@ public class JUi extends javax.swing.JFrame {
     private javax.swing.JTextField jTextUserName;
     private javax.swing.JButton jbConectar;
     private javax.swing.JButton jbEnviar;
-    // End of variables declaration//GEN-END:variables
 
-    // =========================================================
-    // Clases internas (para que NO crees más archivos)
-    // =========================================================
+
     private static class ContactItem {
-        String key;          // ip o id
-        String displayName;  // nombre
+        String key;
+        String displayName;
         boolean online;
 
         ContactItem(String key, String displayName, boolean online) {
@@ -445,7 +391,6 @@ public class JUi extends javax.swing.JFrame {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-
             if (current == null) return;
 
             Graphics2D g2 = (Graphics2D) g.create();

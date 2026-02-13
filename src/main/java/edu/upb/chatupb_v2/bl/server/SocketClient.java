@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
@@ -13,9 +9,6 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.regex.Pattern;
 
-/**
- * @author rlaredo
- */
 public class SocketClient extends Thread {
     private final Socket socket;
     private final String ip;
@@ -23,20 +16,26 @@ public class SocketClient extends Thread {
     private final BufferedReader br;
     private SocketListener listener;
 
+    // Constructor cuando el servidor acepta conexión
     public SocketClient(Socket socket) throws IOException {
         this.socket = socket;
         this.ip = socket.getInetAddress().getHostAddress();
-        dout = new DataOutputStream(socket.getOutputStream());
-        br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+        this.dout = new DataOutputStream(socket.getOutputStream());
+        this.br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
     }
 
+    // Constructor original (usa puerto 1900)
     public SocketClient(String ip) throws IOException {
-        this.socket = new Socket(ip, 1900);
-        this.ip = ip;
-        dout = new DataOutputStream(socket.getOutputStream());
-        br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+        this(ip, 1900);
     }
 
+    // NUEVO constructor con puerto variable
+    public SocketClient(String ip, int port) throws IOException {
+        this.socket = new Socket(ip, port);
+        this.ip = ip;
+        this.dout = new DataOutputStream(socket.getOutputStream());
+        this.br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+    }
     public interface SocketListener {
         void onInvitationReceived(Invitation invitation);
         void onAcceptReceived(Accept accept);
@@ -61,90 +60,113 @@ public class SocketClient extends Thread {
     public void run() {
         try {
             String message;
+
             while ((message = br.readLine()) != null) {
+
                 System.out.println("Mensaje recibido: " + message);
 
-                String split[] = message.split(Pattern.quote("|"));
-                if(split.length == 0) continue;
+                String[] split = message.split(Pattern.quote("|"));
+                if (split.length == 0) continue;
 
                 switch (split[0]) {
+
                     case "001": {
                         Invitation inv = Invitation.parse(message);
-                        if (listener != null) {
-                            listener.onInvitationReceived(inv);
-                        }
+                        if (listener != null) listener.onInvitationReceived(inv);
                         break;
                     }
+
                     case "002": {
                         Accept acp = Accept.parse(message);
+                        if (listener != null) listener.onAcceptReceived(acp);
                         break;
                     }
+
                     case "003": {
                         Decline dec = Decline.parse(message);
+                        if (listener != null) listener.onDeclineReceived(dec);
                         break;
                     }
+
                     case "004": {
                         Hello hel = Hello.parse(message);
+                        if (listener != null) listener.onHelloReceived(hel);
                         break;
                     }
+
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
+                        if (listener != null) listener.onAcceptHelloReceived(acpHel);
                         break;
                     }
+
                     case "006": {
                         DeclineHello decHel = DeclineHello.parse(message);
+                        if (listener != null) listener.onDeclineHelloReceived(decHel);
                         break;
                     }
+
                     case "007": {
                         Chat cht = Chat.parse(message);
+                        if (listener != null) listener.onChatReceived(cht);
                         break;
                     }
+
                     case "008": {
                         ConfirmRecived conRec = ConfirmRecived.parse(message);
+                        if (listener != null) listener.onConfirmedReceived(conRec);
                         break;
                     }
+
                     case "009": {
                         DeleteMessage delMes = DeleteMessage.parse(message);
+                        if (listener != null) listener.onDeleteMessageReceived(delMes);
                         break;
                     }
+
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
+                        if (listener != null) listener.onBuzzingReceived(buz);
                         break;
                     }
+
                     case "011": {
                         PinMessage pinMes = PinMessage.parse(message);
+                        if (listener != null) listener.onPinMessageReceived(pinMes);
                         break;
                     }
+
                     case "012": {
                         UniqueMessage uniMes = UniqueMessage.parse(message);
+                        if (listener != null) listener.onUniqueMessageReceived(uniMes);
                         break;
                     }
+
                     case "013": {
                         Theme thm = Theme.parse(message);
+                        if (listener != null) listener.onThemeReceived(thm);
                         break;
                     }
                 }
             }
+
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Conexión cerrada con: " + ip);
         }
     }
 
-
+    // Enviar mensaje
     public void send(String message) throws IOException {
-        try {
-            dout.write(message.getBytes("UTF-8"));
-            dout.flush();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        dout.write((message + System.lineSeparator()).getBytes("UTF-8"));
+        dout.flush();
     }
 
+    // Cerrar conexión
     public void close() {
         try {
-            this.socket.close();
-            this.br.close();
-            this.dout.close();
+            if (socket != null) socket.close();
+            if (br != null) br.close();
+            if (dout != null) dout.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

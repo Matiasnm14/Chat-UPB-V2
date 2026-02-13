@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package edu.upb.chatupb_v2.bl.server;
 
 import java.io.DataOutputStream;
@@ -10,12 +6,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.UUID;
 
-/**
- *
- * @author rlaredo
- */
 public class ChatServer extends Thread {
-    private static final int port = 1900;
+    private int port = 1900;
     private DataOutputStream dout;
     private Socket socket;
     private ServerSocket server;
@@ -23,34 +15,45 @@ public class ChatServer extends Thread {
     private String name;
     private SocketClient.SocketListener uiListener;
     SocketClient socketClient;
+    // constructor con puerto (si está ocupado, sube puerto automáticamente)
+    public ChatServer(int port, SocketClient.SocketListener uiListener) throws IOException {
+        this.uiListener = uiListener;
+        int p = port;
+        while (true) {
+            try {
+                this.port = p;
+                this.server = new ServerSocket(this.port);
+                break;
+            } catch (java.net.BindException ex) {
+                p++;
+            }
+        }
+
+        this.start();
+        System.out.println("Servidor escuchando en puerto: " + this.port);
+    }
 
     public ChatServer(SocketClient.SocketListener uiListener) throws IOException {
-        this.uiListener = uiListener;
-        server = new ServerSocket(1900);
-        this.start(); // Inicia el hilo automáticamente al crear
+        this(1900, uiListener);
+    }
+    public ChatServer() throws IOException {
+        this.server = new ServerSocket(this.port);
+        this.start();
+        System.out.println("Servidor escuchando en puerto: " + this.port);
     }
 
-    public ChatServer() throws IOException {
-        this.server = new ServerSocket(port);
-        this.start();
-    }
-    //ALGO
     @Override
     public void run() {
         try {
-            // 1. Esperar conexión
             Socket socket = server.accept();
-            System.out.println("Conexión entrante aceptada.");
+            System.out.println("Conexión entrante aceptada en puerto " + this.port);
 
-            // 2. Crear el wrapper SocketClient para esta conexión
             this.socketClient = new SocketClient(socket);
 
-            // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
             if (uiListener != null) {
                 this.socketClient.setListener(uiListener);
             }
 
-            // 4. Iniciar el hilo de lectura del cliente
             this.socketClient.start();
         } catch (IOException e) {
             e.printStackTrace();
@@ -58,13 +61,8 @@ public class ChatServer extends Thread {
     }
 
     public void enviarMensaje(String mensaje) {
-        // En lugar de buscar 'dout' aquí, usamos el currentClient
         if (this.socketClient != null) {
-            // Asumiendo que quieres enviar un mensaje de chat normal (protocolo 002 por ejemplo)
-            // O si tu SocketClient.send envía texto plano, úsalo directo.
-            // Ejemplo formateado: "002|TuMensaje"
             String mensajeFormateado = "007|" + mensaje + System.lineSeparator();
-
             try {
                 this.socketClient.send(mensajeFormateado);
             } catch (IOException e) {
@@ -75,14 +73,12 @@ public class ChatServer extends Thread {
         }
     }
 
-    public void enviarHello(){
+    public void enviarHello() {
         try {
             if (server != null) {
                 if (dout != null) {
                     dout.writeBoolean(true);
                     dout.flush();
-                } else {
-//                    System.out.println("Cliente no conectado");
                 }
             }
         } catch (IOException e) {
