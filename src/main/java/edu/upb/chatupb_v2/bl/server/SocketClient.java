@@ -12,6 +12,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -23,7 +25,7 @@ public class SocketClient extends Thread {
     private final DataOutputStream dout;
     private final BufferedReader br;
     @Getter
-    private SocketListener listener;
+    private List<SocketListener> listener = new ArrayList<>();
 
     public SocketClient(Socket socket) throws IOException {
         this.socket = socket;
@@ -56,8 +58,7 @@ public class SocketClient extends Thread {
     }
 
     public void setListener(SocketListener listener) {
-
-        this.listener = listener;
+        this.listener.add(listener);
     }
 
     @Override
@@ -73,10 +74,8 @@ public class SocketClient extends Thread {
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
-                        if (listener != null) {
-                            listener.onInvitationReceived(inv);
-                        }else {
-                            System.out.println("Listener no seteado");
+                        for (SocketListener socketListener : listener) {
+                            socketListener.onInvitationReceived(inv);
                         }
                         break;
                     }

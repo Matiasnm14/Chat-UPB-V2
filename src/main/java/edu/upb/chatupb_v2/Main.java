@@ -8,7 +8,7 @@ public class Main {
     public static void main(String[] args) throws IOException {
 
         ChatServer cs = new ChatServer();
-        JUi jUi = new JUi(cs);
+        JUi jUi = new JUi();
         cs.setUiListener(jUi.getConnectionListener());
         jUi.init();
     }

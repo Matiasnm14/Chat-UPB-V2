@@ -26,16 +26,14 @@ public class JUi extends javax.swing.JFrame {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
     SocketClient socketClient;
-    Scanner scan = new Scanner(System.in);
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
 
     /**
      * Creates new form JUi
      */
-    public JUi(ChatServer cs) {
+    public JUi() {
         initComponents();
-//        server = cs;
     }
 
     /**
