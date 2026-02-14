@@ -12,6 +12,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -76,16 +77,21 @@ public class SocketClient extends Thread {
                         Invitation inv = Invitation.parse(message);
                         for (SocketListener socketListener : listener) {
                             java.awt.EventQueue.invokeLater(() -> {socketListener.onInvitationReceived(inv);});
-                            System.out.println("hola");
                         }
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
+                        for (SocketListener socketListener: listener){
+                            java.awt.EventQueue.invokeLater(() -> {socketListener.onAcceptReceived(acp);});
+                        }
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
+                        for (SocketListener socketListener: listener){
+                            java.awt.EventQueue.invokeLater(() -> {socketListener.onDeclineReceived(dec);});
+                        }
                         break;
                     }
                     case "004": {
@@ -130,6 +136,8 @@ public class SocketClient extends Thread {
                     }
                 }
             }
+        } catch (SocketException socketException){
+            System.out.println("Zoquete digo socket cerrado ");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -150,8 +158,10 @@ public class SocketClient extends Thread {
             this.socket.close();
             this.br.close();
             this.dout.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SocketException socketException) {
+            System.out.println("Se ha cerrado el socket");
+        } catch (Exception e){
+            System.out.println(getAllStackTraces());;
         }
     }
 }

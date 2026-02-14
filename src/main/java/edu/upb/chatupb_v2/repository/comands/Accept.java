@@ -14,7 +14,7 @@ public class Accept extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + this.idUser + "|" + this.userName +System.lineSeparator();
     }
 
     public static Accept parse(String command){

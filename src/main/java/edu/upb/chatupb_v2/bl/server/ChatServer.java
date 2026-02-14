@@ -8,6 +8,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.UUID;
 
 /**
@@ -26,7 +27,7 @@ public class ChatServer extends Thread {
 
     public ChatServer(SocketClient.SocketListener uiListener) throws IOException {
         this.uiListener = uiListener;
-        server = new ServerSocket(1900);
+        server = new ServerSocket(port);
         this.start(); // Inicia el hilo automáticamente al crear
     }
 
@@ -59,8 +60,8 @@ public class ChatServer extends Thread {
 
                 // 4. Iniciar el hilo de lectura del cliente
                 this.socketClient.start();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException io) {
+                System.out.println(getAllStackTraces());
             }
         }
     }

@@ -10,7 +10,7 @@ public class Decline extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + System.lineSeparator();
     }
 
     public Decline() {

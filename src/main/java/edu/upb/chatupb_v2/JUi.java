@@ -16,7 +16,9 @@ import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Time;
+import java.util.Objects;
 import java.util.Scanner;
+import java.util.UUID;
 
 /**
  *
@@ -26,7 +28,8 @@ public class JUi extends javax.swing.JFrame {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
     SocketClient socketClient;
-
+    private String username = "";
+    private UUID userId = null;
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
 
     /**
@@ -138,24 +141,34 @@ public class JUi extends javax.swing.JFrame {
                         javax.swing.JOptionPane.YES_NO_OPTION);
 
                 if (respuesta == javax.swing.JOptionPane.YES_OPTION) {
-                    jOnline.setText("Status: Conectado con " + invitation.getUserName());
-                    System.out.println("Invitación aceptada.");
-                    // Aquí podrías guardar la referencia al socket si necesitas responder
+                    Accept acp = new Accept(userId.toString(), username);
+                    try {
+                        socketClient.send(acp.createFormat());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 } else {
-                    System.out.println("Invitación rechazada.");
-                    jOnline.setText("Status: Rechazado");
+                    Decline dec = new Decline();
+                    try {
+                        socketClient.send(dec.createFormat());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             });
         }
 
         @Override
         public void onAcceptReceived(Accept accept){
-
+            jOnline.setText("Status: Online");
+            JOptionPane.showMessageDialog(null, "Aceptado", "Resultado", JOptionPane.INFORMATION_MESSAGE);
         }
 
         @Override
         public void onDeclineReceived(Decline decline) {
-
+            jOnline.setText("Status: Online");
+            JOptionPane.showMessageDialog(null, "Rechazado", "Resultado", JOptionPane.INFORMATION_MESSAGE);
+            socketClient.close();
         }
 
         @Override
@@ -210,13 +223,13 @@ public class JUi extends javax.swing.JFrame {
     };
 
     private void jbConectarActionPerformed(java.awt.event.ActionEvent evt) {
-
-
-
-            String ip = jIP.getText();
-            String user = jTextUserName.getText();
-            String myUserId = String.valueOf(System.currentTimeMillis());
-
+        String ip = jIP.getText();
+        if (username.isEmpty()){
+            username = jTextUserName.getText();
+        }
+        if (userId == null){
+            userId = UUID.randomUUID();
+        }
             new Thread(() -> {
                 try {
 //                if (server == null) {
@@ -232,7 +245,7 @@ public class JUi extends javax.swing.JFrame {
                     socketClient.start();
 
                     // 4. Enviar invitación
-                    Invitation myInvite = new Invitation(myUserId, user);
+                    Invitation myInvite = new Invitation(userId.toString(), username);
                     socketClient.send(myInvite.createFormat());
 
                     SwingUtilities.invokeLater(() -> jOnline.setText("Status: Enviando invitación..."));
