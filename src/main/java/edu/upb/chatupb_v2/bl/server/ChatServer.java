@@ -4,6 +4,8 @@
  */
 package edu.upb.chatupb_v2.bl.server;
 
+import lombok.Getter;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -55,7 +57,7 @@ public class ChatServer extends Thread {
                 // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
 
                 if (uiListener != null) {
-                    this.socketClient.setListener(uiListener);
+                    this.socketClient.setListener(id, uiListener);
                 }
 
                 // 4. Iniciar el hilo de lectura del cliente

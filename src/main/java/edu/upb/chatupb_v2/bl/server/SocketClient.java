@@ -13,8 +13,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -22,11 +21,12 @@ import java.util.regex.Pattern;
  */
 public class SocketClient extends Thread {
     private final Socket socket;
+    @Getter
     private final String ip;
     private final DataOutputStream dout;
     private final BufferedReader br;
     @Getter
-    private List<SocketListener> listener = new ArrayList<>();
+    private Map<UUID, SocketListener> listener = new HashMap<>();
 
     public SocketClient(Socket socket) throws IOException {
         this.socket = socket;
@@ -58,8 +58,8 @@ public class SocketClient extends Thread {
         void onThemeReceived(Theme theme);
     }
 
-    public void setListener(SocketListener listener) {
-        this.listener.add(listener);
+    public void setListener(UUID key, SocketListener listener) {
+        this.listener.put(key, listener);
     }
 
     @Override
@@ -75,21 +75,21 @@ public class SocketClient extends Thread {
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
-                        for (SocketListener socketListener : listener) {
+                        for (SocketListener socketListener : listener.values()) {
                             java.awt.EventQueue.invokeLater(() -> {socketListener.onInvitationReceived(inv);});
                         }
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-                        for (SocketListener socketListener: listener){
+                        for (SocketListener socketListener: listener.values()) {
                             java.awt.EventQueue.invokeLater(() -> {socketListener.onAcceptReceived(acp);});
                         }
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
-                        for (SocketListener socketListener: listener){
+                        for (SocketListener socketListener: listener.values()){
                             java.awt.EventQueue.invokeLater(() -> {socketListener.onDeclineReceived(dec);});
                         }
                         break;

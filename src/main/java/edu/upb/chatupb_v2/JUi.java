@@ -239,7 +239,7 @@ public class JUi extends javax.swing.JFrame {
                     socketClient = new SocketClient(ip);
 
                     // 2. Asignar EL MISMO listener que usa el servidor
-                    socketClient.setListener(connectionListener);
+                    socketClient.setListener(userId, connectionListener);
 
                     // 3. Iniciar escucha
                     socketClient.start();
