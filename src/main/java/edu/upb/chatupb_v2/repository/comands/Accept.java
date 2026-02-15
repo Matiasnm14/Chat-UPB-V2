@@ -25,10 +25,6 @@ public class Accept extends Command{
         return new Accept(parses[1],parses[2]);
     }
 
-    public Accept() {
-        super("002");
-    }
-
     public Accept(String idUser,String userName){
         super("002");
         this.idUser = idUser;

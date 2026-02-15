@@ -6,7 +6,6 @@ package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -14,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -33,7 +33,7 @@ public class SocketClient extends Thread {
     private final DataOutputStream dout;
     private final BufferedReader br;
     @Getter
-    private Map<UUID, SocketListener> listener = new HashMap<>();
+    private final Map<UUID, SocketListener> listener = new HashMap<>();
 
 
     public String getNombre() {
@@ -84,7 +84,7 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
 
-                String split[] = message.split(Pattern.quote("|"));
+                String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
 
                 switch (split[0]) {
@@ -93,21 +93,21 @@ public class SocketClient extends Thread {
                         this.name = inv.getUserName();
                         this.uid = inv.getIdUser();
                         for (SocketListener socketListener : listener.values()) {
-                            java.awt.EventQueue.invokeLater(() -> {socketListener.onInvitationReceived(inv);});
+                            java.awt.EventQueue.invokeLater(() -> socketListener.onInvitationReceived(inv));
                         }
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
                         for (SocketListener socketListener: listener.values()) {
-                            java.awt.EventQueue.invokeLater(() -> {socketListener.onAcceptReceived(acp);});
+                            java.awt.EventQueue.invokeLater(() -> socketListener.onAcceptReceived(acp));
                         }
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
                         for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> {socketListener.onDeclineReceived(dec);});
+                            java.awt.EventQueue.invokeLater(() -> socketListener.onDeclineReceived(dec));
                         }
                         break;
                     }
@@ -126,12 +126,15 @@ public class SocketClient extends Thread {
                     case "007": {
                         Chat cht = Chat.parse(message);
                         for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> {socketListener.onChatReceived(cht);});
+                            java.awt.EventQueue.invokeLater(() -> socketListener.onChatReceived(cht));
                         }
                         break;
                     }
                     case "008": {
                         ConfirmRecived conRec = ConfirmRecived.parse(message);
+                        for (SocketListener socketListener: listener.values()){
+                            socketListener.onConfirmedReceived(conRec);
+                        }
                         break;
                     }
                     case "009": {
@@ -141,7 +144,7 @@ public class SocketClient extends Thread {
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
                         for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> {socketListener.onBuzzingReceived(buz);});
+                            java.awt.EventQueue.invokeLater(() -> socketListener.onBuzzingReceived(buz));
                         }
                         break;
                     }
@@ -162,17 +165,17 @@ public class SocketClient extends Thread {
         } catch (SocketException socketException){
             System.out.println("Socket cerrado ");
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
     }
 
 
     public void send(String message) throws IOException {
         try {
-            dout.write(message.getBytes("UTF-8"));
+            dout.write(message.getBytes(StandardCharsets.UTF_8));
             dout.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
     }
 
@@ -184,7 +187,7 @@ public class SocketClient extends Thread {
         } catch (SocketException socketException) {
             System.out.println("Se ha cerrado el socket");
         } catch (Exception e){
-            System.out.println(getAllStackTraces());;
+            System.out.println(getAllStackTraces());
         }
     }
 }

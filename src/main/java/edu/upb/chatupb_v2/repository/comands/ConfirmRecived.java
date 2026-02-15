@@ -12,7 +12,7 @@ public class ConfirmRecived extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID()+"|"+getIdMessage()+System.lineSeparator();
     }
 
     public ConfirmRecived() {

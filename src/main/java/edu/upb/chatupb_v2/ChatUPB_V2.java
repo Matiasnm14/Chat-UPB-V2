@@ -3,17 +3,9 @@
  */
 package edu.upb.chatupb_v2;
 
-import edu.upb.chatupb_v2.repository.Contact;
 import edu.upb.chatupb_v2.repository.ContactDao;
 import edu.upb.chatupb_v2.bl.server.ChatServer;
-import edu.upb.chatupb_v2.bl.server.SocketClient;
 
-import java.util.List;
-
-/**
- *
- * @author rlaredo
- */
 public class ChatUPB_V2 {
 
    public static void main(String[] args) {
