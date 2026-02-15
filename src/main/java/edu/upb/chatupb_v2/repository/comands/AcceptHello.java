@@ -11,7 +11,7 @@ public class AcceptHello extends Command{
     private String idUser;
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + getIdUser() + System.lineSeparator();
     }
 
     public AcceptHello() {

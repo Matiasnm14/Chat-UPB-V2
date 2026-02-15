@@ -33,8 +33,9 @@ public class ChatServer extends Thread {
                 this.socketClient = new SocketClient(socket);
 
                 if (uiListener != null) {
-                    this.socketClient.setListener(name, id, uiListener);
+                    this.socketClient.setListener(name, id.toString(), uiListener);
                 }
+
                 Controller.addClients(socketClient);
 
                 this.socketClient.start();

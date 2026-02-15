@@ -190,12 +190,22 @@ public class JUi extends javax.swing.JFrame {
 
         @Override
         public void onHelloReceived(Hello hello) {
-
+            System.out.println("Hello Received from" + hello.getIdUser());
+            AcceptHello acceptHello = new AcceptHello(userId.toString());
+            for (SocketClient client : Controller.getClients()) {
+                if (client.getUID().equals(hello.getIdUser())){
+                    try {
+                        client.send(acceptHello.createFormat());
+                    } catch (IOException e){
+                        System.out.println(e.getMessage());
+                    }
+                }
+            }
         }
 
         @Override
         public void onAcceptHelloReceived(AcceptHello acceptHello) {
-
+            System.out.println("Accept Received");
         }
 
         @Override
@@ -259,7 +269,7 @@ public class JUi extends javax.swing.JFrame {
             new Thread(() -> {
                 try {
                     socketClient = new SocketClient(ip);
-                    socketClient.setListener(username, userId, connectionListener);
+                    socketClient.setListener(username, userId.toString(), connectionListener);
                     Controller.addClients(socketClient);
                     socketClient.start();
 
@@ -300,6 +310,24 @@ public class JUi extends javax.swing.JFrame {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
         java.awt.EventQueue.invokeLater(() -> this.setVisible(true));
+        new Thread(()->{
+            while (true){
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                for (SocketClient client : Controller.getClients()) {
+                    Hello hello = new Hello(userId.toString());
+                    try {
+                        client.send(hello.createFormat());
+                    } catch (IOException e){
+                        System.out.println(e.getMessage());
+                    }
+                }
+
+            }
+        }).start();
     }
 
     private javax.swing.JTextField jIP;

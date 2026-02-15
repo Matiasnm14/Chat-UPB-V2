@@ -14,19 +14,19 @@ public class Hello extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + getIdUser() + System.lineSeparator();
     }
 
     public Hello() {
         super("004");
     }
-    private Hello(String idUser){
+    public Hello(String idUser){
         super("004");
         this.idUser = idUser;
     }
     public static Hello parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
-        if(parses.length != 3){
+        if(parses.length != 2){
             throw new IllegalArgumentException("Formato de trama erroneo");
         }
         return new Hello(parses[1]);

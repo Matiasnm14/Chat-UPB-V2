@@ -33,7 +33,7 @@ public class SocketClient extends Thread {
     private final DataOutputStream dout;
     private final BufferedReader br;
     @Getter
-    private final Map<UUID, SocketListener> listener = new HashMap<>();
+    private final Map<String, SocketListener> listener = new HashMap<>();
 
 
     public String getNombre() {
@@ -72,11 +72,16 @@ public class SocketClient extends Thread {
         void onThemeReceived(Theme theme);
     }
 
-    public void setListener(String name, UUID key, SocketListener listener) {
+    public void setListener(String name, String key, SocketListener listener) {
         this.listener.put(key, listener);
-        this.uid = key.toString();
+        this.uid = key;
         this.name = name;
     }
+
+    public void setListener(String key, SocketListener listener) {
+        this.listener.put(key, listener);
+    }
+
 
     @Override
     public void run() {
@@ -87,20 +92,27 @@ public class SocketClient extends Thread {
                 String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
 
+
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
-                        this.name = inv.getUserName();
-                        this.uid = inv.getIdUser();
-                        for (SocketListener socketListener : listener.values()) {
-                            java.awt.EventQueue.invokeLater(() -> socketListener.onInvitationReceived(inv));
+//                        this.name = inv.getUserName();
+//                        this.uid = inv.getIdUser();
+                        SocketListener sl = listener.get(inv.getIdUser());
+                        if (sl != null) {
+                            java.awt.EventQueue.invokeLater(() -> sl.onInvitationReceived(inv));
+                        } else {
+                            System.out.println("No se encontró el usuario");
                         }
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-                        for (SocketListener socketListener: listener.values()) {
-                            java.awt.EventQueue.invokeLater(() -> socketListener.onAcceptReceived(acp));
+                        SocketListener sl = listener.get(acp.getIdUser());
+                        if (sl != null) {
+                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptReceived(acp));
+                        } else {
+                            System.out.println("No se encontró el usuario");
                         }
                         break;
                     }
@@ -113,10 +125,17 @@ public class SocketClient extends Thread {
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
+                        for (SocketListener socketListener: listener.values()){
+                            socketListener.onHelloReceived(hel);
+                        }
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
+                        SocketListener sl = listener.get(acpHel.getIdUser());
+                        if (sl != null){
+                            sl.onAcceptHelloReceived(acpHel);
+                        }
                         break;
                     }
                     case "006": {
@@ -125,9 +144,8 @@ public class SocketClient extends Thread {
                     }
                     case "007": {
                         Chat cht = Chat.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> socketListener.onChatReceived(cht));
-                        }
+                        SocketListener sl = listener.get(cht.getIdUser());
+                        if (sl != null) java.awt.EventQueue.invokeLater(() -> sl.onChatReceived(cht));
                         break;
                     }
                     case "008": {
@@ -143,9 +161,8 @@ public class SocketClient extends Thread {
                     }
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> socketListener.onBuzzingReceived(buz));
-                        }
+                        SocketListener sl = listener.get(buz.getIdUser());
+                        if (sl != null) java.awt.EventQueue.invokeLater(() -> sl.onBuzzingReceived(buz));
                         break;
                     }
                     case "011": {
