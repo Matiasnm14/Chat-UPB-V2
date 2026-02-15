@@ -35,6 +35,11 @@ public class SocketClient extends Thread {
     @Getter
     private Map<UUID, SocketListener> listener = new HashMap<>();
 
+
+    public String getNombre() {
+        return name;
+    }
+
     public SocketClient(Socket socket) throws IOException {
         this.socket = socket;
         this.ip = socket.getInetAddress().getHostAddress();
@@ -67,9 +72,10 @@ public class SocketClient extends Thread {
         void onThemeReceived(Theme theme);
     }
 
-    public void setListener(UUID key, SocketListener listener) {
+    public void setListener(String name, UUID key, SocketListener listener) {
         this.listener.put(key, listener);
         this.uid = key.toString();
+        this.name = name;
     }
 
     @Override
@@ -77,7 +83,6 @@ public class SocketClient extends Thread {
         try {
             String message;
             while ((message = br.readLine()) != null) {
-                System.out.println("Mensaje recibido: " + message);
 
                 String split[] = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
@@ -135,6 +140,9 @@ public class SocketClient extends Thread {
                     }
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
+                        for (SocketListener socketListener: listener.values()){
+                            java.awt.EventQueue.invokeLater(() -> {socketListener.onBuzzingReceived(buz);});
+                        }
                         break;
                     }
                     case "011": {
@@ -152,7 +160,7 @@ public class SocketClient extends Thread {
                 }
             }
         } catch (SocketException socketException){
-            System.out.println("Zoquete digo socket cerrado ");
+            System.out.println("Socket cerrado ");
         } catch (IOException e) {
             e.printStackTrace();
         }

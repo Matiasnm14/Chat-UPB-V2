@@ -45,77 +45,98 @@ public class JUi extends javax.swing.JFrame {
      */
     @SuppressWarnings("unchecked")
     private void initComponents() {
-        // 1. Instanciar los Labels
+
+        // Labels
         jLabelIP = new javax.swing.JLabel("Dirección IP:");
         jLabelUser = new javax.swing.JLabel("Nombre de Usuario:");
 
+        // Campos
         jIP = new javax.swing.JTextField();
         jTextUserName = new javax.swing.JTextField();
-        jbConectar = new javax.swing.JButton();
         jTextMensaje = new javax.swing.JTextField();
-        jbEnviar = new javax.swing.JButton();
+
+        // Botones
+        jbConectar = new javax.swing.JButton("Conectar");
+        jbEnviar = new javax.swing.JButton("Enviar");
+        jBforBuzzing = new javax.swing.JButton("Buzz");
+
+        // Estado
         jOnline = new javax.swing.JLabel("Status: Offline");
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        jbConectar.setText("Conectar");
-        jbEnviar.setText("Enviar");
-
-        // --- DISEÑO DE GRUPOS (Layout) ---
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
 
-        // Configuración Horizontal
+        layout.setAutoCreateGaps(true);
+        layout.setAutoCreateContainerGaps(true);
+
+        // ------------------ HORIZONTAL ------------------
         layout.setHorizontalGroup(
                 layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+
+                        // Fila IP y Usuario
                         .addGroup(layout.createSequentialGroup()
-                                .addContainerGap()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabelIP)
+                                        .addComponent(jIP, 120, 120, 120))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabelUser)
                                         .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(jLabelIP)
-                                                        .addComponent(jIP, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(18, 18, 18)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(jLabelUser)
-                                                        .addGroup(layout.createSequentialGroup()
-                                                                .addComponent(jTextUserName, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                                .addGap(18, 18, 18)
-                                                                .addComponent(jbConectar))))
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addComponent(jTextMensaje, javax.swing.GroupLayout.PREFERRED_SIZE, 258, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(jbEnviar))
-                                        .addComponent(jOnline))
-                                .addContainerGap(20, Short.MAX_VALUE))
+                                                .addComponent(jTextUserName, 120, 120, 120)
+                                                .addComponent(jbConectar)
+                                                .addComponent(jBforBuzzing)))
+                        )
+
+                        // Estado
+                        .addComponent(jOnline)
+
+                        // Fila mensaje
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(jTextMensaje, 260, 260, Short.MAX_VALUE)
+                                .addComponent(jbEnviar)
+                        )
         );
 
-        // Configuración Vertical
+        // ------------------ VERTICAL ------------------
         layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addContainerGap()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(jLabelIP)
-                                        .addComponent(jLabelUser))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(jIP, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jTextUserName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jbConectar))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jOnline)
-                                .addGap(50, 50, 50)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(jTextMensaje, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jbEnviar))
-                                .addContainerGap(120, Short.MAX_VALUE))
+                layout.createSequentialGroup()
+
+                        // Labels
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(jLabelIP)
+                                .addComponent(jLabelUser)
+                        )
+
+                        // Campos + botones
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(jIP)
+                                .addComponent(jTextUserName)
+                                .addComponent(jbConectar)
+                                .addComponent(jBforBuzzing)
+                        )
+
+                        // Estado
+                        .addComponent(jOnline)
+
+                        .addGap(40)
+
+                        // Mensaje
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(jTextMensaje)
+                                .addComponent(jbEnviar)
+                        )
         );
-//        jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
+
+        // Listeners
         jbConectar.addActionListener(evt -> jbConectarActionPerformed(evt));
         jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
+        jBforBuzzing.addActionListener(evt -> jBforBuzzingActionPerformed(evt));
+
         pack();
+        setLocationRelativeTo(null); // Centra la ventana
     }
+
     private void jIPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jIPActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_jIPActionPerformed
@@ -126,6 +147,17 @@ public class JUi extends javax.swing.JFrame {
 
     private void jTextUserActionPerformed(java.awt.event.ActionEvent evt){
 
+    }
+
+    private void jBforBuzzingActionPerformed(java.awt.event.ActionEvent evt){
+        for (SocketClient sc : Controller.getClients()){
+            Buzzing bz = new Buzzing(this.userId.toString());
+            try {
+                sc.send(bz.createFormat());
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+        }
     }
     // Define el listener como un campo de la clase
     @Getter
@@ -170,7 +202,7 @@ public class JUi extends javax.swing.JFrame {
 
         @Override
         public void onDeclineReceived(Decline decline) {
-            jOnline.setText("Status: Online");
+            jOnline.setText("Status: Rejected");
             JOptionPane.showMessageDialog(null, "Rechazado", "Resultado", JOptionPane.INFORMATION_MESSAGE);
             socketClient.close();
         }
@@ -208,7 +240,13 @@ public class JUi extends javax.swing.JFrame {
 
         @Override
         public void onBuzzingReceived(Buzzing buzzing) {
-
+            String name = " ";
+            for (SocketClient sc:Controller.getClients()){
+                if (sc.getUID().equals(buzzing.getIdUser())){
+                    name = sc.getNombre();
+                }
+            }
+            JOptionPane.showMessageDialog(null, name + " Te ha enviado un zumbido", "Zumbido", JOptionPane.INFORMATION_MESSAGE);
         }
 
         @Override
@@ -231,15 +269,11 @@ public class JUi extends javax.swing.JFrame {
 
             new Thread(() -> {
                 try {
-//                if (server == null) {
-//                    server = new ChatServer();
-//                }
                     // 1. Crear la conexión saliente
                     socketClient = new SocketClient(ip);
                     // 2. Asignar EL MISMO listener que usa el servidor
-                    socketClient.setListener(userId, connectionListener);
+                    socketClient.setListener(username, userId, connectionListener);
                     Controller.addClients(socketClient);
-                    System.out.println("Lista du clientes" + Controller.getClients());
                     // 3. Iniciar escucha
                     socketClient.start();
 
@@ -317,5 +351,6 @@ public class JUi extends javax.swing.JFrame {
     private javax.swing.JTextField jTextUserName;
     private javax.swing.JButton jbConectar;
     private javax.swing.JButton jbEnviar;
+    private javax.swing.JButton jBforBuzzing;
     // End of variables declaration//GEN-END:variables
 }

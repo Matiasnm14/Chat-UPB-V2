@@ -14,9 +14,8 @@ public class Buzzing extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + idUser + "|" + System.lineSeparator();
     }
-
 
     public Buzzing() {
         super("010");

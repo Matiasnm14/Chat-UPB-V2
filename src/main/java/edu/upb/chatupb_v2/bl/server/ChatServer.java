@@ -57,7 +57,7 @@ public class ChatServer extends Thread {
                 // 3. ¡AQUÍ ESTA LA CLAVE! Asignar el listener de la UI
 
                 if (uiListener != null) {
-                    this.socketClient.setListener(id, uiListener);
+                    this.socketClient.setListener(name, id, uiListener);
                 }
                 Controller.addClients(socketClient);
                 // 4. Iniciar el hilo de lectura del cliente
@@ -65,24 +65,6 @@ public class ChatServer extends Thread {
             } catch (IOException io) {
                 System.out.println(getAllStackTraces());
             }
-        }
-    }
-
-    public void enviarMensaje(String mensaje) {
-        // En lugar de buscar 'dout' aquí, usamos el currentClient
-        if (this.socketClient != null) {
-            // Asumiendo que quieres enviar un mensaje de chat normal (protocolo 002 por ejemplo)
-            // O si tu SocketClient.send envía texto plano, úsalo directo.
-            // Ejemplo formateado: "002|TuMensaje"
-            String mensajeFormateado = "007|" + mensaje + System.lineSeparator();
-
-            try {
-                this.socketClient.send(mensajeFormateado);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("Error: No hay cliente conectado para enviar.");
         }
     }
 
