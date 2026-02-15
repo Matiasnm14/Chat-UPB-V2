@@ -6,6 +6,7 @@ package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -21,6 +22,12 @@ import java.util.regex.Pattern;
  */
 public class SocketClient extends Thread {
     private final Socket socket;
+
+    public String getUID() {
+        return uid;
+    }
+    private String name;
+    private String uid;
     @Getter
     private final String ip;
     private final DataOutputStream dout;
@@ -41,6 +48,8 @@ public class SocketClient extends Thread {
         dout = new DataOutputStream(socket.getOutputStream());
         br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
     }
+
+
     //ALGO
     public interface SocketListener {
         void onInvitationReceived(Invitation invitation);
@@ -60,6 +69,7 @@ public class SocketClient extends Thread {
 
     public void setListener(UUID key, SocketListener listener) {
         this.listener.put(key, listener);
+        this.uid = key.toString();
     }
 
     @Override
@@ -75,6 +85,8 @@ public class SocketClient extends Thread {
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
+                        this.name = inv.getUserName();
+                        this.uid = inv.getIdUser();
                         for (SocketListener socketListener : listener.values()) {
                             java.awt.EventQueue.invokeLater(() -> {socketListener.onInvitationReceived(inv);});
                         }
@@ -108,6 +120,9 @@ public class SocketClient extends Thread {
                     }
                     case "007": {
                         Chat cht = Chat.parse(message);
+                        for (SocketListener socketListener: listener.values()){
+                            java.awt.EventQueue.invokeLater(() -> {socketListener.onChatReceived(cht);});
+                        }
                         break;
                     }
                     case "008": {

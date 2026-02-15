@@ -13,7 +13,7 @@ public class Chat extends Command{
     private String message;
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + idUser + "|" + idMessage + "|" + message + System.lineSeparator();
     }
 
     public Chat() {

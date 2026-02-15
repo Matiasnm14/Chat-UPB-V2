@@ -59,7 +59,7 @@ public class ChatServer extends Thread {
                 if (uiListener != null) {
                     this.socketClient.setListener(id, uiListener);
                 }
-
+                Controller.addClients(socketClient);
                 // 4. Iniciar el hilo de lectura del cliente
                 this.socketClient.start();
             } catch (IOException io) {

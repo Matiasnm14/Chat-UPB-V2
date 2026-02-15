@@ -5,6 +5,7 @@
 package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.bl.server.ChatServer;
+import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.SocketClient;
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
@@ -16,9 +17,7 @@ import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Time;
-import java.util.Objects;
-import java.util.Scanner;
-import java.util.UUID;
+import java.util.*;
 
 /**
  *
@@ -28,8 +27,8 @@ public class JUi extends javax.swing.JFrame {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
     SocketClient socketClient;
-    private String username = "";
-    private UUID userId = null;
+    private String username = "Santiago";
+    private UUID userId = UUID.randomUUID();
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
 
     /**
@@ -114,6 +113,7 @@ public class JUi extends javax.swing.JFrame {
         );
 //        jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
         jbConectar.addActionListener(evt -> jbConectarActionPerformed(evt));
+        jbEnviar.addActionListener(evt -> jbEnviarActionPerformed(evt));
         pack();
     }
     private void jIPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jIPActionPerformed
@@ -143,7 +143,11 @@ public class JUi extends javax.swing.JFrame {
                 if (respuesta == javax.swing.JOptionPane.YES_OPTION) {
                     Accept acp = new Accept(userId.toString(), username);
                     try {
-                        socketClient.send(acp.createFormat());
+                        for (SocketClient sc: Controller.getClients()){
+                            if (sc.getUID().equals(invitation.getIdUser())){
+                                sc.send(acp.createFormat());
+                            }
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -188,7 +192,8 @@ public class JUi extends javax.swing.JFrame {
 
         @Override
         public void onChatReceived(Chat chat) {
-
+            System.out.println("ID Mensaje: " + chat.getIdMessage());
+            System.out.println("Mensaje: " + chat.getMessage());
         }
 
         @Override
@@ -221,15 +226,9 @@ public class JUi extends javax.swing.JFrame {
 
         }
     };
-
     private void jbConectarActionPerformed(java.awt.event.ActionEvent evt) {
         String ip = jIP.getText();
-        if (username.isEmpty()){
-            username = jTextUserName.getText();
-        }
-        if (userId == null){
-            userId = UUID.randomUUID();
-        }
+
             new Thread(() -> {
                 try {
 //                if (server == null) {
@@ -237,10 +236,10 @@ public class JUi extends javax.swing.JFrame {
 //                }
                     // 1. Crear la conexión saliente
                     socketClient = new SocketClient(ip);
-
                     // 2. Asignar EL MISMO listener que usa el servidor
                     socketClient.setListener(userId, connectionListener);
-
+                    Controller.addClients(socketClient);
+                    System.out.println("Lista du clientes" + Controller.getClients());
                     // 3. Iniciar escucha
                     socketClient.start();
 
@@ -252,7 +251,7 @@ public class JUi extends javax.swing.JFrame {
 
                 } catch (Exception e) {
                     SwingUtilities.invokeLater(() ->
-                            javax.swing.JOptionPane.showMessageDialog(this, "Error: " + e.getMessage())
+                            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage())
                     );
                 }
             }).start();
@@ -271,17 +270,16 @@ public class JUi extends javax.swing.JFrame {
 //        }
     }//GEN-LAST:event_jbConectarActionPerformed
 
-//    private void jbEnviarActionPerformed(java.awt.event.ActionEvent evt) {
-//        try {
-//            if (server != null) { // Verifica que haya conexión
-//                server.enviarMensaje(jTextMensaje.getText());
-//                jTextMensaje.setText(""); // Limpia el campo después de enviar
-//            } else {
-//                System.out.println("Error: No hay ningún cliente conectado para enviar el mensaje.");
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
+    private void jbEnviarActionPerformed(java.awt.event.ActionEvent evt) {
+        try {
+            Chat chat = new Chat(this.userId.toString(), UUID.randomUUID().toString(), jTextMensaje.getText());
+            for (SocketClient sc : Controller.getClients()){
+                sc.send(chat.createFormat());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 //    }//GEN-LAST:event_jbEnviarActionPerformed
 
     /**
