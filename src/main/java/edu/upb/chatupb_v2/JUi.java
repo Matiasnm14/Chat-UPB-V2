@@ -4,7 +4,9 @@
  */
 package edu.upb.chatupb_v2;
 
+import edu.upb.chatupb_v2.bl.server.ChatService;
 import edu.upb.chatupb_v2.bl.server.Controller;
+import edu.upb.chatupb_v2.bl.server.IChatView;
 import edu.upb.chatupb_v2.bl.server.SocketClient;
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
@@ -17,10 +19,11 @@ import java.util.*;
  *
  * @author USER 1
  */
-public class JUi extends javax.swing.JFrame {
+public class JUi extends javax.swing.JFrame implements IChatView {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
-    SocketClient socketClient;
+    private ChatService chatService;
+//    SocketClient socketClient;
     private final String username = "Santiago";
     private final UUID userId = UUID.randomUUID();
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
@@ -30,6 +33,7 @@ public class JUi extends javax.swing.JFrame {
      */
     public JUi() {
         initComponents();
+        this.chatService = new ChatService(this, username, userId.toString());
     }
 
     /**
@@ -63,6 +67,14 @@ public class JUi extends javax.swing.JFrame {
 
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
+
+
+        jbConectar.addActionListener(evt -> chatService.connect(jIP.getText()));
+        jbEnviar.addActionListener(evt -> chatService.sendMessage(jTextMensaje.getText()));
+        jBforBuzzing.addActionListener(evt -> chatService.sendBuzz());
+
+        pack();
+        setLocationRelativeTo(null);
 
         // ------------------ HORIZONTAL ------------------
         layout.setHorizontalGroup(
@@ -122,181 +134,14 @@ public class JUi extends javax.swing.JFrame {
         );
 
         // Listeners
-        jbConectar.addActionListener(this::jbConectarActionPerformed);
-        jbEnviar.addActionListener(this::jbEnviarActionPerformed);
-        jBforBuzzing.addActionListener(this::jBforBuzzingActionPerformed);
+//        jbConectar.addActionListener(this::jbConectarActionPerformed);
+//        jbEnviar.addActionListener(this::jbEnviarActionPerformed);
+//        jBforBuzzing.addActionListener(this::jBforBuzzingActionPerformed);
 
         pack();
         setLocationRelativeTo(null); // Centra la ventana
     }
 
-    private void jBforBuzzingActionPerformed(java.awt.event.ActionEvent evt){
-        for (SocketClient sc : Controller.getClients()){
-            Buzzing bz = new Buzzing(this.userId.toString());
-            try {
-                sc.send(bz.createFormat());
-            } catch (IOException e){
-                System.out.println(e.getMessage());
-            }
-        }
-    }
-    // Define el listener como un campo de la clase
-    @Getter
-    private final SocketClient.SocketListener connectionListener = new SocketClient.SocketListener() {
-        @Override
-        public void onInvitationReceived(Invitation invitation) {
-
-            SwingUtilities.invokeLater(() -> {
-                int respuesta = javax.swing.JOptionPane.showConfirmDialog(JUi.this,
-                        "Invitación recibida de: " + invitation.getUserName() +
-                                " (ID: " + invitation.getIdUser() + "). ¿Aceptar?",
-                        "Nueva Conexión Entrante",
-                        javax.swing.JOptionPane.YES_NO_OPTION);
-
-                if (respuesta == javax.swing.JOptionPane.YES_OPTION) {
-                    Accept acp = new Accept(userId.toString(), username);
-                    try {
-                        for (SocketClient sc: Controller.getClients()){
-                            if (sc.getUID().equals(invitation.getIdUser())){
-                                sc.send(acp.createFormat());
-                            }
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                } else {
-                    Decline dec = new Decline();
-                    try {
-                        socketClient.send(dec.createFormat());
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });
-        }
-
-        @Override
-        public void onAcceptReceived(Accept accept){
-            jOnline.setText("Status: Online");
-            JOptionPane.showMessageDialog(null, "Aceptado", "Resultado", JOptionPane.INFORMATION_MESSAGE);
-        }
-
-        @Override
-        public void onDeclineReceived(Decline decline) {
-            jOnline.setText("Status: Rejected");
-            JOptionPane.showMessageDialog(null, "Rechazado", "Resultado", JOptionPane.INFORMATION_MESSAGE);
-            socketClient.close();
-        }
-
-        @Override
-        public void onHelloReceived(Hello hello) {
-            System.out.println("Hello Received from" + hello.getIdUser());
-            AcceptHello acceptHello = new AcceptHello(userId.toString());
-            for (SocketClient client : Controller.getClients()) {
-                if (client.getUID().equals(hello.getIdUser())){
-                    try {
-                        client.send(acceptHello.createFormat());
-                    } catch (IOException e){
-                        System.out.println(e.getMessage());
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void onAcceptHelloReceived(AcceptHello acceptHello) {
-            System.out.println("Accept Received");
-        }
-
-        @Override
-        public void onDeclineHelloReceived(DeclineHello declineHello) {
-
-        }
-
-        @Override
-        public void onChatReceived(Chat chat) {
-            System.out.println("ID Mensaje: " + chat.getIdMessage());
-            System.out.println("Mensaje: " + chat.getMessage());
-            ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-            for (SocketClient client : Controller.getClients()) {
-                try {
-                    client.send(confirmRecived.createFormat());
-                } catch (IOException e){
-                    System.out.println(e.getMessage());
-                }
-            }
-        }
-
-        @Override
-        public void onConfirmedReceived(ConfirmRecived confirmRecived) {
-            System.out.println("Leido");
-        }
-
-        @Override
-        public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
-
-        }
-
-        @Override
-        public void onBuzzingReceived(Buzzing buzzing) {
-            String name = " ";
-            for (SocketClient sc:Controller.getClients()){
-                if (sc.getUID().equals(buzzing.getIdUser())){
-                    name = sc.getNombre();
-                }
-            }
-            JOptionPane.showMessageDialog(null, name + " Te ha enviado un zumbido", "Zumbido", JOptionPane.INFORMATION_MESSAGE);
-        }
-
-        @Override
-        public void onPinMessageReceived(PinMessage pinMessage) {
-
-        }
-
-        @Override
-        public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
-
-        }
-
-        @Override
-        public void onThemeReceived(Theme theme) {
-
-        }
-    };
-    private void jbConectarActionPerformed(java.awt.event.ActionEvent evt) {
-        String ip = jIP.getText();
-
-            new Thread(() -> {
-                try {
-                    socketClient = new SocketClient(ip);
-                    socketClient.setListener(username, userId.toString(), connectionListener);
-                    Controller.addClients(socketClient);
-                    socketClient.start();
-
-                    Invitation myInvite = new Invitation(userId.toString(), username);
-                    socketClient.send(myInvite.createFormat());
-
-                    SwingUtilities.invokeLater(() -> jOnline.setText("Status: Enviando invitación..."));
-
-                } catch (Exception e) {
-                    SwingUtilities.invokeLater(() ->
-                            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage())
-                    );
-                }
-            }).start();
-
-    }
-
-    private void jbEnviarActionPerformed(java.awt.event.ActionEvent evt) {
-        try {
-            Chat chat = new Chat(this.userId.toString(), UUID.randomUUID().toString(), jTextMensaje.getText());
-            for (SocketClient sc : Controller.getClients()){
-                sc.send(chat.createFormat());
-            }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-    }
 
     public void init() {
         try {
@@ -309,28 +154,42 @@ public class JUi extends javax.swing.JFrame {
         } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
-        java.awt.EventQueue.invokeLater(() -> this.setVisible(true));
-        new Thread(()->{
-            while (true){
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                for (SocketClient client : Controller.getClients()) {
-                    Hello hello = new Hello(userId.toString());
-                    try {
-                        client.send(hello.createFormat());
-                    } catch (IOException e){
-                        System.out.println(e.getMessage());
-                    }
-                }
 
-            }
-        }).start();
+        java.awt.EventQueue.invokeLater(() -> this.setVisible(true));
     }
 
     private javax.swing.JTextField jIP;
     private javax.swing.JLabel jOnline;
     private javax.swing.JTextField jTextMensaje;
+
+
+
+    @Override
+    public void updateStatus(String status) {
+        jOnline.setText(status);
+    }
+
+    @Override
+    public void showMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Información", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    @Override
+    public void showError(String error) {
+        JOptionPane.showMessageDialog(this, error, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    @Override
+    public boolean showInvitationDialog(String userName, String id) {
+        int respuesta = JOptionPane.showConfirmDialog(this,
+                "Invitación recibida de: " + userName + " (ID: " + id + "). ¿Aceptar?",
+                "Nueva Conexión Entrante",
+                JOptionPane.YES_NO_OPTION);
+        return respuesta == JOptionPane.YES_OPTION;
+    }
+
+    @Override
+    public void showBuzzNotification(String senderName) {
+        JOptionPane.showMessageDialog(null, senderName + " Te ha enviado un zumbido", "Zumbido", JOptionPane.INFORMATION_MESSAGE);
+    }
 }
