@@ -83,10 +83,8 @@ public class SocketClient extends Thread {
         try {
             String message;
             while ((message = br.readLine()) != null) {
-
                 String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
-
 
                 switch (split[0]) {
                     case "001": {
