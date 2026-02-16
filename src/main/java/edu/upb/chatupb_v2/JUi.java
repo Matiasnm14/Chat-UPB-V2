@@ -213,7 +213,7 @@ public class JUi extends JFrame {
 
         @Override
         public void onAcceptReceived(Accept accept) {
-            updateStatus("Online", new Color(0, 150, 0));
+            updateStatus("Online", Color.green);
             for (SocketClient client : Controller.getClients()) {
                 client.setName(accept.getUserName());
             }
@@ -250,7 +250,7 @@ public class JUi extends JFrame {
             try { sendData(new AcceptHello(userId.toString()).createFormat()); } catch (Exception e){}
         }
         @Override public void onAcceptHelloReceived(AcceptHello a) {
-            updateStatus("Online", new Color(0, 150, 0));
+            updateStatus("Online", Color.green);
             for (SocketClient client : Controller.getClients()) {
                 try {
                     client.send(new Hello(userId.toString()).createFormat());
