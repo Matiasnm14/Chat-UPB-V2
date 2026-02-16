@@ -199,6 +199,7 @@ public class JUi extends JFrame {
                         for (SocketClient sc : Controller.getClients()) {
                             if (sc.getUID().equals(invitation.getIdUser())) sc.send(acp.createFormat());
                         }
+                        updateStatus("Online", Color.green);
                     } else {
                         socketClient.send(new Decline().createFormat());
                     }
@@ -213,6 +214,9 @@ public class JUi extends JFrame {
         @Override
         public void onAcceptReceived(Accept accept) {
             updateStatus("Online", new Color(0, 150, 0));
+            for (SocketClient client : Controller.getClients()) {
+                client.setName(accept.getUserName());
+            }
         }
 
         @Override
@@ -230,19 +234,31 @@ public class JUi extends JFrame {
 
         @Override
         public void onBuzzingReceived(Buzzing buzzing) {
-            String sender = Controller.getClients().stream()
-                    .filter(c -> c.getUID().equals(buzzing.getIdUser()))
-                    .map(SocketClient::getNombre)
-                    .findFirst().orElse("Alguien");
+//            String sender = Controller.getClients().stream()
+//                    .filter(c -> c.getUID().equals(buzzing.getIdUser()))
+//                    .map(SocketClient::getNombre)
+//                    .findFirst().orElse("Alguien");
+//            JOptionPane.showMessageDialog(JUi.this, sender + " te envió un zumbido!");
 
-            JOptionPane.showMessageDialog(JUi.this, sender + " te envió un zumbido!");
+            for (SocketClient client : Controller.getClients()) {
+                JOptionPane.showMessageDialog(JUi.this, client.getNombre() + " te envió un zumbido");
+            }
         }
 
         // Métodos vacíos simplificados para brevedad
         @Override public void onHelloReceived(Hello h) {
             try { sendData(new AcceptHello(userId.toString()).createFormat()); } catch (Exception e){}
         }
-        @Override public void onAcceptHelloReceived(AcceptHello a) { updateStatus("Online", new Color(0, 150, 0)); }
+        @Override public void onAcceptHelloReceived(AcceptHello a) {
+            updateStatus("Online", new Color(0, 150, 0));
+            for (SocketClient client : Controller.getClients()) {
+                try {
+                    client.send(new Hello(userId.toString()).createFormat());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
         @Override public void onDeclineHelloReceived(DeclineHello d) { updateStatus("Offline", Color.GRAY); }
         @Override public void onConfirmedReceived(ConfirmRecived c) { logger.info("Mensaje confirmado"); }
         @Override public void onDeleteMessageReceived(DeleteMessage d) {}
