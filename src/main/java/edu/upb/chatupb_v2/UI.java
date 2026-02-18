@@ -48,7 +48,7 @@ public class UI extends javax.swing.JFrame {
     }
 
     private void buildModernUI() {
-        setTitle("Chat UPB - " + username);
+        setTitle("Chat UPB");
         setSize(1000, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
