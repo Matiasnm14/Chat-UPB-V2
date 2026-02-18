@@ -5,14 +5,9 @@
 package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.bl.server.ChatService;
-import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
-import edu.upb.chatupb_v2.bl.server.SocketClient;
-import edu.upb.chatupb_v2.repository.comands.*;
-import lombok.Getter;
 
 import javax.swing.*;
-import java.io.IOException;
 import java.util.*;
 
 /**
