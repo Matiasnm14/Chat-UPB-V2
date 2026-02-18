@@ -6,7 +6,7 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) {
-        JUi jUi = new JUi();
-        jUi.init();
+        UI ui = new UI();
+        ui.init();
     }
 }
