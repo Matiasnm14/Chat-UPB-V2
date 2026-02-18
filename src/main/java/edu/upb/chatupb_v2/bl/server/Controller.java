@@ -9,9 +9,9 @@ import java.util.Map;
 
 public class Controller {
     @Getter
-    static List<SocketClient> clients = new ArrayList<>();
+    static Map<String, SocketClient> clients = new HashMap<>();
 
     public static void addClients(SocketClient client){
-        clients.add(client);
+        clients.putIfAbsent(client.getUID(),client);
     }
 }

@@ -68,7 +68,7 @@ public class ChatService implements SocketClient.SocketListener{
     public void sendMessage(String messageText) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
-            for (SocketClient sc : Controller.getClients()) {
+            for (SocketClient sc : Controller.getClients().values()) {
                 sc.send(chat.createFormat());
             }
         } catch (Exception e) {
@@ -77,7 +77,7 @@ public class ChatService implements SocketClient.SocketListener{
     }
 
     public void sendBuzz() {
-        for (SocketClient sc : Controller.getClients()) {
+        for (SocketClient sc : Controller.getClients().values()) {
             Buzzing bz = new Buzzing(this.userId);
             try {
                 sc.send(bz.createFormat());
@@ -92,7 +92,7 @@ public class ChatService implements SocketClient.SocketListener{
             while (isRunning) {
                 try {
                     Thread.sleep(5000);
-                    for (SocketClient client : Controller.getClients()) {
+                    for (SocketClient client : Controller.getClients().values()) {
                         Hello hello = new Hello(userId);
                         try {
                             client.send(hello.createFormat());
@@ -119,11 +119,11 @@ public class ChatService implements SocketClient.SocketListener{
         if (accepted) {
             Accept acp = new Accept(userId, username);
             try {
-                for (SocketClient sc : Controller.getClients()) {
-                    if (sc.getUID().equals(invitation.getIdUser())) {
+                SocketClient sc = Controller.getClients().get(invitation.getIdUser());
+                    if (sc != null) {
                         sc.send(acp.createFormat());
                     }
-                }
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -157,22 +157,22 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onHelloReceived(Hello hello) {
         AcceptHello acceptHello = new AcceptHello(userId);
-        for (SocketClient client : Controller.getClients()) {
-            if (client.getUID() != null && client.getUID().equals(hello.getIdUser())) {
+        SocketClient client = Controller.getClients().get(hello.getIdUser());
+            if (client != null) {
                 try {
                     client.send(acceptHello.createFormat());
                 } catch (IOException e) {
                     System.out.println(e.getMessage());
                 }
             }
-        }
+
     }
 
     @Override
     public void onChatReceived(Chat chat) {
         System.out.println("Mensaje: " + chat.getMessage());
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-        for (SocketClient client : Controller.getClients()) {
+        for (SocketClient client : Controller.getClients().values()) {
             try {
                 client.send(confirmRecived.createFormat());
             } catch (IOException e) {
@@ -185,12 +185,12 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onBuzzingReceived(Buzzing buzzing) {
         String name = "Desconocido";
-        for (SocketClient sc : Controller.getClients()) {
-            if (sc.getUID().equals(buzzing.getIdUser())) {
+        SocketClient sc = Controller.getClients().get(buzzing.getIdUser());
+            if (sc != null) {
                 name = sc.getNombre();
-                break;
+
             }
-        }
+
         String finalName = name;
         SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
     }
