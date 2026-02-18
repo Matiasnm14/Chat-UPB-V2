@@ -35,7 +35,7 @@ public class ChatService implements SocketClient.SocketListener{
                     Socket clientSocket = serverSocket.accept();
                     SocketClient newClient = new SocketClient(clientSocket);
                     newClient.setListener(username, userId, this);
-                    Controller.addClients(newClient);
+                    Controller.getInstance().addClients(newClient);
                     newClient.start();
                     System.out.println("Nuevo cliente conectado desde: " + clientSocket.getInetAddress());
                 }
@@ -51,7 +51,7 @@ public class ChatService implements SocketClient.SocketListener{
             try {
                 socketClient = new SocketClient(ip);
                 socketClient.setListener(username, userId, this);
-                Controller.addClients(socketClient);
+                Controller.getInstance().addClients(socketClient);
                 socketClient.start();
 
                 Invitation myInvite = new Invitation(userId, username);
@@ -68,7 +68,7 @@ public class ChatService implements SocketClient.SocketListener{
     public void sendMessage(String messageText) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
-            for (SocketClient sc : Controller.getClients().values()) {
+            for (SocketClient sc : Controller.getInstance().getClients().values()) {
                 sc.send(chat.createFormat());
             }
         } catch (Exception e) {
@@ -77,7 +77,7 @@ public class ChatService implements SocketClient.SocketListener{
     }
 
     public void sendBuzz() {
-        for (SocketClient sc : Controller.getClients().values()) {
+        for (SocketClient sc : Controller.getInstance().getClients().values()) {
             Buzzing bz = new Buzzing(this.userId);
             try {
                 sc.send(bz.createFormat());
@@ -92,7 +92,7 @@ public class ChatService implements SocketClient.SocketListener{
             while (isRunning) {
                 try {
                     Thread.sleep(5000);
-                    for (SocketClient client : Controller.getClients().values()) {
+                    for (SocketClient client : Controller.getInstance().getClients().values()) {
                         Hello hello = new Hello(userId);
                         try {
                             client.send(hello.createFormat());
@@ -119,7 +119,7 @@ public class ChatService implements SocketClient.SocketListener{
         if (accepted) {
             Accept acp = new Accept(userId, username);
             try {
-                SocketClient sc = Controller.getClients().get(invitation.getIdUser());
+                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
                     if (sc != null) {
                         sc.send(acp.createFormat());
                     }
@@ -157,7 +157,7 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onHelloReceived(Hello hello) {
         AcceptHello acceptHello = new AcceptHello(userId);
-        SocketClient client = Controller.getClients().get(hello.getIdUser());
+        SocketClient client = Controller.getInstance().getClients().get(hello.getIdUser());
             if (client != null) {
                 try {
                     client.send(acceptHello.createFormat());
@@ -172,7 +172,7 @@ public class ChatService implements SocketClient.SocketListener{
     public void onChatReceived(Chat chat) {
         System.out.println("Mensaje: " + chat.getMessage());
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-        for (SocketClient client : Controller.getClients().values()) {
+        for (SocketClient client : Controller.getInstance().getClients().values()) {
             try {
                 client.send(confirmRecived.createFormat());
             } catch (IOException e) {
@@ -185,7 +185,7 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onBuzzingReceived(Buzzing buzzing) {
         String name = "Desconocido";
-        SocketClient sc = Controller.getClients().get(buzzing.getIdUser());
+        SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
             if (sc != null) {
                 name = sc.getNombre();
 

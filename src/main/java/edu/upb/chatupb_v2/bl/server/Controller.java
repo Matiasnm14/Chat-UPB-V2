@@ -9,11 +9,17 @@ import java.util.Map;
 
 public class Controller {
     @Getter
-    static Map<String, SocketClient> clients = new HashMap<>();
+    private Map<String, SocketClient> clients = new HashMap<>();
+    private static Controller instance;
 
-    public static void addClients(SocketClient client){
+    public static Controller getInstance(){
+        if (instance == null) instance = new Controller();
+        return instance;
+    }
+
+    public  void addClients(SocketClient client){
         clients.putIfAbsent(client.getUID(),client);
     }
 
-    public static void delClients(String idUser){clients.remove(idUser);}
+    public  void delClients(String idUser){clients.remove(idUser);}
 }

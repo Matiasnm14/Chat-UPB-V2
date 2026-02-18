@@ -36,7 +36,7 @@ public class ChatServer extends Thread {
                     this.socketClient.setListener(name, id.toString(), uiListener);
                 }
 
-                Controller.addClients(socketClient);
+                Controller.getInstance().addClients(socketClient);
 
                 this.socketClient.start();
             } catch (IOException io) {
