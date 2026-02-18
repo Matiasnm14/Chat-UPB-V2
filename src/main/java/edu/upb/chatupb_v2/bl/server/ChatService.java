@@ -150,6 +150,7 @@ public class ChatService implements SocketClient.SocketListener{
         SwingUtilities.invokeLater(() -> {
             view.updateStatus("Status: Rejected");
             view.showMessage("Conexión Rechazada");
+            Controller.getInstance().delClients(socketClient.getUID());
             if(socketClient != null) socketClient.close();
         });
     }
