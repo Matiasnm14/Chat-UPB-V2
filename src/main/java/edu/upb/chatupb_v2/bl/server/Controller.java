@@ -14,4 +14,6 @@ public class Controller {
     public static void addClients(SocketClient client){
         clients.putIfAbsent(client.getUID(),client);
     }
+
+    public static void delClients(String idUser){clients.remove(idUser);}
 }
