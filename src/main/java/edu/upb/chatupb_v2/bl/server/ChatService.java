@@ -6,6 +6,9 @@ import javax.swing.*;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
 import java.util.UUID;
 
 public class ChatService implements SocketClient.SocketListener{
@@ -16,6 +19,7 @@ public class ChatService implements SocketClient.SocketListener{
     private ServerSocket serverSocket;
     private Thread helloThread;
     private boolean isRunning = true;
+    private List<SocketClient> pendingClients = new ArrayList<>();
 
     public ChatService(IChatView view, String username, String userId) {
         this.view = view;
@@ -34,8 +38,10 @@ public class ChatService implements SocketClient.SocketListener{
                 while (isRunning) {
                     Socket clientSocket = serverSocket.accept();
                     SocketClient newClient = new SocketClient(clientSocket);
+
                     newClient.setListener(username, userId, this);
-                    Controller.getInstance().addClients(newClient);
+                    pendingClients.add(newClient);
+//                    Controller.getInstance().addClients(newClient);
                     newClient.start();
                     System.out.println("Nuevo cliente conectado desde: " + clientSocket.getInetAddress());
                 }
@@ -51,7 +57,12 @@ public class ChatService implements SocketClient.SocketListener{
             try {
                 socketClient = new SocketClient(ip);
                 socketClient.setListener(username, userId, this);
+//                System.out.println(username);
+//                System.out.println(userId);
                 Controller.getInstance().addClients(socketClient);
+
+                System.out.println(Controller.getInstance().getClients().size());
+
                 socketClient.start();
 
                 Invitation myInvite = new Invitation(userId, username);
@@ -114,7 +125,11 @@ public class ChatService implements SocketClient.SocketListener{
 
     @Override
     public void onInvitationReceived(Invitation invitation) {
+
         boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
+        pendingClients.getFirst().setUid(invitation.getIdUser());
+        Controller.getInstance().addClients(pendingClients.getFirst());
+        pendingClients.removeFirst();
 
         if (accepted) {
             Accept acp = new Accept(userId, username);

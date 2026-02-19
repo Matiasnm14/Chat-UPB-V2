@@ -6,6 +6,7 @@ package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -27,6 +28,7 @@ public class SocketClient extends Thread {
         return uid;
     }
     private String name;
+    @Setter
     private String uid;
     @Getter
     private final String ip;
