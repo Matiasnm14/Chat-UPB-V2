@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
@@ -18,27 +14,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
-/**
- * @author rlaredo
- */
 public class SocketClient extends Thread {
+    @Getter
+    private final Map<String, SocketListener> listener = new HashMap<>();
+    private final DataOutputStream dout;
+    private final BufferedReader br;
     private final Socket socket;
-
-    public String getUID() {
-        return uid;
-    }
     private String name;
     @Setter
     private String uid;
     @Getter
     private final String ip;
-    private final DataOutputStream dout;
-    private final BufferedReader br;
-    @Getter
-    private final Map<String, SocketListener> listener = new HashMap<>();
 
-
-    public String getNombre() {
+    public String getUID() {
+        return uid;
+    }
+    public String getNombre(){
         return name;
     }
 
@@ -72,7 +63,6 @@ public class SocketClient extends Thread {
         void onPinMessageReceived(PinMessage pinMessage);
         void onUniqueMessageReceived(UniqueMessage uniqueMessage);
         void onThemeReceived(Theme theme);
-
         void onByeReceived(Bye bye);
     }
 
@@ -125,44 +115,32 @@ public class SocketClient extends Thread {
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
-//                        for (SocketListener socketListener: listener.values()){
-//                            java.awt.EventQueue.invokeLater(() -> socketListener.onDeclineReceived(dec));
-//                        }
                         Controller.getInstance().notificarUI(dec);
                         break;
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
-//                        for (SocketListener socketListener: listener.values()){
-//                            socketListener.onHelloReceived(hel);
-//                        }
                         Controller.getInstance().notificarUI(hel);
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
-//                        for (SocketListener sl : listener.values()){
-//                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptHelloReceived(acpHel));
-//                        }
                         Controller.getInstance().notificarUI(acpHel);
                         break;
                     }
                     case "006": {
                         DeclineHello decHel = DeclineHello.parse(message);
+                        Controller.getInstance().notificarUI(decHel);
                         break;
                     }
                     case "007": {
                         Chat cht = Chat.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onChatReceived(cht));
-                        }
+                        Controller.getInstance().notificarUI(cht);
                         break;
                     }
                     case "008": {
                         ConfirmRecived conRec = ConfirmRecived.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            socketListener.onConfirmedReceived(conRec);
-                        }
+                        Controller.getInstance().notificarUI(conRec);
                         break;
                     }
                     case "009": {
@@ -186,17 +164,16 @@ public class SocketClient extends Thread {
                         Theme thm = Theme.parse(message);
                         break;
                     }
-                    case "0018":{
+                    case "0018": {
                         Bye bye = Bye.parse(message);
-//                        for (SocketListener sl : listener.values()){
-//                            java.awt.EventQueue.invokeLater(() -> sl.onByeReceived(bye));
-//                        }
                         Controller.getInstance().notificarUI(bye);
+                        break;
                     }
                 }
             }
         } catch (SocketException socketException){
-            System.out.println("Socket cerrado ");
+            System.out.println("Socket cerrado [Excepción de SocketClient]");
+            this.close();
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
@@ -218,7 +195,7 @@ public class SocketClient extends Thread {
             this.br.close();
             this.dout.close();
         } catch (SocketException socketException) {
-            System.out.println("Se ha cerrado el socket");
+            System.out.println("SOCKET CLOSE: " +socketException.getMessage());
         } catch (Exception e){
             System.out.println(getAllStackTraces());
         }

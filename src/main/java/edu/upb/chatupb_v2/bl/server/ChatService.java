@@ -8,7 +8,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 import java.util.UUID;
 
 public class ChatService implements SocketClient.SocketListener{
@@ -41,7 +40,6 @@ public class ChatService implements SocketClient.SocketListener{
 
                     newClient.setListener(username, userId, this);
                     pendingClients.add(newClient);
-//                    Controller.getInstance().addClients(newClient);
                     newClient.start();
                     System.out.println("Nuevo cliente conectado desde: " + clientSocket.getInetAddress());
                 }
@@ -57,11 +55,6 @@ public class ChatService implements SocketClient.SocketListener{
             try {
                 socketClient = new SocketClient(ip);
                 socketClient.setListener(username, userId, this);
-//                System.out.println(username);
-//                System.out.println(userId);
-//                Controller.getInstance().addClients(socketClient);
-
-//                System.out.println(Controller.getInstance().getClients().size());
 
                 socketClient.start();
 
@@ -131,9 +124,6 @@ public class ChatService implements SocketClient.SocketListener{
         helloThread.start();
     }
 
-
-
-
     @Override
     public void onInvitationReceived(Invitation invitation) {
 
@@ -146,17 +136,17 @@ public class ChatService implements SocketClient.SocketListener{
             Accept acp = new Accept(userId, username);
             try {
                 SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
-                    if (sc != null) {
+                    if (sc != null)
                         sc.send(acp.createFormat());
-                    }
-
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else {
             Decline dec = new Decline();
             try {
-                if(socketClient != null) socketClient.send(dec.createFormat());
+                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
+                if (sc != null)
+                    sc.send(dec.createFormat());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -185,14 +175,13 @@ public class ChatService implements SocketClient.SocketListener{
     public void onHelloReceived(Hello hello) {
         AcceptHello acceptHello = new AcceptHello(userId);
         SocketClient client = Controller.getInstance().getClients().get(hello.getIdUser());
-            if (client != null) {
-                try {
-                    client.send(acceptHello.createFormat());
-                } catch (IOException e) {
-                    System.out.println(e.getMessage());
-                }
+        if (client != null) {
+            try {
+                client.send(acceptHello.createFormat());
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
             }
-
+        }
     }
 
     @Override
@@ -206,19 +195,15 @@ public class ChatService implements SocketClient.SocketListener{
                 System.out.println(e.getMessage());
             }
         }
-
     }
 
     @Override
     public void onBuzzingReceived(Buzzing buzzing) {
         String name = "Desconocido";
         SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
-        System.out.println("SOCKET CLIENT: " + socketClient);
-            if (sc != null) {
-                name = sc.getNombre();
-
-            }
-
+        if (sc != null) {
+            name = sc.getNombre();
+        }
         String finalName = name;
         SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
     }

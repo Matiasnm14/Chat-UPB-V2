@@ -137,12 +137,6 @@ public class JUi extends javax.swing.JFrame implements IChatView {
                                 .addComponent(jbEnviar)
                         )
         );
-
-        // Listeners
-//        jbConectar.addActionListener(this::jbConectarActionPerformed);
-//        jbEnviar.addActionListener(this::jbEnviarActionPerformed);
-//        jBforBuzzing.addActionListener(this::jBforBuzzingActionPerformed);
-
         pack();
         setLocationRelativeTo(null); // Centra la ventana
     }
