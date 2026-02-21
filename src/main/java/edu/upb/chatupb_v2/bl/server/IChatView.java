@@ -6,4 +6,6 @@ public interface IChatView {
     void showError(String error);
     boolean showInvitationDialog(String userName, String userId);
     void showBuzzNotification(String senderName);
+
+    void showByeNotification(String id);
 }

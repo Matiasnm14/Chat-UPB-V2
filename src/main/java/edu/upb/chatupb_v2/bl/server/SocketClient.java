@@ -72,6 +72,8 @@ public class SocketClient extends Thread {
         void onPinMessageReceived(PinMessage pinMessage);
         void onUniqueMessageReceived(UniqueMessage uniqueMessage);
         void onThemeReceived(Theme theme);
+
+        void onByeReceived(Bye bye);
     }
 
     public void setListener(String name, String key, SocketListener listener) {
@@ -86,6 +88,7 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
+                System.out.println(message);
                 if(split.length == 0) continue;
 
                 switch (split[0]) {
@@ -93,37 +96,42 @@ public class SocketClient extends Thread {
                         Invitation inv = Invitation.parse(message);
                         this.name = inv.getUserName();
                         this.uid = inv.getIdUser();
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onInvitationReceived(inv));
-                        }
+//                        for (SocketListener sl : listener.values()){
+//                            java.awt.EventQueue.invokeLater(() -> sl.onInvitationReceived(inv));
+//                        }
+                        Controller.getInstance().notificarUI(inv);
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptReceived(acp));
-                        }
+//                        for (SocketListener sl : listener.values()){
+//                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptReceived(acp));
+//                        }
+                        Controller.getInstance().notificarUI(acp);
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> socketListener.onDeclineReceived(dec));
-                        }
+//                        for (SocketListener socketListener: listener.values()){
+//                            java.awt.EventQueue.invokeLater(() -> socketListener.onDeclineReceived(dec));
+//                        }
+                        Controller.getInstance().notificarUI(dec);
                         break;
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            socketListener.onHelloReceived(hel);
-                        }
+//                        for (SocketListener socketListener: listener.values()){
+//                            socketListener.onHelloReceived(hel);
+//                        }
+                        Controller.getInstance().notificarUI(hel);
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptHelloReceived(acpHel));
-                        }
+//                        for (SocketListener sl : listener.values()){
+//                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptHelloReceived(acpHel));
+//                        }
+                        Controller.getInstance().notificarUI(acpHel);
                         break;
                     }
                     case "006": {
@@ -166,6 +174,13 @@ public class SocketClient extends Thread {
                     case "013": {
                         Theme thm = Theme.parse(message);
                         break;
+                    }
+                    case "0018":{
+                        Bye bye = Bye.parse(message);
+//                        for (SocketListener sl : listener.values()){
+//                            java.awt.EventQueue.invokeLater(() -> sl.onByeReceived(bye));
+//                        }
+                        Controller.getInstance().notificarUI(bye);
                     }
                 }
             }

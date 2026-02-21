@@ -56,6 +56,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
         JButton jbConectar = new JButton("Conectar");
         JButton jbEnviar = new JButton("Enviar");
         JButton jBforBuzzing = new JButton("Buzz");
+        JButton jBOffline = new JButton("Fuera de Linea");
 
         // Estado
         jOnline = new javax.swing.JLabel("Status: Offline");
@@ -72,6 +73,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
         jbConectar.addActionListener(evt -> chatService.connect(jIP.getText()));
         jbEnviar.addActionListener(evt -> chatService.sendMessage(jTextMensaje.getText()));
         jBforBuzzing.addActionListener(evt -> chatService.sendBuzz());
+        jBOffline.addActionListener(evt -> chatService.sendBye());
 
         pack();
         setLocationRelativeTo(null);
@@ -91,6 +93,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
                                                 .addComponent(jTextUserName, 120, 120, 120)
                                                 .addComponent(jbConectar)
                                                 .addComponent(jBforBuzzing)))
+                                                .addComponent(jBOffline)
                         )
 
                         // Estado
@@ -120,7 +123,9 @@ public class JUi extends javax.swing.JFrame implements IChatView {
                                 .addComponent(jbConectar)
                                 .addComponent(jBforBuzzing)
                         )
-
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(jBOffline)
+                        )
                         // Estado
                         .addComponent(jOnline)
 
@@ -191,5 +196,11 @@ public class JUi extends javax.swing.JFrame implements IChatView {
     @Override
     public void showBuzzNotification(String senderName) {
         JOptionPane.showMessageDialog(null, senderName + " Te ha enviado un zumbido", "Zumbido", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    @Override
+    public void showByeNotification (String id){
+        JOptionPane.showMessageDialog(null, id + " Se ha desconectado", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
+
     }
 }

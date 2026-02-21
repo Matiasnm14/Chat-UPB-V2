@@ -98,6 +98,17 @@ public class ChatService implements SocketClient.SocketListener{
         }
     }
 
+    public void sendBye(){
+        for (SocketClient sc : Controller.getInstance().getClients().values()) {
+            Bye bye = new Bye(this.userId);
+            try {
+                sc.send(bye.createFormat());
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
     private void startHelloService() {
         helloThread = new Thread(() -> {
             while (isRunning) {
@@ -211,6 +222,15 @@ public class ChatService implements SocketClient.SocketListener{
         SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
     }
 
+    @Override public void onByeReceived(Bye bye){
+        String id = bye.getIdUser();
+        System.out.println("ID: " + id );
+        SocketClient sc = Controller.getInstance().getClients().get(id);
+        if (sc != null){
+            sc.close();
+        }
+        SwingUtilities.invokeLater(() -> view.showByeNotification(id));
+    }
     @Override public void onAcceptHelloReceived(AcceptHello acceptHello) {}
     @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
     @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {}
