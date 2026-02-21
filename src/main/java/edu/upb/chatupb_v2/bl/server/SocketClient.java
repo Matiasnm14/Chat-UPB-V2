@@ -94,8 +94,13 @@ public class SocketClient extends Thread {
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
+                        SocketListener sl = listener.get(uid);
+                        listener.remove(uid);
                         this.name = inv.getUserName();
                         this.uid = inv.getIdUser();
+                        listener.put(uid, sl);
+                        Controller.getInstance().addClients(this);
+
 //                        for (SocketListener sl : listener.values()){
 //                            java.awt.EventQueue.invokeLater(() -> sl.onInvitationReceived(inv));
 //                        }

@@ -23,16 +23,12 @@ public class Controller {
 
     public void notificarUI(Command command){
         if (command instanceof Invitation){
-            for (SocketClient sc : clients.values()){
-                SocketClient.SocketListener sl = sc.getListener().get(sc.getUID());
-                sl.onInvitationReceived((Invitation) command);
-            }
+            SocketClient.SocketListener sl = clients.get(((Invitation) command).getIdUser()).getListener().get(((Invitation) command).getIdUser());
+            sl.onInvitationReceived((Invitation) command);
         }
         if (command instanceof Accept) {
-            for (SocketClient sc : clients.values()){
-                SocketClient.SocketListener sl = sc.getListener().get(sc.getUID());
-                sl.onAcceptReceived((Accept) command);
-            }
+            SocketClient.SocketListener sl = clients.get(((Accept) command).getIdUser()).getListener().get(((Accept) command).getIdUser());
+            sl.onAcceptReceived((Accept) command);
         }
         if (command instanceof Decline){
             for (SocketClient sc : clients.values()){
@@ -42,11 +38,9 @@ public class Controller {
         }
         if (command instanceof Hello){
             for (SocketClient sc : clients.values()){
-//                for (SocketClient.SocketListener sl : sc.getListener().values()){
-//                    sl.onHelloReceived((Hello) command);
-//                }
-                SocketClient.SocketListener sl = sc.getListener().get(sc.getUID());
-                sl.onHelloReceived((Hello) command);
+                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                    sl.onHelloReceived((Hello) command);
+                }
             }
         }
         if (command instanceof AcceptHello){
