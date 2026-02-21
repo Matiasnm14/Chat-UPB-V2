@@ -60,7 +60,6 @@ public class Controller {
 
         if (command instanceof Buzzing){
             SocketClient.SocketListener sl = clients.get(((Buzzing) command).getIdUser()).getListener().get(((Buzzing) command).getIdUser());
-            System.out.println("SOCKET LISTENER: "+ sl);
             sl.onBuzzingReceived((Buzzing) command);
         }
     }

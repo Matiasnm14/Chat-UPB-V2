@@ -109,9 +109,7 @@ public class SocketClient extends Thread {
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-//                        for (SocketListener sl : listener.values()){
-//                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptReceived(acp));
-//                        }
+//
                         Controller.getInstance().notificarUI(acp);
                         break;
                     }
