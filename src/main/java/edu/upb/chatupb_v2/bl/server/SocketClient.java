@@ -82,6 +82,23 @@ public class SocketClient extends Thread {
         this.name = name;
     }
 
+    private void fixClients(Command c){
+        if (c instanceof Invitation){
+            SocketListener sl = listener.get(uid);
+            listener.remove(uid);
+            this.name = ((Invitation) c).getIdUser();
+            this.uid = ((Invitation)c).getIdUser();
+            listener.put(uid, sl);
+        }
+        else if (c instanceof Accept){
+            SocketListener sl = listener.get(uid);
+            listener.remove(uid);
+            this.name = ((Accept) c).getIdUser();
+            this.uid = ((Accept) c).getIdUser();
+            listener.put(uid, sl);
+        }
+    }
+
     @Override
     public void run() {
         try {
@@ -94,22 +111,15 @@ public class SocketClient extends Thread {
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
-                        SocketListener sl = listener.get(uid);
-                        listener.remove(uid);
-                        this.name = inv.getUserName();
-                        this.uid = inv.getIdUser();
-                        listener.put(uid, sl);
+                        fixClients(inv);
                         Controller.getInstance().addClients(this);
-
-//                        for (SocketListener sl : listener.values()){
-//                            java.awt.EventQueue.invokeLater(() -> sl.onInvitationReceived(inv));
-//                        }
                         Controller.getInstance().notificarUI(inv);
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-//
+                        fixClients(acp);
+                        Controller.getInstance().addClients(this);
                         Controller.getInstance().notificarUI(acp);
                         break;
                     }

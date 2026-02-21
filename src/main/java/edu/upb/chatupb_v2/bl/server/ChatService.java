@@ -59,9 +59,9 @@ public class ChatService implements SocketClient.SocketListener{
                 socketClient.setListener(username, userId, this);
 //                System.out.println(username);
 //                System.out.println(userId);
-                Controller.getInstance().addClients(socketClient);
+//                Controller.getInstance().addClients(socketClient);
 
-                System.out.println(Controller.getInstance().getClients().size());
+//                System.out.println(Controller.getInstance().getClients().size());
 
                 socketClient.start();
 
