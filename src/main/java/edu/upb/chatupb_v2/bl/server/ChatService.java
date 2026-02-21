@@ -213,6 +213,7 @@ public class ChatService implements SocketClient.SocketListener{
     public void onBuzzingReceived(Buzzing buzzing) {
         String name = "Desconocido";
         SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
+        System.out.println("SOCKET CLIENT: " + socketClient);
             if (sc != null) {
                 name = sc.getNombre();
 

@@ -163,9 +163,7 @@ public class SocketClient extends Thread {
                     }
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onBuzzingReceived(buz));
-                        }
+                        Controller.getInstance().notificarUI(buz);
                         break;
                     }
                     case "011": {
