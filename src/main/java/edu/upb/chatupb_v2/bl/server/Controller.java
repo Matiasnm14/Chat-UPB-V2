@@ -1,8 +1,13 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.repository.Message;
+import edu.upb.chatupb_v2.repository.MessageDAO;
 import edu.upb.chatupb_v2.repository.comands.*;
+import edu.upb.chatupb_v2.repository.enums.StatusMessage;
+import edu.upb.chatupb_v2.repository.enums.TypeMessage;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +26,7 @@ public class Controller {
     }
     public  void delClients(String idUser){clients.remove(idUser);}
 
-    public void notificarUI(Command command){
+    public void notificarUI(Command command) throws Exception {
         if (command instanceof Invitation){
             SocketClient.SocketListener sl = clients
                     .get(((Invitation) command)
@@ -70,7 +75,7 @@ public class Controller {
             }
         }
 
-        if (command instanceof Chat){
+        if (command instanceof Chat) {
             SocketClient.SocketListener sl = clients
                     .get(((Chat) command)
                             .getIdUser())
@@ -88,10 +93,16 @@ public class Controller {
             }
         }
 
+        if (command instanceof DeleteMessage){
+            String id_message = ((DeleteMessage) command).getIdMessage();
+            MessageDAO.getInstance().delete(id_message);
+        }
+
         if (command instanceof Buzzing){
             SocketClient.SocketListener sl = clients.get(((Buzzing) command).getIdUser()).getListener().get(((Buzzing) command).getIdUser());
             sl.onBuzzingReceived((Buzzing) command);
         }
+
 
         if (command instanceof Bye){
             for (SocketClient sc : clients.values()){

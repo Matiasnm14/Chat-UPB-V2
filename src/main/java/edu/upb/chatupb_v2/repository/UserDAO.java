@@ -9,8 +9,13 @@ import java.util.List;
 
 public class UserDAO {
     private DaoHelper<User> helper;
+    private static final UserDAO uDao = new UserDAO();
 
-    public UserDAO() {
+    public static UserDAO getInstance(){
+        return uDao;
+    }
+
+    private UserDAO(){
         helper = new DaoHelper<>();
     }
 
@@ -79,8 +84,6 @@ public class UserDAO {
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
-                System.out.println("ID: " + user.getId());
-                System.out.println("NAME: " + user.getName());
                 pst.setString(1, user.getId());
                 pst.setString(2, user.getName());
             }

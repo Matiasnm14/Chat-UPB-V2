@@ -1,11 +1,16 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.repository.Message;
+import edu.upb.chatupb_v2.repository.MessageDAO;
 import edu.upb.chatupb_v2.repository.comands.*;
+import edu.upb.chatupb_v2.repository.enums.StatusMessage;
+import edu.upb.chatupb_v2.repository.enums.TypeMessage;
 
 import javax.swing.*;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -72,6 +77,14 @@ public class ChatService implements SocketClient.SocketListener{
     public void sendMessage(String messageText) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
+            MessageDAO.getInstance().save(new Message(
+                    chat.getIdMessage(),
+                    this.userId,
+                    messageText,
+                    TypeMessage.TEXT,
+                    StatusMessage.SENT,
+                    LocalDate.now().toString()
+            ));
             for (SocketClient sc : Controller.getInstance().getClients().values()) {
                 sc.send(chat.createFormat());
             }
@@ -187,13 +200,23 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onChatReceived(Chat chat) {
         System.out.println("Mensaje: " + chat.getMessage());
+        try {
+            MessageDAO.getInstance().save(new Message(
+                    chat.getIdMessage(),
+                    chat.getIdUser(),
+                    chat.getMessage(),
+                    TypeMessage.TEXT,
+                    StatusMessage.READ,
+                    LocalDate.now().toString()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-        for (SocketClient client : Controller.getInstance().getClients().values()) {
-            try {
-                client.send(confirmRecived.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
+        SocketClient client = Controller.getInstance().getClients().get(chat.getIdUser());
+        try {
+            client.send(confirmRecived.createFormat());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -219,9 +242,26 @@ public class ChatService implements SocketClient.SocketListener{
     }
     @Override public void onAcceptHelloReceived(AcceptHello acceptHello) {}
     @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
-    @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {}
-    @Override public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
+    @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {
+        System.out.println("Recibido");
+        try {
+            MessageDAO.getInstance().updateMessage(confirmRecived.getIdMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @Override
+    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
+//        String id_message = deleteMessage.getIdMessage();
+//        try {
+//            MessageDAO.getInstance().delete(id_message);
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+    }
     @Override public void onPinMessageReceived(PinMessage pinMessage) {}
-    @Override public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
+    @Override public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+        System.out.println("MENSAJE ÚNICO");
+    }
     @Override public void onThemeReceived(Theme theme) {}
 }

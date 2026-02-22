@@ -13,8 +13,13 @@ import java.util.List;
  */
 public class MessageDAO {
     private DaoHelper<Message> helper;
-    
-    public MessageDAO() {
+    private static final MessageDAO mDao = new MessageDAO();
+
+    public static MessageDAO getInstance(){
+        return mDao;
+    }
+
+    private MessageDAO(){
         helper = new DaoHelper<>();
     }
 
@@ -72,12 +77,12 @@ public class MessageDAO {
     }
 
     public List<Message> findAll() throws ConnectException, SQLException {
-        String query = "SELECT * FROM message";
+        String query = "SELECT * FROM Messages";
         return helper.executeQuery(query, resultReader);
     }
 
     public boolean exist(String argument) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM message WHERE " + argument;
+        String query = "SELECT count(*) FROM Messages WHERE " + argument;
         return helper.executeQueryCount(query, null) == 1;
     }
 
@@ -114,12 +119,24 @@ public class MessageDAO {
         helper.insert(query, params, message);
     }
 
-    public void update(Message message) throws Exception {
+    public void updateMessage(String id_message) throws Exception {
         String query = "UPDATE Messages SET status_message=? WHERE id_message =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, message.getStatusMessage().toString());
+                pst.setString(1, StatusMessage.READ.toString());
+                pst.setString(2, id_message);
+            }
+        };
+        helper.update(query, params);
+    }
+
+    public void delete(String id_message) throws Exception {
+        String query = "DELETE FROM Messages WHERE id_message =?";
+        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, id_message);
             }
         };
         helper.update(query, params);

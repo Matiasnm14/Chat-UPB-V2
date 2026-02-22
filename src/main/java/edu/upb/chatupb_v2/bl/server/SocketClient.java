@@ -87,9 +87,7 @@ public class SocketClient extends Thread {
         }
         listener.put(uid, sl);
         Controller.getInstance().addClients(this);
-        UserDAO userDAO = new UserDAO();
-        userDAO.save(new User(uid,name));
-        System.out.println(userDAO.findAll());
+        UserDAO.getInstance().save(new User(uid,name));
     }
 
     @Override
@@ -145,6 +143,7 @@ public class SocketClient extends Thread {
                     }
                     case "009": {
                         DeleteMessage delMes = DeleteMessage.parse(message);
+                        Controller.getInstance().notificarUI(delMes);
                         break;
                     }
                     case "010": {
