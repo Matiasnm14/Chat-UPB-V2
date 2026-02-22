@@ -29,7 +29,7 @@ public class ConnectionDB {
         Connection conn = null;
         try {
             Class.forName("org.sqlite.JDBC");
-            conn = DriverManager.getConnection("jdbc:sqlite:chat_upb.sqlite");
+            conn = DriverManager.getConnection("jdbc:sqlite:chat_upb_v2.sqlite");
             if (conn != null) {
                 System.out.println("Conexión exitosa.");
             } else {

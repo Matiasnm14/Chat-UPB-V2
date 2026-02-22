@@ -21,7 +21,7 @@ public class ContactDao {
     DaoHelper.ResultReader<Contact> resultReader = result -> {
         Contact prefacturaSync = new Contact();
         if (existColumn(result, Contact.Column.ID)) {
-            prefacturaSync.setId(result.getLong(Contact.Column.ID));
+            prefacturaSync.setId(result.getString(Contact.Column.ID));
         }
         if (existColumn(result, Contact.Column.CODE)) {
             prefacturaSync.setCode(result.getString(Contact.Column.CODE));

@@ -1,5 +1,7 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.repository.User;
+import edu.upb.chatupb_v2.repository.UserDAO;
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -72,21 +74,22 @@ public class SocketClient extends Thread {
         this.name = name;
     }
 
-    private void fixClients(Command c){
+    private void fixClients(Command c) throws Exception {
+        SocketListener sl = listener.get(uid);
+        listener.remove(uid);
         if (c instanceof Invitation){
-            SocketListener sl = listener.get(uid);
-            listener.remove(uid);
-            this.name = ((Invitation) c).getIdUser();
+            this.name = ((Invitation) c).getUserName();
             this.uid = ((Invitation)c).getIdUser();
-            listener.put(uid, sl);
         }
         else if (c instanceof Accept){
-            SocketListener sl = listener.get(uid);
-            listener.remove(uid);
-            this.name = ((Accept) c).getIdUser();
+            this.name = ((Accept) c).getUserName();
             this.uid = ((Accept) c).getIdUser();
-            listener.put(uid, sl);
         }
+        listener.put(uid, sl);
+        Controller.getInstance().addClients(this);
+        UserDAO userDAO = new UserDAO();
+        userDAO.save(new User(uid,name));
+        System.out.println(userDAO.findAll());
     }
 
     @Override
@@ -95,21 +98,18 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
-                System.out.println(message);
                 if(split.length == 0) continue;
 
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
                         fixClients(inv);
-                        Controller.getInstance().addClients(this);
                         Controller.getInstance().notificarUI(inv);
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
                         fixClients(acp);
-                        Controller.getInstance().addClients(this);
                         Controller.getInstance().notificarUI(acp);
                         break;
                     }
@@ -176,6 +176,8 @@ public class SocketClient extends Thread {
             this.close();
         } catch (IOException e) {
             System.out.println(e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

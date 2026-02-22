@@ -7,7 +7,6 @@ import java.net.ConnectException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
 import java.util.List;
 /*
     
@@ -21,25 +20,28 @@ public class MessageDAO {
 
     DaoHelper.ResultReader<Message> resultReader = result -> {
         Message prefacturaSync = new Message();
-        if (existColumn(result, Message.Column.ID)) {
-            prefacturaSync.setId(result.getLong(Message.Column.ID));
+        if (existColumn(result, Message.Column.ID_MESSAGE)) {
+            prefacturaSync.setIdMessage(result.getString(Message.Column.ID_MESSAGE));
         }
-        if (existColumn(result, Message.Column.CONTENT)) {
-            prefacturaSync.setContent(result.getString(Message.Column.CONTENT));
+        if (existColumn(result, Message.Column.ID_USER)) {
+            prefacturaSync.setIdMessage(result.getString(Message.Column.ID_USER));
+        }
+        if (existColumn(result, Message.Column.BODY)) {
+            prefacturaSync.setBody(result.getString(Message.Column.BODY));
         }
         if (existColumn(result, Message.Column.STATUSMESSAGE)) {
             switch (result.getString(Message.Column.STATUSMESSAGE).toLowerCase()){
                 case "sent":
                     prefacturaSync.setStatusMessage(StatusMessage.SENT);
                     break;
-                case "received":
-                    prefacturaSync.setStatusMessage(StatusMessage.RECEIVED);
-                    break;
+//                case "received":
+//                    prefacturaSync.setStatusMessage(StatusMessage.RECEIVED);
+//                    break;
                 case "read":
                     prefacturaSync.setStatusMessage(StatusMessage.READ);
                     break;
-                case "error":
-                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
+//                case "error":
+//                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
 
             }
 
@@ -79,13 +81,13 @@ public class MessageDAO {
         return helper.executeQueryCount(query, null) == 1;
     }
 
-    public boolean existByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM message WHERE code='" + code + "'";
+    public boolean existById(String id) throws ConnectException, SQLException {
+        String query = "SELECT count(*) FROM Messages WHERE id_message='" + id + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
 
-    public Message findByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT * FROM message WHERE code ='" + code + "'";
+    public Message findById(String id) throws ConnectException, SQLException {
+        String query = "SELECT * FROM Messages WHERE id_message ='" + id + "'";
         System.out.println(query);
         List<Message> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
@@ -99,21 +101,21 @@ public class MessageDAO {
     }
 
     public void save(Message message) throws Exception {
-        String query = "INSERT INTO message(content,date,status_message,type_message) values (?,?,?,?)";
+        String query = "INSERT INTO Messages(id_user, body,date,status_message) values (?,?,?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, message.getContent());
-                pst.setString(2, message.getDate());
-                pst.setString(3, message.getStatusMessage().toString());
-                pst.setString(4,message.getTypeMessage().toString());
+                pst.setString(1, message.getIdUser());
+                pst.setString(2, message.getBody());
+                pst.setString(3, message.getDate());
+                pst.setString(4, message.getStatusMessage().toString());
             }
         };
         helper.insert(query, params, message);
     }
 
     public void update(Message message) throws Exception {
-        String query = "UPDATE message SET status_message=? WHERE id =?";
+        String query = "UPDATE Messages SET status_message=? WHERE id_message =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {

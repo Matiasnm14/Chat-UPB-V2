@@ -100,7 +100,7 @@ public class DaoHelper<T>  {
             if (st.executeUpdate() > 0) {
                 try (ResultSet rs = st.getGeneratedKeys()) {
                     if (rs.next()) {
-                        model.setId(rs.getLong(1));
+                        model.setId(rs.getString(1));
                     }
                 }
             }

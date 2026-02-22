@@ -25,10 +25,10 @@ public class Contact implements Serializable, Model {
 
     }
     @Override
-    public void setId(long id) {
+    public void setId(String id) {
         this.id = id;
     }
-    private long id;
+    private String id;
     private String code;
     private String name;
     private String ip;
