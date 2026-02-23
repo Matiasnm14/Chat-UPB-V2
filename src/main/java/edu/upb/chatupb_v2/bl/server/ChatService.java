@@ -200,17 +200,17 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onChatReceived(Chat chat) {
         view.showChat(chat);
-//        try {
-//            MessageDAO.getInstance().save(new Message(
-//                    chat.getIdMessage(),
-//                    chat.getIdUser(),
-//                    chat.getMessage(),
-//                    TypeMessage.TEXT,
-//                    StatusMessage.READ,
-//                    LocalDate.now().toString()));
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
+        try {
+            MessageDAO.getInstance().save(new Message(
+                    chat.getIdMessage(),
+                    chat.getIdUser(),
+                    chat.getMessage(),
+                    TypeMessage.TEXT,
+                    StatusMessage.READ,
+                    LocalDate.now().toString()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
         SocketClient client = Controller.getInstance().getClients().get(chat.getIdUser());
         try {

@@ -106,14 +106,16 @@ public class MessageDAO {
     }
 
     public void save(Message message) throws Exception {
-        String query = "INSERT INTO Messages(id_user, body,date,status_message) values (?,?,?,?)";
+        String query = "INSERT INTO Messages(id_message, id_user, body, type_message, status_message, date) values (?,?,?,?,?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, message.getIdUser());
-                pst.setString(2, message.getBody());
-                pst.setString(3, message.getDate());
-                pst.setString(4, message.getStatusMessage().toString());
+                pst.setString(1, message.getIdMessage());
+                pst.setString(2, message.getIdUser());
+                pst.setString(3, message.getBody());
+                pst.setString(4, message.getTypeMessage().toString());
+                pst.setString(5, message.getStatusMessage().toString());
+                pst.setString(6, message.getDate());
             }
         };
         helper.insert(query, params, message);

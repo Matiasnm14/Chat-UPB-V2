@@ -87,7 +87,7 @@ public class SocketClient extends Thread {
         }
         listener.put(uid, sl);
         Controller.getInstance().addClients(this);
-        //UserDAO.getInstance().save(new User(uid,name));
+        UserDAO.getInstance().save(new User(uid,name));
     }
 
     @Override
