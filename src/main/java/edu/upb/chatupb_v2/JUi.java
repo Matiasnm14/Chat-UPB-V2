@@ -3,6 +3,7 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.bl.server.ChatService;
 import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
+import edu.upb.chatupb_v2.repository.UserDAO;
 import edu.upb.chatupb_v2.repository.comands.Chat;
 
 import javax.swing.*;
@@ -14,7 +15,7 @@ public class JUi extends JFrame implements IChatView {
 
     private ChatService chatService;
     private String username;
-    private final UUID userId = UUID.randomUUID();
+    private String userId;
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
     private JTextArea chatArea;
@@ -30,7 +31,14 @@ public class JUi extends JFrame implements IChatView {
             System.exit(0);
         }
         initComponents();
-        this.chatService = new ChatService(this, username, userId.toString());
+        try {
+            if (UserDAO.getInstance().exist(username))
+                userId = UserDAO.getInstance().findByName(username).getId();
+            else userId = UUID.randomUUID().toString();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        this.chatService = new ChatService(this, username, userId);
     }
 
     private String askForUsername() {

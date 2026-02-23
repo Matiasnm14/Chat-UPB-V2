@@ -75,6 +75,16 @@ public class UserDAO {
         return list.get(0);
     }
 
+    public User findByName(String name) throws ConnectException, SQLException {
+        String query = "SELECT * FROM Users WHERE name ='" + name + "'";
+        System.out.println(query);
+        List<User> list = helper.executeQuery(query, resultReader);
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.get(0);
+    }
+
     public void update(String query) throws Exception {
         helper.update(query, null);
     }
