@@ -32,13 +32,14 @@ public class JUi extends JFrame implements IChatView {
         }
         initComponents();
         try {
-            if (UserDAO.getInstance().exist(username))
+            if (UserDAO.getInstance().exist("name='"+username+"'"))
                 userId = UserDAO.getInstance().findByName(username).getId();
             else userId = UUID.randomUUID().toString();
         }catch (Exception e){
             e.printStackTrace();
         }
         this.chatService = new ChatService(this, username, userId);
+        System.out.println(userId);
     }
 
     private String askForUsername() {
