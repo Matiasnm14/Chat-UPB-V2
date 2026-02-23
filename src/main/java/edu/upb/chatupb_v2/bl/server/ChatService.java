@@ -199,18 +199,18 @@ public class ChatService implements SocketClient.SocketListener{
 
     @Override
     public void onChatReceived(Chat chat) {
-        System.out.println("Mensaje: " + chat.getMessage());
-        try {
-            MessageDAO.getInstance().save(new Message(
-                    chat.getIdMessage(),
-                    chat.getIdUser(),
-                    chat.getMessage(),
-                    TypeMessage.TEXT,
-                    StatusMessage.READ,
-                    LocalDate.now().toString()));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        view.showChat(chat);
+//        try {
+//            MessageDAO.getInstance().save(new Message(
+//                    chat.getIdMessage(),
+//                    chat.getIdUser(),
+//                    chat.getMessage(),
+//                    TypeMessage.TEXT,
+//                    StatusMessage.READ,
+//                    LocalDate.now().toString()));
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
         SocketClient client = Controller.getInstance().getClients().get(chat.getIdUser());
         try {
@@ -244,11 +244,11 @@ public class ChatService implements SocketClient.SocketListener{
     @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
     @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {
         System.out.println("Recibido");
-        try {
-            MessageDAO.getInstance().updateMessage(confirmRecived.getIdMessage());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+//        try {
+//            MessageDAO.getInstance().updateMessage(confirmRecived.getIdMessage());
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
     }
     @Override
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
