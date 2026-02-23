@@ -5,14 +5,11 @@
 package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.bl.server.ChatService;
-import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
-import edu.upb.chatupb_v2.bl.server.SocketClient;
-import edu.upb.chatupb_v2.repository.comands.*;
+import edu.upb.chatupb_v2.bl.server.Mediator;
 import lombok.Getter;
 
 import javax.swing.*;
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -22,9 +19,12 @@ import java.util.*;
 public class JUi extends javax.swing.JFrame implements IChatView {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
+    @Getter
     private ChatService chatService;
 //    SocketClient socketClient;
-    private final String username = "Santiago";
+    @Getter
+    private final String username = "Ciro";
+    @Getter
     private final UUID userId = UUID.randomUUID();
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
 
@@ -34,6 +34,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
     public JUi() {
         initComponents();
         this.chatService = new ChatService(this, username, userId.toString());
+        Mediator.getInstance().addUi(this);
     }
 
     /**
@@ -55,7 +56,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
         // Botones
         JButton jbConectar = new JButton("Conectar");
         JButton jbEnviar = new JButton("Enviar");
-        JButton jBforBuzzing = new JButton("Buzz");
+        JButton jBoffline = new JButton("Offline");
 
         // Estado
         jOnline = new javax.swing.JLabel("Status: Offline");
@@ -71,7 +72,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
 
         jbConectar.addActionListener(evt -> chatService.connect(jIP.getText()));
         jbEnviar.addActionListener(evt -> chatService.sendMessage(jTextMensaje.getText()));
-        jBforBuzzing.addActionListener(evt -> chatService.sendBuzz());
+        jBoffline.addActionListener(evt -> chatService.sendOffline());
 
         pack();
         setLocationRelativeTo(null);
@@ -90,7 +91,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
                                         .addGroup(layout.createSequentialGroup()
                                                 .addComponent(jTextUserName, 120, 120, 120)
                                                 .addComponent(jbConectar)
-                                                .addComponent(jBforBuzzing)))
+                                                .addComponent(jBoffline)))
                         )
 
                         // Estado
@@ -118,7 +119,7 @@ public class JUi extends javax.swing.JFrame implements IChatView {
                                 .addComponent(jIP)
                                 .addComponent(jTextUserName)
                                 .addComponent(jbConectar)
-                                .addComponent(jBforBuzzing)
+                                .addComponent(jBoffline)
                         )
 
                         // Estado
@@ -191,5 +192,10 @@ public class JUi extends javax.swing.JFrame implements IChatView {
     @Override
     public void showBuzzNotification(String senderName) {
         JOptionPane.showMessageDialog(null, senderName + " Te ha enviado un zumbido", "Zumbido", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void showClientOffline(String senderName) {
+        JOptionPane.showMessageDialog(null, senderName + " esta Offline", "Offline", JOptionPane.INFORMATION_MESSAGE);
+        jOnline.setText("Offline");
     }
 }

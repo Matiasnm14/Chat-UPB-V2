@@ -1,6 +1,8 @@
 package edu.upb.chatupb_v2.bl.server;
 
 import edu.upb.chatupb_v2.repository.comands.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -8,18 +10,22 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 import java.util.UUID;
 
-public class ChatService implements SocketClient.SocketListener{
+public class ChatService {
     private final IChatView view;
+
     private final String username;
     private final String userId;
     private SocketClient socketClient;
     private ServerSocket serverSocket;
     private Thread helloThread;
     private boolean isRunning = true;
+    @Getter
     private List<SocketClient> pendingClients = new ArrayList<>();
+    @Getter
+    @Setter
+    private boolean online = true;
 
     public ChatService(IChatView view, String username, String userId) {
         this.view = view;
@@ -39,7 +45,7 @@ public class ChatService implements SocketClient.SocketListener{
                     Socket clientSocket = serverSocket.accept();
                     SocketClient newClient = new SocketClient(clientSocket);
 
-                    newClient.setListener(username, userId, this);
+                    newClient.setClient(username, userId);
                     pendingClients.add(newClient);
 //                    Controller.getInstance().addClients(newClient);
                     newClient.start();
@@ -56,12 +62,12 @@ public class ChatService implements SocketClient.SocketListener{
         new Thread(() -> {
             try {
                 socketClient = new SocketClient(ip);
-                socketClient.setListener(username, userId, this);
+                socketClient.setClient(username, userId);
 //                System.out.println(username);
 //                System.out.println(userId);
-                Controller.getInstance().addClients(socketClient);
+                Mediator.getInstance().addClients(socketClient);
 
-                System.out.println(Controller.getInstance().getClients().size());
+                System.out.println(Mediator.getInstance().getClients().size());
 
                 socketClient.start();
 
@@ -79,7 +85,7 @@ public class ChatService implements SocketClient.SocketListener{
     public void sendMessage(String messageText) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
-            for (SocketClient sc : Controller.getInstance().getClients().values()) {
+            for (SocketClient sc : Mediator.getInstance().getClients().values()) {
                 sc.send(chat.createFormat());
             }
         } catch (Exception e) {
@@ -88,7 +94,7 @@ public class ChatService implements SocketClient.SocketListener{
     }
 
     public void sendBuzz() {
-        for (SocketClient sc : Controller.getInstance().getClients().values()) {
+        for (SocketClient sc : Mediator.getInstance().getClients().values()) {
             Buzzing bz = new Buzzing(this.userId);
             try {
                 sc.send(bz.createFormat());
@@ -98,12 +104,26 @@ public class ChatService implements SocketClient.SocketListener{
         }
     }
 
+    public void sendOffline() {
+        for (SocketClient sc : Mediator.getInstance().getClients().values()) {
+            GoodBye gb = new GoodBye(this.userId);
+            try {
+                sc.send(gb.createFormat());
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+        online = !online;
+
+
+    }
+
     private void startHelloService() {
         helloThread = new Thread(() -> {
             while (isRunning) {
                 try {
                     Thread.sleep(5000);
-                    for (SocketClient client : Controller.getInstance().getClients().values()) {
+                    for (SocketClient client : Mediator.getInstance().getClients().values()) {
                         Hello hello = new Hello(userId);
                         try {
                             client.send(hello.createFormat());
@@ -123,99 +143,101 @@ public class ChatService implements SocketClient.SocketListener{
 
 
 
-    @Override
-    public void onInvitationReceived(Invitation invitation) {
 
-        boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
-        pendingClients.getFirst().setUid(invitation.getIdUser());
-        Controller.getInstance().addClients(pendingClients.getFirst());
-        pendingClients.removeFirst();
 
-        if (accepted) {
-            Accept acp = new Accept(userId, username);
-            try {
-                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
-                    if (sc != null) {
-                        sc.send(acp.createFormat());
-                    }
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            Decline dec = new Decline();
-            try {
-                if(socketClient != null) socketClient.send(dec.createFormat());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    @Override
-    public void onAcceptReceived(Accept accept) {
-        SwingUtilities.invokeLater(() -> {
-            view.updateStatus("Status: Online");
-            view.showMessage("Conexión Aceptada");
-        });
-    }
-
-    @Override
-    public void onDeclineReceived(Decline decline) {
-        SwingUtilities.invokeLater(() -> {
-            view.updateStatus("Status: Rejected");
-            view.showMessage("Conexión Rechazada");
-            Controller.getInstance().delClients(socketClient.getUID());
-            if(socketClient != null) socketClient.close();
-        });
-    }
-
-    @Override
-    public void onHelloReceived(Hello hello) {
-        AcceptHello acceptHello = new AcceptHello(userId);
-        SocketClient client = Controller.getInstance().getClients().get(hello.getIdUser());
-            if (client != null) {
-                try {
-                    client.send(acceptHello.createFormat());
-                } catch (IOException e) {
-                    System.out.println(e.getMessage());
-                }
-            }
-
-    }
-
-    @Override
-    public void onChatReceived(Chat chat) {
-        System.out.println("Mensaje: " + chat.getMessage());
-        ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-        for (SocketClient client : Controller.getInstance().getClients().values()) {
-            try {
-                client.send(confirmRecived.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
-        }
-
-    }
-
-    @Override
-    public void onBuzzingReceived(Buzzing buzzing) {
-        String name = "Desconocido";
-        SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
-            if (sc != null) {
-                name = sc.getNombre();
-
-            }
-
-        String finalName = name;
-        SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
-    }
-
-    @Override public void onAcceptHelloReceived(AcceptHello acceptHello) {}
-    @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
-    @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {}
-    @Override public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
-    @Override public void onPinMessageReceived(PinMessage pinMessage) {}
-    @Override public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
-    @Override public void onThemeReceived(Theme theme) {}
+//    @Override
+//    public void onInvitationReceived(Invitation invitation) {
+//
+//        boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
+//        pendingClients.getFirst().setUid(invitation.getIdUser());
+//        Mediator.getInstance().addClients(pendingClients.getFirst());
+//        pendingClients.removeFirst();
+//
+//        if (accepted) {
+//            Accept acp = new Accept(userId, username);
+//            try {
+//                SocketClient sc = Mediator.getInstance().getClients().get(invitation.getIdUser());
+//                    if (sc != null) {
+//                        sc.send(acp.createFormat());
+//                    }
+//
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        } else {
+//            Decline dec = new Decline();
+//            try {
+//                if(socketClient != null) socketClient.send(dec.createFormat());
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//    }
+//
+//    @Override
+//    public void onAcceptReceived(Accept accept) {
+//        SwingUtilities.invokeLater(() -> {
+//            view.updateStatus("Status: Online");
+//            view.showMessage("Conexión Aceptada");
+//        });
+//    }
+//
+//    @Override
+//    public void onDeclineReceived(Decline decline) {
+//        SwingUtilities.invokeLater(() -> {
+//            view.updateStatus("Status: Rejected");
+//            view.showMessage("Conexión Rechazada");
+//            Mediator.getInstance().delClients(socketClient.getUID());
+//            if(socketClient != null) socketClient.close();
+//        });
+//    }
+//
+//    @Override
+//    public void onHelloReceived(Hello hello) {
+//        AcceptHello acceptHello = new AcceptHello(userId);
+//        SocketClient client = Mediator.getInstance().getClients().get(hello.getIdUser());
+//            if (client != null) {
+//                try {
+//                    client.send(acceptHello.createFormat());
+//                } catch (IOException e) {
+//                    System.out.println(e.getMessage());
+//                }
+//            }
+//
+//    }
+//
+//    @Override
+//    public void onChatReceived(Chat chat) {
+//        System.out.println("Mensaje: " + chat.getMessage());
+//        ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
+//        for (SocketClient client : Mediator.getInstance().getClients().values()) {
+//            try {
+//                client.send(confirmRecived.createFormat());
+//            } catch (IOException e) {
+//                System.out.println(e.getMessage());
+//            }
+//        }
+//
+//    }
+//
+//    @Override
+//    public void onBuzzingReceived(Buzzing buzzing) {
+//        String name = "Desconocido";
+//        SocketClient sc = Mediator.getInstance().getClients().get(buzzing.getIdUser());
+//            if (sc != null) {
+//                name = sc.getNombre();
+//
+//            }
+//
+//        String finalName = name;
+//        SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
+//    }
+//
+//    @Override public void onAcceptHelloReceived(AcceptHello acceptHello) {}
+//    @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
+//    @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {}
+//    @Override public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
+//    @Override public void onPinMessageReceived(PinMessage pinMessage) {}
+//    @Override public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
+//    @Override public void onThemeReceived(Theme theme) {}
 }

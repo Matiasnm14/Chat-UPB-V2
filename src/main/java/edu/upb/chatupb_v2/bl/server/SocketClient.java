@@ -27,6 +27,7 @@ public class SocketClient extends Thread {
     public String getUID() {
         return uid;
     }
+
     private String name;
     @Setter
     private String uid;
@@ -34,8 +35,10 @@ public class SocketClient extends Thread {
     private final String ip;
     private final DataOutputStream dout;
     private final BufferedReader br;
-    @Getter
-    private final Map<String, SocketListener> listener = new HashMap<>();
+
+
+//    @Getter
+//    private final Map<String, SocketListener> listener = new HashMap<>();
 
 
     public String getNombre() {
@@ -60,22 +63,34 @@ public class SocketClient extends Thread {
     //ALGO
     public interface SocketListener {
         void onInvitationReceived(Invitation invitation);
+
         void onAcceptReceived(Accept accept);
+
         void onDeclineReceived(Decline decline);
+
         void onHelloReceived(Hello hello);
+
         void onAcceptHelloReceived(AcceptHello acceptHello);
+
         void onDeclineHelloReceived(DeclineHello declineHello);
+
         void onChatReceived(Chat chat);
+
         void onConfirmedReceived(ConfirmRecived confirmRecived);
+
         void onDeleteMessageReceived(DeleteMessage deleteMessage);
+
         void onBuzzingReceived(Buzzing buzzing);
+
         void onPinMessageReceived(PinMessage pinMessage);
+
         void onUniqueMessageReceived(UniqueMessage uniqueMessage);
+
         void onThemeReceived(Theme theme);
     }
 
-    public void setListener(String name, String key, SocketListener listener) {
-        this.listener.put(key, listener);
+    public void setClient(String name, String key) {
+//        this.listener.put(key, listener);
         this.uid = key;
         this.name = name;
     }
@@ -86,44 +101,40 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
-                if(split.length == 0) continue;
+                if (split.length == 0) continue;
+
 
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
                         this.name = inv.getUserName();
                         this.uid = inv.getIdUser();
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onInvitationReceived(inv));
-                        }
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onInvitationReceived(inv, inv.getIdUser()));
+
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptReceived(acp));
-                        }
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onAcceptReceived(acp, acp.getIdUser()));
+
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> socketListener.onDeclineReceived(dec));
-                        }
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onDeclineReceived(dec, ""));
+
                         break;
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            socketListener.onHelloReceived(hel);
-                        }
+                        Mediator.getInstance().onHelloReceived(hel, hel.getIdUser());
+
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onAcceptHelloReceived(acpHel));
-                        }
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onAcceptHelloReceived(acpHel));
+
                         break;
                     }
                     case "006": {
@@ -132,16 +143,16 @@ public class SocketClient extends Thread {
                     }
                     case "007": {
                         Chat cht = Chat.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onChatReceived(cht));
-                        }
+
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onChatReceived(cht, cht.getIdUser()));
+
                         break;
                     }
                     case "008": {
                         ConfirmRecived conRec = ConfirmRecived.parse(message);
-                        for (SocketListener socketListener: listener.values()){
-                            socketListener.onConfirmedReceived(conRec);
-                        }
+
+                        Mediator.getInstance().onConfirmedReceived(conRec);
+
                         break;
                     }
                     case "009": {
@@ -150,9 +161,9 @@ public class SocketClient extends Thread {
                     }
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
-                        for (SocketListener sl : listener.values()){
-                            java.awt.EventQueue.invokeLater(() -> sl.onBuzzingReceived(buz));
-                        }
+
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onBuzzingReceived(buz, buz.getIdUser()));
+
                         break;
                     }
                     case "011": {
@@ -167,9 +178,13 @@ public class SocketClient extends Thread {
                         Theme thm = Theme.parse(message);
                         break;
                     }
+                    case "0018": {
+                        GoodBye gb = GoodBye.parse(message);
+                        java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onGoodByeReceived(gb, gb.getIdUser()));
+                    }
                 }
             }
-        } catch (SocketException socketException){
+        } catch (SocketException socketException) {
             System.out.println("Socket cerrado ");
         } catch (IOException e) {
             System.out.println(e.getMessage());
@@ -193,7 +208,7 @@ public class SocketClient extends Thread {
             this.dout.close();
         } catch (SocketException socketException) {
             System.out.println("Se ha cerrado el socket");
-        } catch (Exception e){
+        } catch (Exception e) {
             System.out.println(getAllStackTraces());
         }
     }
