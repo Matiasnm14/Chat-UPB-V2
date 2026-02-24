@@ -16,7 +16,7 @@ import java.util.*;
  *
  * @author USER 1
  */
-public class JUi extends javax.swing.JFrame implements IChatView {
+public class JUi extends IChatView {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
     @Getter
