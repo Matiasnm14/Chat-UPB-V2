@@ -1,7 +1,5 @@
 package edu.upb.chatupb_v2.bl.server;
 
-import edu.upb.chatupb_v2.repository.Contact;
-import edu.upb.chatupb_v2.repository.ContactDao;
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +20,8 @@ public class SocketClient extends Thread {
     private final DataOutputStream dout;
     private final BufferedReader br;
     private final Socket socket;
-    private String name;
+    @Setter
+    private String userName;
     @Setter
     private String uid;
     @Getter
@@ -32,7 +31,7 @@ public class SocketClient extends Thread {
         return uid;
     }
     public String getNombre(){
-        return name;
+        return userName;
     }
 
     public SocketClient(Socket socket) throws IOException {
@@ -71,18 +70,18 @@ public class SocketClient extends Thread {
     public void setListener(String name, String key, SocketListener listener) {
         this.listener.put(key, listener);
         this.uid = key;
-        this.name = name;
+        this.userName = name;
     }
 
     private void fixClients(Command c) throws Exception {
         SocketListener sl = listener.get(uid);
         listener.remove(uid);
         if (c instanceof Invitation){
-            this.name = ((Invitation) c).getUserName();
+            this.userName = ((Invitation) c).getUserName();
             this.uid = ((Invitation)c).getIdUser();
         }
         else if (c instanceof Accept){
-            this.name = ((Accept) c).getUserName();
+            this.userName = ((Accept) c).getUserName();
             this.uid = ((Accept) c).getIdUser();
         }
         listener.put(uid, sl);

@@ -69,6 +69,8 @@ public class ChatService implements SocketClient.SocketListener{
                 Invitation myInvite = new Invitation(userId, username);
                 socketClient.send(myInvite.createFormat());
 
+                pendingClients.add(socketClient);
+
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
 
             } catch (Exception e) {
@@ -212,6 +214,12 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onAcceptReceived(Accept accept) {
         SwingUtilities.invokeLater(() -> {
+
+            pendingClients.getFirst().setUid(accept.getIdUser());
+            pendingClients.getFirst().setUserName(accept.getUserName());
+            Controller.getInstance().addClients(pendingClients.getFirst());
+            pendingClients.removeFirst();
+
 //            Controller.getInstance().addContact(accept.getUserName());
             view.updateStatus("Status: Online");
             view.showMessage("Conexión Aceptada");
