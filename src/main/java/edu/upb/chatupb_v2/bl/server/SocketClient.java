@@ -96,8 +96,6 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
-                boolean a = Controller.getInstance().getClients().containsKey(this.getUID());
-                System.out.println("CONTROLLER :" + a);
                 if(split.length == 0) continue;
 
                 switch (split[0]) {

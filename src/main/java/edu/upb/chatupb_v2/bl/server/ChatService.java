@@ -203,13 +203,13 @@ public class ChatService implements SocketClient.SocketListener{
         view.showChat(chat);
         System.out.println(chat.getMessage());
         try {
-            MessageDAO.getInstance().save(new Message(
-                    chat.getIdMessage(),
-                    chat.getIdUser(),
-                    chat.getMessage(),
-                    TypeMessage.TEXT,
-                    StatusMessage.READ,
-                    LocalDate.now().toString()));
+//            MessageDAO.getInstance().save(new Message(
+//                    chat.getIdMessage(),
+//                    chat.getIdUser(),
+//                    chat.getMessage(),
+//                    TypeMessage.TEXT,
+//                    StatusMessage.READ,
+//                    LocalDate.now().toString()));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

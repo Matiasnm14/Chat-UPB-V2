@@ -1,5 +1,6 @@
-package edu.upb.chatupb_v2;
+package edu.upb.chatupb_v2.ui;
 
+import edu.upb.chatupb_v2.ConnectionDialog;
 import edu.upb.chatupb_v2.bl.server.ChatService;
 import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
@@ -25,12 +26,14 @@ public class JUi extends JFrame implements IChatView {
     private final UUID userId = UUID.randomUUID();
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
-    private JTextArea chatArea;
-    private JTextField jTextMensaje;
-    private JLabel jOnline;
-
     private DefaultListModel<User> chatListModel;
     private JList<User> chatList;
+
+    private JPanel messagesPanel;
+    private JScrollPane scrollPane;
+
+    private JTextField jTextMensaje;
+    private JLabel jOnline;
 
     public JUi() {
         this.username = askForUsername();
@@ -68,37 +71,37 @@ public class JUi extends JFrame implements IChatView {
         leftScrollPane.setPreferredSize(new Dimension(250, 600));
 
         // ================= RIGHT PANEL =================
+        messagesPanel = new JPanel();
+        messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
+        messagesPanel.setBackground(Color.WHITE);
 
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        chatArea.setLineWrap(true);
-        chatArea.setWrapStyleWord(true);
-
-        JScrollPane chatScrollPane = new JScrollPane(chatArea);
+        scrollPane = new JScrollPane(messagesPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
-
         JButton btnBuzz = new JButton("Buzz");
         JButton btnOffline = new JButton("Fuera de Línea");
         JButton btnNewConnection = new JButton("Nueva Conexión");
 
-        jOnline = new JLabel("Status: Offline");
+        jOnline = new JLabel("Status: Online");
 
-        // Top Panel (SOLO Buzz y Offline + Nueva Conexión)
+        // Top Panel
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
         topPanel.add(btnOffline);
 
-        // Bottom Panel (mensaje)
+        // Bottom Panel
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(jTextMensaje, BorderLayout.CENTER);
         bottomPanel.add(btnSend, BorderLayout.EAST);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.add(topPanel, BorderLayout.NORTH);
-        rightPanel.add(chatScrollPane, BorderLayout.CENTER);
+        rightPanel.add(scrollPane, BorderLayout.CENTER);
         rightPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         setLayout(new BorderLayout());
@@ -108,8 +111,12 @@ public class JUi extends JFrame implements IChatView {
         // ================= ACTIONS =================
 
         btnSend.addActionListener(e -> {
-            chatService.sendMessage(jTextMensaje.getText());
-            jTextMensaje.setText("");
+            String text = jTextMensaje.getText().trim();
+            if (!text.isEmpty()) {
+                addMessage(text, true);  // mensaje propio
+                chatService.sendMessage(text);
+                jTextMensaje.setText("");
+            }
         });
 
         btnBuzz.addActionListener(e -> chatService.sendBuzz());
@@ -122,30 +129,35 @@ public class JUi extends JFrame implements IChatView {
         chatList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 User selectedOne = chatList.getSelectedValue();
-                String ip = selectedOne.getIp();
-                SocketClient cs = null;
-                try {
-                    cs = new SocketClient(ip);
-                    Invitation inv = new Invitation(this.userId.toString(), this.username);
-                    cs.send(inv.createFormat());
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
+                if (selectedOne != null) {
+                    try {
+                        SocketClient cs = new SocketClient(selectedOne.getIp());
+                        Invitation inv = new Invitation(this.userId.toString(), this.username);
+                        cs.send(inv.createFormat());
+                    } catch (IOException ex) {
+                        showError("Error conectando con el usuario.");
+                    }
                 }
             }
         });
+
         renderContacts();
     }
 
     public void init() {
         EventQueue.invokeLater(() -> setVisible(true));
-//        new Thread(() -> {
-//            try {
-//                Thread.sleep(500);
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-//            renderContacts();
-//        }).start();
+    }
+
+    private void addMessage(String text, boolean isOwnMessage) {
+        MessageBubble bubble = new MessageBubble(text, isOwnMessage);
+        messagesPanel.add(bubble);
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+
+        SwingUtilities.invokeLater(() -> {
+            JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            vertical.setValue(vertical.getMaximum());
+        });
     }
 
     // ================= IChatView =================
@@ -157,7 +169,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showMessage(String message) {
-        chatArea.append(message + "\n");
+        addMessage(message, false); // mensaje recibido
     }
 
     @Override
@@ -186,19 +198,24 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showChat(Chat chat) {
-        String name = Controller.getInstance().getClients().get(chat.getIdUser()).getNombre();
-        System.out.println("CHAT: " + chat.getMessage());
-        chatArea.append(name + " | " + chat.getMessage());
+        String name = Controller.getInstance()
+                .getClients()
+                .get(chat.getIdUser())
+                .getNombre();
+
+        addMessage(name + ": " + chat.getMessage(), false);
     }
 
     @Override
     public void renderContacts() {
-        java.util.List <User> users = new ArrayList<>();
+        chatListModel.clear();
+        java.util.List<User> users = new ArrayList<>();
         try {
             users = UserDAO.getInstance().findAll();
-        } catch (SQLException | ConnectException sqlException){
-            System.out.println(sqlException.getMessage());
+        } catch (SQLException | ConnectException e) {
+            logger.warning(e.getMessage());
         }
+
         for (User user : users) {
             chatListModel.addElement(user);
         }
