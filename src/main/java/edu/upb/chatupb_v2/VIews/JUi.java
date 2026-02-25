@@ -1,6 +1,7 @@
 package edu.upb.chatupb_v2.VIews;
 
 import edu.upb.chatupb_v2.Controller.ChatService;
+import edu.upb.chatupb_v2.Controller.ContactController;
 import edu.upb.chatupb_v2.Controller.Controller;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import edu.upb.chatupb_v2.Model.entities.User;
@@ -27,6 +28,11 @@ public class JUi extends JFrame implements IChatView {
     private DefaultListModel<User> chatListModel;
     private JList<User> chatList;
 
+    public void setController(ContactController controller) {
+        this.controller = controller;
+    }
+
+    private ContactController controller;
     private JPanel messagesPanel;
     private JScrollPane scrollPane;
 
