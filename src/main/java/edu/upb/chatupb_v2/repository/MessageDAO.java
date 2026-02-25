@@ -1,6 +1,5 @@
 package edu.upb.chatupb_v2.repository;
 
-import edu.upb.chatupb_v2.repository.enums.StatusMessage;
 import edu.upb.chatupb_v2.repository.enums.TypeMessage;
 
 import java.net.ConnectException;
@@ -14,7 +13,7 @@ import java.util.List;
  */
 public class MessageDAO {
     private DaoHelper<Message> helper;
-    
+
     public MessageDAO() {
         helper = new DaoHelper<>();
     }
@@ -24,37 +23,36 @@ public class MessageDAO {
         if (existColumn(result, Message.Column.ID)) {
             prefacturaSync.setId(result.getLong(Message.Column.ID));
         }
-        if (existColumn(result, Message.Column.CONTENT)) {
-            prefacturaSync.setContent(result.getString(Message.Column.CONTENT));
+        if (existColumn(result, Message.Column.COD_MESSAGE)) {
+            prefacturaSync.setCodMessage(result.getString(Message.Column.COD_MESSAGE));
         }
-        if (existColumn(result, Message.Column.STATUSMESSAGE)) {
-            switch (result.getString(Message.Column.STATUSMESSAGE).toLowerCase()){
-                case "sent":
-                    prefacturaSync.setStatusMessage(StatusMessage.SENT);
-                    break;
-                case "received":
-                    prefacturaSync.setStatusMessage(StatusMessage.RECEIVED);
-                    break;
-                case "read":
-                    prefacturaSync.setStatusMessage(StatusMessage.READ);
-                    break;
-                case "error":
-                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
-
-            }
-
+        if (existColumn(result, Message.Column.RECIPIENT_CODE)) {
+            prefacturaSync.setRecipientCode(result.getString(Message.Column.RECIPIENT_CODE));
         }
-        if (existColumn(result, Message.Column.TYPEMESSAGE)) {
-            switch (result.getString(Message.Column.TYPEMESSAGE).toLowerCase()){
-                case "text":
-                    prefacturaSync.setTypeMessage(TypeMessage.TEXT);
-                    break;
-                case "image":
-                    prefacturaSync.setTypeMessage(TypeMessage.IMAGE);
+        if (existColumn(result, Message.Column.SENDER_CODE)) {
+            prefacturaSync.setSenderCode(result.getString(Message.Column.SENDER_CODE));
+        }
+        if (existColumn(result, Message.Column.MESSAGE)) {
+            prefacturaSync.setMessage(result.getString(Message.Column.MESSAGE));
+        }
+        if (existColumn(result, Message.Column.TYPE)) {
+            String typeValue = result.getString(Message.Column.TYPE);
+            if (typeValue != null) {
+                switch (typeValue.toLowerCase()) {
+                    case "text":
+                        prefacturaSync.setType(TypeMessage.TEXT);
+                        break;
+                    case "image":
+                        prefacturaSync.setType(TypeMessage.IMAGE);
+                        break;
+                }
             }
         }
-        if (existColumn(result, Message.Column.DATE)) {
-            prefacturaSync.setDate(result.getString(Message.Column.TYPEMESSAGE));
+        if (existColumn(result, Message.Column.CREATED_DATE)) {
+            prefacturaSync.setCreatedDate(result.getString(Message.Column.CREATED_DATE));
+        }
+        if (existColumn(result, Message.Column.ROOM_CODE)) {
+            prefacturaSync.setRoomCode(result.getString(Message.Column.ROOM_CODE));
         }
         return prefacturaSync;
     };
@@ -70,65 +68,38 @@ public class MessageDAO {
     }
 
     public List<Message> findAll() throws ConnectException, SQLException {
-        String query = "SELECT * FROM message";
+        String query = "SELECT * FROM message ORDER BY id ASC";
         return helper.executeQuery(query, resultReader);
     }
 
-    public boolean exist(String argument) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM message WHERE " + argument;
-        return helper.executeQueryCount(query, null) == 1;
+    public List<Message> findByParticipants(String userCode, String contactCode) throws ConnectException, SQLException {
+        String query = "SELECT * FROM message WHERE (sender_code = ? AND recipient_code = ?) OR (sender_code = ? AND recipient_code = ?) ORDER BY id ASC";
+        DaoHelper.QueryParameters params = pst -> {
+            pst.setString(1, userCode);
+            pst.setString(2, contactCode);
+            pst.setString(3, contactCode);
+            pst.setString(4, userCode);
+        };
+        return helper.executeQuery(query, params, resultReader);
     }
 
-    public boolean existByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM message WHERE code='" + code + "'";
-        return helper.executeQueryCount(query, null) == 1;
-    }
-
-    public Message findByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT * FROM message WHERE code ='" + code + "'";
-        System.out.println(query);
-        List<Message> list = helper.executeQuery(query, resultReader);
-        if (list.isEmpty()) {
-            return null;
-        }
-        return list.get(0);
-    }
-
-    public void update(String query) throws Exception {
-        helper.update(query, null);
+    public List<Message> findByRoomCode(String roomCode) throws ConnectException, SQLException {
+        String query = "SELECT * FROM message WHERE room_code = ? ORDER BY id ASC";
+        DaoHelper.QueryParameters params = pst -> pst.setString(1, roomCode);
+        return helper.executeQuery(query, params, resultReader);
     }
 
     public void save(Message message) throws Exception {
-        String query = "INSERT INTO message(content,date,status_message,type_message) values (?,?,?,?)";
-        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
-            @Override
-            public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, message.getContent());
-                pst.setString(2, message.getDate());
-                pst.setString(3, message.getStatusMessage().toString());
-                pst.setString(4,message.getTypeMessage().toString());
-            }
+        String query = "INSERT INTO message(cod_message, recipient_code, created_date, sender_code, message, type, room_code) values (?,?,?,?,?,?,?)";
+        DaoHelper.QueryParameters params = pst -> {
+            pst.setString(1, message.getCodMessage());
+            pst.setString(2, message.getRecipientCode());
+            pst.setString(3, message.getCreatedDate());
+            pst.setString(4, message.getSenderCode());
+            pst.setString(5, message.getMessage());
+            pst.setString(6, message.getType() != null ? message.getType().toString() : TypeMessage.TEXT.toString());
+            pst.setString(7, message.getRoomCode());
         };
         helper.insert(query, params, message);
-    }
-
-    public void update(Message message) throws Exception {
-        String query = "UPDATE message SET status_message=? WHERE id =?";
-        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
-            @Override
-            public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, message.getStatusMessage().toString());
-            }
-        };
-        helper.update(query, params);
-    }
-
-    public void update(String query, String conditionWhere) throws SQLException, ConnectException {
-        if (query.trim().endsWith("%s")) {
-            query = String.format(query, conditionWhere);
-        } else {
-            query = String.format("%s %s", query, conditionWhere);
-        }
-        helper.update(query, null);
     }
 }

@@ -1,12 +1,9 @@
 package edu.upb.chatupb_v2.repository;
 
-import edu.upb.chatupb_v2.repository.enums.StatusMessage;
 import edu.upb.chatupb_v2.repository.enums.TypeMessage;
 import lombok.*;
 
 import java.io.Serializable;
-import java.lang.reflect.Type;
-import java.util.Date;
 
 @Builder
 @Getter
@@ -16,16 +13,22 @@ import java.util.Date;
 public class Message implements Serializable, Model {
 
     private long id;
-    private String content;
-    private TypeMessage typeMessage;
-    private StatusMessage statusMessage;
-    private String date;
+    private String codMessage;
+    private String recipientCode;
+    private String senderCode;
+    private String message;
+    private TypeMessage type;
+    private String createdDate;
+    private String roomCode;
     public static final class Column{
         public static final String ID= "id";
-        public static final String CONTENT ="content";
-        public static final String TYPEMESSAGE ="type";
-        public static final String STATUSMESSAGE = "Status";
-        public static final String DATE = "date";
+        public static final String COD_MESSAGE ="cod_message";
+        public static final String RECIPIENT_CODE ="recipient_code";
+        public static final String SENDER_CODE = "sender_code";
+        public static final String MESSAGE = "message";
+        public static final String TYPE = "type";
+        public static final String CREATED_DATE = "created_date";
+        public static final String ROOM_CODE = "room_code";
     }
 
     @Override
@@ -35,6 +38,6 @@ public class Message implements Serializable, Model {
 
     @Override
     public long getId() {
-        return 0;
+        return id;
     }
 }

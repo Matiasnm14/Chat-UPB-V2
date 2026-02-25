@@ -1,6 +1,9 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.repository.Message;
+import edu.upb.chatupb_v2.repository.MessageDAO;
 import edu.upb.chatupb_v2.repository.comands.*;
+import edu.upb.chatupb_v2.repository.enums.TypeMessage;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,6 +11,8 @@ import javax.swing.*;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +31,7 @@ public class ChatService {
     @Getter
     @Setter
     private boolean online = true;
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public ChatService(IChatView view, String username, String userId) {
         this.view = view;
@@ -47,7 +53,7 @@ public class ChatService {
 
                     newClient.setClient(username, userId);
                     pendingClients.add(newClient);
-//                    Controller.getInstance().addClients(newClient);
+//                    Mediator.getInstance().addClients(newClient);
                     newClient.start();
                     System.out.println("Nuevo cliente conectado desde: " + clientSocket.getInetAddress());
                 }
@@ -84,9 +90,12 @@ public class ChatService {
 
     public void sendMessage(String messageText) {
         try {
-            Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
+            String messageId = UUID.randomUUID().toString();
+            Chat chat = new Chat(this.userId, messageId, messageText);
             for (SocketClient sc : Mediator.getInstance().getClients().values()) {
                 sc.send(chat.createFormat());
+                String recipientCode = sc.getUID() != null ? sc.getUID() : sc.getIp();
+                saveMessage(messageId, this.userId, recipientCode, messageText, sc.getIp());
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -104,18 +113,24 @@ public class ChatService {
         }
     }
 
-    public void sendOffline() {
-        for (SocketClient sc : Mediator.getInstance().getClients().values()) {
-            GoodBye gb = new GoodBye(this.userId);
-            try {
-                sc.send(gb.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
+    private void saveMessage(String codMessage, String senderCode, String recipientCode, String content, String roomCode) {
+        if (content == null || content.isBlank()) {
+            return;
         }
-        online = !online;
-
-
+        Message message = Message.builder()
+                .codMessage(codMessage)
+                .senderCode(senderCode)
+                .recipientCode(recipientCode)
+                .message(content)
+                .type(TypeMessage.TEXT)
+                .createdDate(LocalDateTime.now().format(DATE_FORMAT))
+                .roomCode(roomCode)
+                .build();
+        try {
+            new MessageDAO().save(message);
+        } catch (Exception e) {
+            System.out.println("No se pudo guardar mensaje: " + e.getMessage());
+        }
     }
 
     private void startHelloService() {
@@ -139,105 +154,4 @@ public class ChatService {
         });
         helloThread.start();
     }
-
-
-
-
-
-
-//    @Override
-//    public void onInvitationReceived(Invitation invitation) {
-//
-//        boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
-//        pendingClients.getFirst().setUid(invitation.getIdUser());
-//        Mediator.getInstance().addClients(pendingClients.getFirst());
-//        pendingClients.removeFirst();
-//
-//        if (accepted) {
-//            Accept acp = new Accept(userId, username);
-//            try {
-//                SocketClient sc = Mediator.getInstance().getClients().get(invitation.getIdUser());
-//                    if (sc != null) {
-//                        sc.send(acp.createFormat());
-//                    }
-//
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
-//        } else {
-//            Decline dec = new Decline();
-//            try {
-//                if(socketClient != null) socketClient.send(dec.createFormat());
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//    }
-//
-//    @Override
-//    public void onAcceptReceived(Accept accept) {
-//        SwingUtilities.invokeLater(() -> {
-//            view.updateStatus("Status: Online");
-//            view.showMessage("Conexión Aceptada");
-//        });
-//    }
-//
-//    @Override
-//    public void onDeclineReceived(Decline decline) {
-//        SwingUtilities.invokeLater(() -> {
-//            view.updateStatus("Status: Rejected");
-//            view.showMessage("Conexión Rechazada");
-//            Mediator.getInstance().delClients(socketClient.getUID());
-//            if(socketClient != null) socketClient.close();
-//        });
-//    }
-//
-//    @Override
-//    public void onHelloReceived(Hello hello) {
-//        AcceptHello acceptHello = new AcceptHello(userId);
-//        SocketClient client = Mediator.getInstance().getClients().get(hello.getIdUser());
-//            if (client != null) {
-//                try {
-//                    client.send(acceptHello.createFormat());
-//                } catch (IOException e) {
-//                    System.out.println(e.getMessage());
-//                }
-//            }
-//
-//    }
-//
-//    @Override
-//    public void onChatReceived(Chat chat) {
-//        System.out.println("Mensaje: " + chat.getMessage());
-//        ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-//        for (SocketClient client : Mediator.getInstance().getClients().values()) {
-//            try {
-//                client.send(confirmRecived.createFormat());
-//            } catch (IOException e) {
-//                System.out.println(e.getMessage());
-//            }
-//        }
-//
-//    }
-//
-//    @Override
-//    public void onBuzzingReceived(Buzzing buzzing) {
-//        String name = "Desconocido";
-//        SocketClient sc = Mediator.getInstance().getClients().get(buzzing.getIdUser());
-//            if (sc != null) {
-//                name = sc.getNombre();
-//
-//            }
-//
-//        String finalName = name;
-//        SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
-//    }
-//
-//    @Override public void onAcceptHelloReceived(AcceptHello acceptHello) {}
-//    @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
-//    @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {}
-//    @Override public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
-//    @Override public void onPinMessageReceived(PinMessage pinMessage) {}
-//    @Override public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
-//    @Override public void onThemeReceived(Theme theme) {}
 }

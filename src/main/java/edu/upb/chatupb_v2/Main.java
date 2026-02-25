@@ -10,3 +10,4 @@ public class Main {
         jUi.init();
     }
 }
+//HORA, NOMBRE,ICONO

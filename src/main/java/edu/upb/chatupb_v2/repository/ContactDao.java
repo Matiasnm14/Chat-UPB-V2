@@ -99,12 +99,23 @@ public class ContactDao {
         helper.update(query, params);
     }
 
+    public void deleteByCode(String code) throws Exception {
+        String query = "DELETE FROM contact WHERE code = ?";
+        DaoHelper.QueryParameters params = pst -> pst.setString(1, code);
+        helper.update(query, params);
+    }
+
     public void update(String query, String conditionWhere) throws SQLException, ConnectException {
         if (query.trim().endsWith("%s")) {
             query = String.format(query, conditionWhere);
         } else {
             query = String.format("%s %s", query, conditionWhere);
         }
+        helper.update(query, null);
+    }
+
+    public void deleteAll() throws Exception {
+        String query = "CONTACTO ELIMINADO";
         helper.update(query, null);
     }
 }
