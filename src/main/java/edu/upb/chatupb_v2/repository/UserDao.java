@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.repository;
 
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.ConnectException;
 import java.sql.PreparedStatement;
@@ -7,15 +8,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class UserDAO {
-    private DaoHelper<User> helper;
-    private static final UserDAO uDao = new UserDAO();
+@Slf4j
+public class UserDao {
 
-    public static UserDAO getInstance(){
-        return uDao;
+
+    private DaoHelper<User> helper;
+    private static final UserDao userDao = new UserDao();
+    public static UserDao getInstance(){
+        return userDao;
     }
 
-    private UserDAO(){
+    public UserDao() {
         helper = new DaoHelper<>();
     }
 
@@ -24,18 +27,14 @@ public class UserDAO {
         if (existColumn(result, User.Column.ID)) {
             prefacturaSync.setId(result.getString(User.Column.ID));
         }
+//        if (existColumn(result, User.Column.CODE)) {
+//            prefacturaSync.setCode(result.getString(User.Column.CODE));
+//        }
         if (existColumn(result, User.Column.NAME)) {
             prefacturaSync.setName(result.getString(User.Column.NAME));
         }
-//        if (existColumn(result, User.Column.STATUSUSER)) {
-//            switch (result.getString(User.Column.STATUSUSER).toLowerCase()){
-//                case "online":
-//                    prefacturaSync.setStatusUser(StatusUser.ONLINE);
-//                    break;
-//                case "offline":
-//                    prefacturaSync.setStatusUser(StatusUser.OFFLINE);
-//            }
-//
+//        if (existColumn(result, User.Column.IP)) {
+//            prefacturaSync.setIp(result.getString(User.Column.IP));
 //        }
         return prefacturaSync;
     };
@@ -54,6 +53,15 @@ public class UserDAO {
         String query = "SELECT * FROM Users";
         return helper.executeQuery(query, resultReader);
     }
+    public User findByName(String name) throws ConnectException, SQLException {
+        String query = "SELECT * FROM Users WHERE name ='" + name + "'";
+        System.out.println(query);
+        List<User> list = helper.executeQuery(query, resultReader);
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.get(0);
+    }
 
     public boolean exist(String argument) throws ConnectException, SQLException {
         String query = "SELECT count(*) FROM Users WHERE " + argument;
@@ -65,18 +73,8 @@ public class UserDAO {
         return helper.executeQueryCount(query, null) == 1;
     }
 
-    public User findById(String id) throws ConnectException, SQLException {
-        String query = "SELECT * FROM Users WHERE id ='" + id + "'";
-        System.out.println(query);
-        List<User> list = helper.executeQuery(query, resultReader);
-        if (list.isEmpty()) {
-            return null;
-        }
-        return list.get(0);
-    }
-
-    public User findByName(String name) throws ConnectException, SQLException {
-        String query = "SELECT * FROM Users WHERE name ='" + name + "'";
+    public User findByCode(String code) throws ConnectException, SQLException {
+        String query = "SELECT * FROM Users WHERE code ='" + code + "'";
         System.out.println(query);
         List<User> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
@@ -89,24 +87,30 @@ public class UserDAO {
         helper.update(query, null);
     }
 
-    public void save(User user) throws Exception {
+    public void save(User contact) throws Exception {
+        if(!exist("id='" + contact.getId() + "'")){
+
+
         String query = "INSERT INTO Users(id, name) values (?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, user.getId());
-                pst.setString(2, user.getName());
+                pst.setString(1, contact.getId());
+                pst.setString(2, contact.getName());
+//                pst.setString(3, contact.getIp());
             }
         };
-        helper.insert(query, params, user);
+        helper.insert(query, params, contact);
+    }
     }
 
-//    public void update(User user) throws Exception {
-//        String query = "UPDATE user SET status_user=? WHERE id =?";
+//    public void update(User contact) throws Exception {
+//        String query = "UPDATE Users SET IP=? WHERE code =?";
 //        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
 //            @Override
 //            public void setParameters(PreparedStatement pst) throws SQLException {
-//                pst.setString(1, user.getStatusUser().toString());
+//                pst.setString(1, contact.getIp());
+//                pst.setString(2, contact.getCode());
 //            }
 //        };
 //        helper.update(query, params);

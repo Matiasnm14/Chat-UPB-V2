@@ -24,46 +24,28 @@ public class MessageDAO {
     }
 
     DaoHelper.ResultReader<Message> resultReader = result -> {
-        Message prefacturaSync = new Message();
+        Message msg = new Message();
         if (existColumn(result, Message.Column.ID_MESSAGE)) {
-            prefacturaSync.setIdMessage(result.getString(Message.Column.ID_MESSAGE));
+            msg.setIdMessage(result.getString(Message.Column.ID_MESSAGE));
         }
-        if (existColumn(result, Message.Column.ID_USER)) {
-            prefacturaSync.setIdMessage(result.getString(Message.Column.ID_USER));
+        if (existColumn(result, Message.Column.CONTACT_ID)) {
+            msg.setContactId(result.getString(Message.Column.CONTACT_ID));
         }
         if (existColumn(result, Message.Column.BODY)) {
-            prefacturaSync.setBody(result.getString(Message.Column.BODY));
+            msg.setBody(result.getString(Message.Column.BODY));
         }
-        if (existColumn(result, Message.Column.STATUSMESSAGE)) {
-            switch (result.getString(Message.Column.STATUSMESSAGE).toLowerCase()){
-                case "sent":
-                    prefacturaSync.setStatusMessage(StatusMessage.SENT);
-                    break;
-//                case "received":
-//                    prefacturaSync.setStatusMessage(StatusMessage.RECEIVED);
-//                    break;
-                case "read":
-                    prefacturaSync.setStatusMessage(StatusMessage.READ);
-                    break;
-//                case "error":
-//                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
-
-            }
-
+        if (existColumn(result, Message.Column.STATUS)) {
+            String status = result.getString(Message.Column.STATUS);
+            if (status != null) msg.setStatusMessage(StatusMessage.valueOf(status.toUpperCase()));
         }
-        if (existColumn(result, Message.Column.TYPEMESSAGE)) {
-            switch (result.getString(Message.Column.TYPEMESSAGE).toLowerCase()){
-                case "text":
-                    prefacturaSync.setTypeMessage(TypeMessage.TEXT);
-                    break;
-                case "image":
-                    prefacturaSync.setTypeMessage(TypeMessage.IMAGE);
-            }
+        if (existColumn(result, Message.Column.TYPE)) {
+            String type = result.getString(Message.Column.TYPE);
+            if (type != null) msg.setTypeMessage(TypeMessage.valueOf(type.toUpperCase()));
         }
         if (existColumn(result, Message.Column.DATE)) {
-            prefacturaSync.setDate(result.getString(Message.Column.TYPEMESSAGE));
+            msg.setDate(result.getString(Message.Column.DATE));
         }
-        return prefacturaSync;
+        return msg;
     };
 
     public static boolean existColumn(ResultSet result, String columnName) {
@@ -100,23 +82,25 @@ public class MessageDAO {
         }
         return list.get(0);
     }
+    public List<Message> findByContact(String contactId) throws ConnectException, SQLException {
+        String query = "SELECT * FROM Messages WHERE Contacts_id = '" + contactId + "' ORDER BY date ASC";
+        return helper.executeQuery(query, resultReader);
+    }
 
     public void update(String query) throws Exception {
         helper.update(query, null);
     }
 
     public void save(Message message) throws Exception {
-        String query = "INSERT INTO Messages(id_message, id_user, body, type_message, status_message, date) values (?,?,?,?,?,?)";
-        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
-            @Override
-            public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, message.getIdMessage());
-                pst.setString(2, message.getIdUser());
-                pst.setString(3, message.getBody());
-                pst.setString(4, message.getTypeMessage().toString());
-                pst.setString(5, message.getStatusMessage().toString());
-                pst.setString(6, message.getDate());
-            }
+        String query = "INSERT INTO Messages(id, Contacts_id, message, date, type, status) values (?,?,?,?,?,?)";
+
+        DaoHelper.QueryParameters params = pst -> {
+            pst.setString(1, message.getIdMessage());
+            pst.setString(2, message.getContactId());
+            pst.setString(3, message.getBody());
+            pst.setString(4, message.getDate());
+            pst.setString(5, message.getTypeMessage().toString());
+            pst.setString(6, message.getStatusMessage().toString());
         };
         helper.insert(query, params, message);
     }

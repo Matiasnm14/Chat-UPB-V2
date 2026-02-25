@@ -13,18 +13,19 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class Message implements Serializable, Model {
 
-    private String idMessage;
-    private String idUser;
+    private String idMessage; // PK
+    private String contactId; // FK hacia Contacts
     private String body;
     private TypeMessage typeMessage;
     private StatusMessage statusMessage;
     private String date;
-    public static final class Column{
-        public static final String ID_MESSAGE = "id_message";
-        public static final String ID_USER = "id_user";
-        public static final String BODY ="message";
-        public static final String TYPEMESSAGE ="type";
-        public static final String STATUSMESSAGE = "Status";
+
+    public static final class Column {
+        public static final String ID_MESSAGE = "id"; // Según el query inicial
+        public static final String CONTACT_ID = "Contacts_id"; // El enlace real
+        public static final String BODY = "message";
+        public static final String TYPE = "type";
+        public static final String STATUS = "status";
         public static final String DATE = "date";
     }
 

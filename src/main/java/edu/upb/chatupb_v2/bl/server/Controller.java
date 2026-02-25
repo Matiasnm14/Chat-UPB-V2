@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.JUi;
 import edu.upb.chatupb_v2.repository.Message;
 import edu.upb.chatupb_v2.repository.MessageDAO;
 import edu.upb.chatupb_v2.repository.comands.*;
@@ -16,6 +17,8 @@ import java.util.Map;
 public class Controller {
     @Getter
     private Map<String, SocketClient> clients = new HashMap<>();
+    @Getter
+    private Map<String, JUi> uis = new HashMap<>();
     private static Controller instance;
     public static Controller getInstance(){
         if (instance == null) instance = new Controller();
@@ -112,5 +115,17 @@ public class Controller {
             }
         }
 
+    }
+    public void addUi(JUi ui) {
+        uis.putIfAbsent(ui.getUserId().toString(), ui);
+    }
+    public void addContact(String contact){
+        for (JUi view : uis.values()){
+            view.addModel(contact);
+        }
+    }
+
+    public void delUi(String idUi) {
+        uis.remove(idUi);
     }
 }

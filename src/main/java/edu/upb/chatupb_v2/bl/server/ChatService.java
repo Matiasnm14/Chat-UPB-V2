@@ -1,5 +1,7 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.repository.Contact;
+import edu.upb.chatupb_v2.repository.ContactDao;
 import edu.upb.chatupb_v2.repository.Message;
 import edu.upb.chatupb_v2.repository.MessageDAO;
 import edu.upb.chatupb_v2.repository.comands.*;
@@ -77,16 +79,19 @@ public class ChatService implements SocketClient.SocketListener{
     public void sendMessage(String messageText) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
-            MessageDAO.getInstance().save(new Message(
-                    chat.getIdMessage(),
-                    this.userId,
-                    messageText,
-                    TypeMessage.TEXT,
-                    StatusMessage.SENT,
-                    LocalDate.now().toString()
-            ));
+
             for (SocketClient sc : Controller.getInstance().getClients().values()) {
                 sc.send(chat.createFormat());
+
+                Message msgDb = new Message(
+                        UUID.randomUUID().toString(),
+                        sc.getUID(),
+                        messageText,
+                        TypeMessage.TEXT,
+                        StatusMessage.SENT,
+                        LocalDate.now().toString()
+                );
+                MessageDAO.getInstance().save(msgDb);
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -146,7 +151,20 @@ public class ChatService implements SocketClient.SocketListener{
         pendingClients.removeFirst();
 
         if (accepted) {
+            Controller.getInstance().addContact(invitation.getUserName());
             Accept acp = new Accept(userId, username);
+            try {
+                Contact nuevoContacto = new Contact(
+                        invitation.getIdUser(),
+                        invitation.getUserName(),
+                        pendingClients.getFirst().getIp(), // La IP del cliente pendiente
+                        this.userId
+                );
+                ContactDao.getInstance().save(nuevoContacto);
+            } catch (Exception e) {
+                System.out.println("Error guardando contacto: " + e.getMessage());
+            }
+
             try {
                 SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
                     if (sc != null)
@@ -169,8 +187,23 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onAcceptReceived(Accept accept) {
         SwingUtilities.invokeLater(() -> {
+            Controller.getInstance().addContact(accept.getUserName());
             view.updateStatus("Status: Online");
             view.showMessage("Conexión Aceptada");
+            try {
+                SocketClient sc = Controller.getInstance().getClients().get(accept.getIdUser());
+                if (sc != null) {
+                    Contact nuevoContacto = new Contact(
+                            accept.getIdUser(), // ID del contacto
+                            accept.getUserName(), // Nombre
+                            sc.getIp(),           // IP obtenida del socket
+                            this.userId           // TU ID (Users_id)
+                    );
+                    ContactDao.getInstance().save(nuevoContacto);
+                }
+            } catch (Exception e) {
+                System.out.println("Error guardando contacto: " + e.getMessage());
+            }
         });
     }
 
@@ -201,15 +234,18 @@ public class ChatService implements SocketClient.SocketListener{
     public void onChatReceived(Chat chat) {
         view.showChat(chat);
         try {
-            MessageDAO.getInstance().save(new Message(
+            Message msgDb = new Message(
                     chat.getIdMessage(),
                     chat.getIdUser(),
                     chat.getMessage(),
                     TypeMessage.TEXT,
                     StatusMessage.READ,
-                    LocalDate.now().toString()));
+                    LocalDate.now().toString()
+            );
+            MessageDAO.getInstance().save(msgDb);
+
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.out.println("Error al guardar mensaje recibido: " + e.getMessage());
         }
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
         SocketClient client = Controller.getInstance().getClients().get(chat.getIdUser());

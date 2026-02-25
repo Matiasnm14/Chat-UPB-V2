@@ -3,8 +3,11 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.bl.server.ChatService;
 import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
-import edu.upb.chatupb_v2.repository.UserDAO;
+import edu.upb.chatupb_v2.repository.ContactDao;
+import edu.upb.chatupb_v2.repository.User;
+import edu.upb.chatupb_v2.repository.UserDao;
 import edu.upb.chatupb_v2.repository.comands.Chat;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,6 +18,7 @@ public class JUi extends JFrame implements IChatView {
 
     private ChatService chatService;
     private String username;
+    @Getter
     private String userId;
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
@@ -32,14 +36,23 @@ public class JUi extends JFrame implements IChatView {
         }
         initComponents();
         try {
-            if (UserDAO.getInstance().exist("name='"+username+"'"))
-                userId = UserDAO.getInstance().findByName(username).getId();
-            else userId = UUID.randomUUID().toString();
+            if (UserDao.getInstance().exist("name='"+username+"'"))
+                userId = UserDao.getInstance().findByName(username).getId();
+            else{
+                userId = UUID.randomUUID().toString();
+                UserDao.getInstance().save(new User(userId,username));
+            }
         }catch (Exception e){
             e.printStackTrace();
         }
         this.chatService = new ChatService(this, username, userId);
         System.out.println(userId);
+        Controller.getInstance().addUi(this);
+    }
+    public void addModel(String contact){
+        if(!chatListModel.contains(contact)){
+            chatListModel.add(chatListModel.size(),contact);
+        }
     }
 
     private String askForUsername() {
@@ -64,6 +77,8 @@ public class JUi extends JFrame implements IChatView {
         chatList.setFixedCellHeight(60);
         chatList.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         chatList.setBackground(new Color(240, 240, 240));
+
+
 
         JScrollPane leftScrollPane = new JScrollPane(chatList);
         leftScrollPane.setPreferredSize(new Dimension(250, 600));

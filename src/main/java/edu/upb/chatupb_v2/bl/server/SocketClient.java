@@ -1,7 +1,7 @@
 package edu.upb.chatupb_v2.bl.server;
 
-import edu.upb.chatupb_v2.repository.User;
-import edu.upb.chatupb_v2.repository.UserDAO;
+import edu.upb.chatupb_v2.repository.Contact;
+import edu.upb.chatupb_v2.repository.ContactDao;
 import edu.upb.chatupb_v2.repository.comands.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -87,7 +87,7 @@ public class SocketClient extends Thread {
         }
         listener.put(uid, sl);
         Controller.getInstance().addClients(this);
-        UserDAO.getInstance().save(new User(uid,name));
+//        ContactDao.getInstance().save(new Contact(uid,name,ip));
     }
 
     @Override
