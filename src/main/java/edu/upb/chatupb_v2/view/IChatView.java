@@ -1,7 +1,7 @@
-package edu.upb.chatupb_v2.bl.server;
+package edu.upb.chatupb_v2.controller;
 
-import edu.upb.chatupb_v2.repository.Contact;
-import edu.upb.chatupb_v2.repository.comands.Chat;
+import edu.upb.chatupb_v2.model.entities.Contact;
+import edu.upb.chatupb_v2.model.entities.comands.Chat;
 
 public interface IChatView {
     void updateStatus(String status);

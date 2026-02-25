@@ -1,6 +1,6 @@
 package edu.upb.chatupb_v2;
 
-import edu.upb.chatupb_v2.repository.Contact;
+import edu.upb.chatupb_v2.model.entities.Contact;
 
 import java.awt.Color;
 import java.awt.Component;

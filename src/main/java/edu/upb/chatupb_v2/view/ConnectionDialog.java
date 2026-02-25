@@ -1,6 +1,6 @@
 package edu.upb.chatupb_v2;
 
-import edu.upb.chatupb_v2.bl.server.ChatService;
+import edu.upb.chatupb_v2.controller.ChatService;
 
 import javax.swing.*;
 import java.awt.*;

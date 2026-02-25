@@ -1,10 +1,14 @@
 package edu.upb.chatupb_v2;
 
-import edu.upb.chatupb_v2.bl.server.ChatService;
-import edu.upb.chatupb_v2.bl.server.Controller;
-import edu.upb.chatupb_v2.bl.server.IChatView;
+import edu.upb.chatupb_v2.controller.ChatService;
+import edu.upb.chatupb_v2.controller.Controller;
+import edu.upb.chatupb_v2.controller.IChatView;
+import edu.upb.chatupb_v2.model.entities.Contact;
+import edu.upb.chatupb_v2.model.entities.Message;
+import edu.upb.chatupb_v2.model.entities.User;
+import edu.upb.chatupb_v2.model.repository.*;
 import edu.upb.chatupb_v2.repository.*;
-import edu.upb.chatupb_v2.repository.comands.Chat;
+import edu.upb.chatupb_v2.model.entities.comands.Chat;
 import lombok.Getter;
 
 import javax.swing.*;
@@ -245,10 +249,10 @@ public class JUi extends JFrame implements IChatView {
     private void loadMessages(String contactId) {
         chatArea.setText("");
         try {
-            java.util.List<edu.upb.chatupb_v2.repository.Message> messages = MessageDAO.getInstance().findByContact(contactId);
+            java.util.List<Message> messages = MessageDAO.getInstance().findByContact(contactId);
 
             if (messages != null) {
-                for (edu.upb.chatupb_v2.repository.Message msg : messages) {
+                for (Message msg : messages) {
                     String senderName;
                     if (msg.getStatusMessage().toString().equals("SENT")) {
                         senderName = this.username;
