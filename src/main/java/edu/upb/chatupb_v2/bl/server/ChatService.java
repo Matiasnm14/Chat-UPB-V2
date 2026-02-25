@@ -169,6 +169,7 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onAcceptReceived(Accept accept) {
         SwingUtilities.invokeLater(() -> {
+            view.renderContacts();
             view.updateStatus("Status: Online");
             view.showMessage("Conexión Aceptada");
         });
@@ -200,6 +201,7 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onChatReceived(Chat chat) {
         view.showChat(chat);
+        System.out.println(chat.getMessage());
         try {
             MessageDAO.getInstance().save(new Message(
                     chat.getIdMessage(),

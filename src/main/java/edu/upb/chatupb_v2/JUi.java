@@ -3,10 +3,18 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.bl.server.ChatService;
 import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
+import edu.upb.chatupb_v2.bl.server.SocketClient;
+import edu.upb.chatupb_v2.repository.User;
+import edu.upb.chatupb_v2.repository.UserDAO;
 import edu.upb.chatupb_v2.repository.comands.Chat;
+import edu.upb.chatupb_v2.repository.comands.Invitation;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -21,8 +29,8 @@ public class JUi extends JFrame implements IChatView {
     private JTextField jTextMensaje;
     private JLabel jOnline;
 
-    private DefaultListModel<String> chatListModel;
-    private JList<String> chatList;
+    private DefaultListModel<User> chatListModel;
+    private JList<User> chatList;
 
     public JUi() {
         this.username = askForUsername();
@@ -110,10 +118,34 @@ public class JUi extends JFrame implements IChatView {
         btnNewConnection.addActionListener(e ->
                 new ConnectionDialog(this, chatService).setVisible(true)
         );
+
+        chatList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                User selectedOne = chatList.getSelectedValue();
+                String ip = selectedOne.getIp();
+                SocketClient cs = null;
+                try {
+                    cs = new SocketClient(ip);
+                    Invitation inv = new Invitation(this.userId.toString(), this.username);
+                    cs.send(inv.createFormat());
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        });
+        renderContacts();
     }
 
     public void init() {
         EventQueue.invokeLater(() -> setVisible(true));
+//        new Thread(() -> {
+//            try {
+//                Thread.sleep(500);
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//            renderContacts();
+//        }).start();
     }
 
     // ================= IChatView =================
@@ -155,7 +187,21 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void showChat(Chat chat) {
         String name = Controller.getInstance().getClients().get(chat.getIdUser()).getNombre();
+        System.out.println("CHAT: " + chat.getMessage());
         chatArea.append(name + " | " + chat.getMessage());
+    }
+
+    @Override
+    public void renderContacts() {
+        java.util.List <User> users = new ArrayList<>();
+        try {
+            users = UserDAO.getInstance().findAll();
+        } catch (SQLException | ConnectException sqlException){
+            System.out.println(sqlException.getMessage());
+        }
+        for (User user : users) {
+            chatListModel.addElement(user);
+        }
     }
 
     @Override

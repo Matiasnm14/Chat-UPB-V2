@@ -77,17 +77,17 @@ public class SocketClient extends Thread {
     private void fixClients(Command c) throws Exception {
         SocketListener sl = listener.get(uid);
         listener.remove(uid);
-        if (c instanceof Invitation){
+        if (c instanceof Invitation) {
             this.name = ((Invitation) c).getUserName();
-            this.uid = ((Invitation)c).getIdUser();
-        }
-        else if (c instanceof Accept){
+            this.uid = ((Invitation) c).getIdUser();
+        } else if (c instanceof Accept) {
             this.name = ((Accept) c).getUserName();
             this.uid = ((Accept) c).getIdUser();
         }
         listener.put(uid, sl);
         Controller.getInstance().addClients(this);
-        UserDAO.getInstance().save(new User(uid,name));
+        if (!UserDAO.getInstance().existByCode(uid))
+            UserDAO.getInstance().save(new User(uid,name,this.ip));
     }
 
     @Override
@@ -96,6 +96,8 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
+                boolean a = Controller.getInstance().getClients().containsKey(this.getUID());
+                System.out.println("CONTROLLER :" + a);
                 if(split.length == 0) continue;
 
                 switch (split[0]) {

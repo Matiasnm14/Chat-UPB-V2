@@ -9,5 +9,7 @@ public interface IChatView {
     boolean showInvitationDialog(String userName, String userId);
     void showBuzzNotification(String senderName);
     void showChat(Chat chat);
+
+    void renderContacts();
     void showByeNotification(String id);
 }

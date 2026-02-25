@@ -60,8 +60,8 @@ public class UserDAO {
         return helper.executeQueryCount(query, null) == 1;
     }
 
-    public boolean existByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM Users WHERE code='" + code + "'";
+    public boolean existByCode(String id) throws ConnectException, SQLException {
+        String query = "SELECT count(*) FROM Users WHERE id='" + id + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
 
@@ -80,12 +80,13 @@ public class UserDAO {
     }
 
     public void save(User user) throws Exception {
-        String query = "INSERT INTO Users(id, name) values (?,?)";
+        String query = "INSERT INTO Users(id, name, ip_user) values (?,?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
                 pst.setString(1, user.getId());
                 pst.setString(2, user.getName());
+                pst.setString(3, user.getIp());
             }
         };
         helper.insert(query, params, user);
