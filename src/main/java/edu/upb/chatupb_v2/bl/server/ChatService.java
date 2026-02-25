@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.bl.server;
 
+import edu.upb.chatupb_v2.JUi;
 import edu.upb.chatupb_v2.repository.Contact;
 import edu.upb.chatupb_v2.repository.ContactDao;
 import edu.upb.chatupb_v2.repository.Message;
@@ -76,25 +77,36 @@ public class ChatService implements SocketClient.SocketListener{
         }).start();
     }
 
-    public void sendMessage(String messageText) {
+    public void sendMessage(String messageText, String destinationId) {
+        if (destinationId == null || destinationId.trim().isEmpty()) {
+            SwingUtilities.invokeLater(() -> view.showError("Selecciona un contacto primero."));
+            return;
+        }
+
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
 
-            for (SocketClient sc : Controller.getInstance().getClients().values()) {
-                sc.send(chat.createFormat());
+            Message msgDb = new Message(
+                    chat.getIdMessage(),
+                    destinationId,
+                    messageText,
+                    TypeMessage.TEXT,
+                    StatusMessage.SENT,
+                    LocalDate.now().toString()
+            );
+            MessageDAO.getInstance().save(msgDb);
 
-                Message msgDb = new Message(
-                        UUID.randomUUID().toString(),
-                        sc.getUID(),
-                        messageText,
-                        TypeMessage.TEXT,
-                        StatusMessage.SENT,
-                        LocalDate.now().toString()
-                );
-                MessageDAO.getInstance().save(msgDb);
+            SocketClient sc = Controller.getInstance().getClients().get(destinationId);
+
+            if (sc != null) {
+                sc.send(chat.createFormat());
+                SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText));
+            } else {
+                SwingUtilities.invokeLater(() -> view.showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
             }
+
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error al enviar mensaje: " + e.getMessage());
         }
     }
 
@@ -151,18 +163,31 @@ public class ChatService implements SocketClient.SocketListener{
         pendingClients.removeFirst();
 
         if (accepted) {
-            Controller.getInstance().addContact(invitation.getUserName());
+//            Controller.getInstance().addContact(invitation.getUserName());
             Accept acp = new Accept(userId, username);
             try {
-                Contact nuevoContacto = new Contact(
-                        invitation.getIdUser(),
-                        invitation.getUserName(),
-                        pendingClients.getFirst().getIp(), // La IP del cliente pendiente
-                        this.userId
-                );
+                Contact nuevoContacto = new Contact();
+                nuevoContacto.setId(invitation.getIdUser());
+                nuevoContacto.setName(invitation.getUserName());
+                nuevoContacto.setIp(Controller.getInstance().getClients().get(invitation.getIdUser()).getIp());
+                nuevoContacto.setUserId(this.userId);
+
+                nuevoContacto.setStateConnect(true);
+
                 ContactDao.getInstance().save(nuevoContacto);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (view instanceof JUi) {
+                        ((JUi) view).addModel(nuevoContacto);
+                    }
+                });
+
+                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
+                if (sc != null) {
+                    sc.send(acp.createFormat());
+                }
             } catch (Exception e) {
-                System.out.println("Error guardando contacto: " + e.getMessage());
+                System.out.println("Error procesando invitación aceptada: " + e.getMessage());
             }
 
             try {
@@ -187,22 +212,30 @@ public class ChatService implements SocketClient.SocketListener{
     @Override
     public void onAcceptReceived(Accept accept) {
         SwingUtilities.invokeLater(() -> {
-            Controller.getInstance().addContact(accept.getUserName());
+//            Controller.getInstance().addContact(accept.getUserName());
             view.updateStatus("Status: Online");
             view.showMessage("Conexión Aceptada");
             try {
                 SocketClient sc = Controller.getInstance().getClients().get(accept.getIdUser());
                 if (sc != null) {
-                    Contact nuevoContacto = new Contact(
-                            accept.getIdUser(), // ID del contacto
-                            accept.getUserName(), // Nombre
-                            sc.getIp(),           // IP obtenida del socket
-                            this.userId           // TU ID (Users_id)
-                    );
+                    Contact nuevoContacto = new Contact();
+                    nuevoContacto.setId(accept.getIdUser());
+                    nuevoContacto.setName(accept.getUserName());
+                    nuevoContacto.setIp(sc.getIp());
+                    nuevoContacto.setUserId(this.userId);
+                    nuevoContacto.setStateConnect(true);
+
                     ContactDao.getInstance().save(nuevoContacto);
+
+                    if (view instanceof JUi) {
+                        ((JUi) view).addModel(nuevoContacto);
+                    }
+
+                    view.updateStatus("Status: Online");
+                    view.showMessage("Conexión Aceptada con " + accept.getUserName());
                 }
             } catch (Exception e) {
-                System.out.println("Error guardando contacto: " + e.getMessage());
+                System.out.println("Error guardando contacto al aceptar: " + e.getMessage());
             }
         });
     }

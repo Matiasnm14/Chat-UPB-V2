@@ -119,11 +119,11 @@ public class Controller {
     public void addUi(JUi ui) {
         uis.putIfAbsent(ui.getUserId().toString(), ui);
     }
-    public void addContact(String contact){
-        for (JUi view : uis.values()){
-            view.addModel(contact);
-        }
-    }
+//    public void addContact(String contact){
+//        for (JUi view : uis.values()){
+//            view.addModel(contact);
+//        }
+//    }
 
     public void delUi(String idUi) {
         uis.remove(idUi);

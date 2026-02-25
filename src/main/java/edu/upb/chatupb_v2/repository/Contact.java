@@ -14,6 +14,7 @@ public class Contact implements Serializable,Model {
     private String name;
     private String ip;
     private String userId;
+    private boolean stateConnect = false;
 
     public static final class Column {
         public static final String ID = "id";
@@ -29,5 +30,12 @@ public class Contact implements Serializable,Model {
     @Override
     public String getId() {
         return id;
+    }
+    public boolean isStateConnect() {
+        return stateConnect;
+    }
+
+    public void setStateConnect(boolean stateConnect) {
+        this.stateConnect = stateConnect;
     }
 }

@@ -3,9 +3,7 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.bl.server.ChatService;
 import edu.upb.chatupb_v2.bl.server.Controller;
 import edu.upb.chatupb_v2.bl.server.IChatView;
-import edu.upb.chatupb_v2.repository.ContactDao;
-import edu.upb.chatupb_v2.repository.User;
-import edu.upb.chatupb_v2.repository.UserDao;
+import edu.upb.chatupb_v2.repository.*;
 import edu.upb.chatupb_v2.repository.comands.Chat;
 import lombok.Getter;
 
@@ -26,8 +24,11 @@ public class JUi extends JFrame implements IChatView {
     private JTextField jTextMensaje;
     private JLabel jOnline;
 
-    private DefaultListModel<String> chatListModel;
-    private JList<String> chatList;
+    private DefaultListModel<Contact> chatListModel;
+    private JList<Contact> chatList;
+
+    // Añade esta variable para llevar el control del chat actual:
+    private Contact currentContact;
 
     public JUi() {
         this.username = askForUsername();
@@ -48,12 +49,14 @@ public class JUi extends JFrame implements IChatView {
         this.chatService = new ChatService(this, username, userId);
         System.out.println(userId);
         Controller.getInstance().addUi(this);
+
+        loadContacts();
     }
-    public void addModel(String contact){
-        if(!chatListModel.contains(contact)){
-            chatListModel.add(chatListModel.size(),contact);
-        }
-    }
+//    public void addModel(String contact){
+//        if(!chatListModel.contains(contact)){
+//            chatListModel.add(chatListModel.size(),contact);
+//        }
+//    }
 
     private String askForUsername() {
         return JOptionPane.showInputDialog(
@@ -71,17 +74,29 @@ public class JUi extends JFrame implements IChatView {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         // ================= LEFT PANEL =================
+
         chatListModel = new DefaultListModel<>();
         chatList = new JList<>(chatListModel);
         chatList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        chatList.setFixedCellHeight(60);
-        chatList.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        chatList.setBackground(new Color(240, 240, 240));
+        chatList.setFixedCellHeight(40); // Ajusta la altura si lo ves muy separado
+
+        // ¡AQUÍ USAS TU RENDERER PERSONALIZADO!
+        chatList.setCellRenderer(new ContactRender());
 
 
+        chatList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                currentContact = chatList.getSelectedValue();
+                if (currentContact != null) {
+                    loadMessages(currentContact.getId());
+                }
+            }
+        });
 
         JScrollPane leftScrollPane = new JScrollPane(chatList);
         leftScrollPane.setPreferredSize(new Dimension(250, 600));
+
+
 
         // ================= RIGHT PANEL =================
 
@@ -124,8 +139,15 @@ public class JUi extends JFrame implements IChatView {
         // ================= ACTIONS =================
 
         btnSend.addActionListener(e -> {
-            chatService.sendMessage(jTextMensaje.getText());
-            jTextMensaje.setText("");
+            String texto = jTextMensaje.getText().trim();
+
+            if (!texto.isEmpty() && currentContact != null) {
+
+                chatService.sendMessage(texto, currentContact.getId());
+                jTextMensaje.setText("");
+            } else if (currentContact == null) {
+                showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
+            }
         });
 
         btnBuzz.addActionListener(e -> chatService.sendBuzz());
@@ -188,5 +210,56 @@ public class JUi extends JFrame implements IChatView {
                 id + " se desconectó",
                 "Desconectado",
                 JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    @Override
+    public void addModel(Contact contact) {
+        boolean exists = false;
+        for (int i = 0; i < chatListModel.size(); i++) {
+            if (chatListModel.get(i).getId().equals(contact.getId())) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            chatListModel.addElement(contact);
+        }
+    }
+
+
+    // ================= DB LOADERS =================
+    private void loadContacts() {
+        try {
+            chatListModel.clear();
+            java.util.List<Contact> contacts = ContactDao.getInstance().findByOwner(this.userId);
+            if (contacts != null) {
+                for (Contact c : contacts) {
+                    chatListModel.addElement(c);
+                }
+            }
+        } catch (Exception e) {
+            logger.severe("Error cargando contactos: " + e.getMessage());
+        }
+    }
+
+    private void loadMessages(String contactId) {
+        chatArea.setText("");
+        try {
+            java.util.List<edu.upb.chatupb_v2.repository.Message> messages = MessageDAO.getInstance().findByContact(contactId);
+
+            if (messages != null) {
+                for (edu.upb.chatupb_v2.repository.Message msg : messages) {
+                    String senderName;
+                    if (msg.getStatusMessage().toString().equals("SENT")) {
+                        senderName = this.username;
+                    } else {
+                        senderName = currentContact.getName();
+                    }
+                    chatArea.append(senderName + " | " + msg.getBody() + "\n");
+                }
+            }
+        } catch (Exception e) {
+            logger.severe("Error cargando mensajes: " + e.getMessage());
+        }
     }
 }
