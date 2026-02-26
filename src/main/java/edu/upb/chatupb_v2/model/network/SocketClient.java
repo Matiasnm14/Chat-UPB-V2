@@ -53,7 +53,7 @@ public class SocketClient extends Thread {
         this.ip = socket.getInetAddress().getHostAddress();
         dout = new DataOutputStream(socket.getOutputStream());
         br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-        addListener(new MediatorListener());
+        addListener(Mediator.getInstance());
     }
 
     public SocketClient(String ip) throws IOException {
@@ -61,73 +61,26 @@ public class SocketClient extends Thread {
         this.ip = ip;
         dout = new DataOutputStream(socket.getOutputStream());
         br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-        addListener(new MediatorListener());
+        addListener(Mediator.getInstance());
     }
 
 
     //ALGO
-    public abstract static class SocketListener {
-        public void onInvitationReceived(Invitation invitation) {}
-        public void onAcceptReceived(Accept accept) {}
-        public void onDeclineReceived(Decline decline) {}
-        public void onHelloReceived(Hello hello) {}
-        public void onAcceptHelloReceived(AcceptHello acceptHello) {}
-        public void onDeclineHelloReceived(DeclineHello declineHello) {}
-        public void onChatReceived(Chat chat) {}
-        public void onConfirmedReceived(ConfirmRecived confirmRecived) {}
-        public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
-        public void onBuzzingReceived(Buzzing buzzing) {}
-        public void onPinMessageReceived(PinMessage pinMessage) {}
-        public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
-        public void onThemeReceived(Theme theme) {}
-        public void onGoodByeReceived(GoodBye goodBye) {}
-    }
-
-    private static class MediatorListener extends SocketListener {
-        @Override
-        public void onInvitationReceived(Invitation invitation) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onInvitationReceived(invitation, invitation.getIdUser()));
-        }
-
-        @Override
-        public void onAcceptReceived(Accept accept) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onAcceptReceived(accept, accept.getIdUser()));
-        }
-
-        @Override
-        public void onDeclineReceived(Decline decline) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onDeclineReceived(decline, decline.getIdUser()));
-        }
-
-        @Override
-        public void onHelloReceived(Hello hello) {
-            Mediator.getInstance().onHelloReceived(hello, hello.getIdUser());
-        }
-
-        @Override
-        public void onAcceptHelloReceived(AcceptHello acceptHello) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onAcceptHelloReceived(acceptHello));
-        }
-
-        @Override
-        public void onChatReceived(Chat chat) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onChatReceived(chat, chat.getIdUser()));
-        }
-
-        @Override
-        public void onConfirmedReceived(ConfirmRecived confirmRecived) {
-            Mediator.getInstance().onConfirmedReceived(confirmRecived);
-        }
-
-        @Override
-        public void onBuzzingReceived(Buzzing buzzing) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onBuzzingReceived(buzzing, buzzing.getIdUser()));
-        }
-
-        @Override
-        public void onGoodByeReceived(GoodBye goodBye) {
-            java.awt.EventQueue.invokeLater(() -> Mediator.getInstance().onGoodByeReceived(goodBye, goodBye.getIdUser()));
-        }
+    public interface SocketListener {
+        default void onInvitationReceived(Invitation invitation) {}
+        default void onAcceptReceived(Accept accept) {}
+        default void onDeclineReceived(Decline decline) {}
+        default void onHelloReceived(Hello hello) {}
+        default void onAcceptHelloReceived(AcceptHello acceptHello) {}
+        default void onDeclineHelloReceived(DeclineHello declineHello) {}
+        default void onChatReceived(Chat chat) {}
+        default void onConfirmedReceived(ConfirmRecived confirmRecived) {}
+        default void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
+        default void onBuzzingReceived(Buzzing buzzing) {}
+        default void onPinMessageReceived(PinMessage pinMessage) {}
+        default void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
+        default void onThemeReceived(Theme theme) {}
+        default void onGoodByeReceived(GoodBye goodBye) {}
     }
 
     public void addListener(SocketListener listener) {

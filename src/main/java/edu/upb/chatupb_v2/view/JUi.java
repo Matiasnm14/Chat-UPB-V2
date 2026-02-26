@@ -5,6 +5,7 @@
 package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.controller.Mediator;
+import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
 import edu.upb.chatupb_v2.model.network.ChatService;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
@@ -16,7 +17,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  *
@@ -27,6 +31,7 @@ public class JUi extends IChatView {
     //YA NO HAY CHAT SERVER!
 //    ChatServer server;
     private ChatService chatService;
+    private MessageController messageController;
 //    SocketClient socketClient;
     private final String username = "Ciro";
     private final UUID userId = UUID.randomUUID();
@@ -48,8 +53,8 @@ public class JUi extends IChatView {
     public JUi() {
         initComponents();
         this.chatService = new ChatService(this, username, userId.toString());
+        this.messageController = new MessageController(this);
         Mediator.getInstance().addUi(this);
-        loadContacts();
     }
 
     private void initComponents() {
@@ -274,30 +279,7 @@ public class JUi extends IChatView {
         if (contact == null) {
             return;
         }
-        messagesPanel.removeAll();
-        MessageDAO messageDAO = new MessageDAO();
-        try {
-            java.util.List<MessageDAO.Message> messages = new java.util.ArrayList<>();
-            if (contact.getCode() != null) {
-                messages = messageDAO.findByParticipants(userId.toString(), contact.getCode());
-            }
-            if (messages.isEmpty() && contact.getIp() != null && !contact.getIp().isBlank()) {
-                messages = messageDAO.findByRoomCode(contact.getIp());
-            }
-            for (MessageDAO.Message message : messages) {
-                if (message.getMessage() == null || message.getMessage().isBlank()) {
-                    continue;
-                }
-                boolean outgoing = userId.toString().equals(message.getSenderCode());
-                String senderName = outgoing ? username : contact.getName();
-                String time = extractTime(message.getCreatedDate());
-                addChatMessageWithTime(message.getMessage(), outgoing, senderName, time);
-            }
-            messagesPanel.revalidate();
-            messagesPanel.repaint();
-        } catch (Exception e) {
-            showError("No se pudieron cargar los mensajes: " + e.getMessage());
-        }
+        messageController.unloadForContact(userId.toString(), contact.getCode(), contact.getIp());
     }
 
     private String extractTime(String dateValue) {
@@ -400,6 +382,39 @@ public class JUi extends IChatView {
     @Override
     public void addChatMessage(String message, boolean outgoing, String senderName) {
         addChatMessageWithTime(message, outgoing, senderName, LocalTime.now().format(TIME_FORMAT));
+    }
+
+    @Override
+    public void unload(List<AcceptHello.User.Contact> contacts) {
+        contactListModel.clear();
+        if (contacts != null) {
+            for (AcceptHello.User.Contact contact : contacts) {
+                String name = contact.getName() != null ? contact.getName() : "(Sin nombre)";
+                String ip = contact.getIp() != null ? contact.getIp() : "";
+                ContactListItem item = new ContactListItem(name, ip, contact.getCode(), false);
+                contactListModel.addElement(item);
+            }
+        }
+        refreshContactPresence();
+        selectFirstContact();
+    }
+
+    @Override
+    public void unloadMessages(List<MessageDAO.Message> messages) {
+        messagesPanel.removeAll();
+        if (messages != null) {
+            for (MessageDAO.Message message : messages) {
+                if (message.getMessage() == null || message.getMessage().isBlank()) {
+                    continue;
+                }
+                boolean outgoing = userId.toString().equals(message.getSenderCode());
+                String senderName = outgoing ? username : (message.getSenderCode() != null ? message.getSenderCode() : "Desconocido");
+                String time = extractTime(message.getCreatedDate());
+                addChatMessageWithTime(message.getMessage(), outgoing, senderName, time);
+            }
+        }
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
     }
 
     private void addChatMessageWithTime(String message, boolean outgoing, String senderName, String time) {

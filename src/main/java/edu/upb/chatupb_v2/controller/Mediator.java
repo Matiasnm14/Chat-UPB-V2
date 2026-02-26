@@ -17,7 +17,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class Mediator {
+public class Mediator implements SocketClient.SocketListener {
     @Getter
     private Map<String, SocketClient> clients = new HashMap<>();
     @Getter
@@ -48,6 +48,41 @@ public class Mediator {
 
     public void delUi(String idUi) {
         uis.remove(idUi);
+    }
+
+    @Override
+    public void onInvitationReceived(Invitation invitation) {
+        SwingUtilities.invokeLater(() -> onInvitationReceived(invitation, invitation.getIdUser()));
+    }
+
+    @Override
+    public void onAcceptReceived(Accept accept) {
+        SwingUtilities.invokeLater(() -> onAcceptReceived(accept, accept.getIdUser()));
+    }
+
+    @Override
+    public void onDeclineReceived(Decline decline) {
+        SwingUtilities.invokeLater(() -> onDeclineReceived(decline, decline.getIdUser()));
+    }
+
+    @Override
+    public void onHelloReceived(Hello hello) {
+        onHelloReceived(hello, hello.getIdUser());
+    }
+
+    @Override
+    public void onChatReceived(Chat chat) {
+        SwingUtilities.invokeLater(() -> onChatReceived(chat, chat.getIdUser()));
+    }
+
+    @Override
+    public void onBuzzingReceived(Buzzing buzzing) {
+        SwingUtilities.invokeLater(() -> onBuzzingReceived(buzzing, buzzing.getIdUser()));
+    }
+
+    @Override
+    public void onGoodByeReceived(GoodBye goodBye) {
+        SwingUtilities.invokeLater(() -> onGoodByeReceived(goodBye, goodBye.getIdUser()));
     }
 
     public void onInvitationReceived(Invitation invitation, String clientId) {
