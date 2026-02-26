@@ -1,4 +1,4 @@
-package edu.upb.chatupb_v2.bl.message;
+package edu.upb.chatupb_v2.bl;
 
 public class Hello extends Message{
 

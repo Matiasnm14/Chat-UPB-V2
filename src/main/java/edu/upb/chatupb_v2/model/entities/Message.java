@@ -1,7 +1,7 @@
-package edu.upb.chatupb_v2.repository;
+package edu.upb.chatupb_v2.model.entities;
 
-import edu.upb.chatupb_v2.repository.enums.StatusMessage;
-import edu.upb.chatupb_v2.repository.enums.TypeMessage;
+import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
+import edu.upb.chatupb_v2.model.repository.enums.TypeMessage;
 import lombok.*;
 
 import java.io.Serializable;

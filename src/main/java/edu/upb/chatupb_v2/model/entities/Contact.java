@@ -1,4 +1,4 @@
-package edu.upb.chatupb_v2.repository;
+package edu.upb.chatupb_v2.model.entities;
 
 import lombok.*;
 
@@ -8,7 +8,7 @@ import java.io.Serializable;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Contact implements Serializable,Model {
+public class Contact implements Serializable, Model {
 
     private String id;
     private String name;

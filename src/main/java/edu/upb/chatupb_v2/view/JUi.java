@@ -1,18 +1,21 @@
-package edu.upb.chatupb_v2;
+package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.controller.ChatService;
+import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Controller;
-import edu.upb.chatupb_v2.controller.IChatView;
+import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
 import edu.upb.chatupb_v2.model.repository.*;
-import edu.upb.chatupb_v2.repository.*;
+//import edu.upb.chatupb_v2.repository.*;
 import edu.upb.chatupb_v2.model.entities.comands.Chat;
 import lombok.Getter;
+import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -33,6 +36,10 @@ public class JUi extends JFrame implements IChatView {
 
     // Añade esta variable para llevar el control del chat actual:
     private Contact currentContact;
+    @Setter
+    private ContactController contactController;
+    @Setter
+    private MessageController messageController;
 
     public JUi() {
         this.username = askForUsername();
@@ -54,7 +61,7 @@ public class JUi extends JFrame implements IChatView {
         System.out.println(userId);
         Controller.getInstance().addUi(this);
 
-        loadContacts();
+
     }
 //    public void addModel(String contact){
 //        if(!chatListModel.contains(contact)){
@@ -92,7 +99,7 @@ public class JUi extends JFrame implements IChatView {
             if (!e.getValueIsAdjusting()) {
                 currentContact = chatList.getSelectedValue();
                 if (currentContact != null) {
-                    loadMessages(currentContact.getId());
+                    messageController.onLoadMessages(currentContact.getId());
                 }
             }
         });
@@ -205,7 +212,7 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void showChat(Chat chat) {
         String name = Controller.getInstance().getClients().get(chat.getIdUser()).getNombre();
-        chatArea.append(name + " | " + chat.getMessage());
+        chatArea.append(name + " | " + chat.getMessage() + "\n");
     }
 
     @Override
@@ -230,40 +237,67 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
+    @Override
+    public void onLoadContacts(List<Contact> contacts) {
+        chatListModel.clear();
+        if (contacts != null) {
+            for (Contact c : contacts) {
+                chatListModel.addElement(c);
+            }
+        }
+    }
+
+    @Override
+    public void onLoadMessages(List<Message> messages) {
+        chatArea.setText("");
+        if (messages != null) {
+            for (Message msg : messages) {
+                String senderName;
+                if (msg.getStatusMessage().toString().equals("SENT")) {
+                    senderName = "Tú";
+                } else {
+                    senderName = currentContact.getName();
+                }
+                chatArea.append(senderName + " | " + msg.getBody() + "\n");
+            }
+        }
+    }
+
 
     // ================= DB LOADERS =================
-    private void loadContacts() {
-        try {
-            chatListModel.clear();
-            java.util.List<Contact> contacts = ContactDao.getInstance().findByOwner(this.userId);
-            if (contacts != null) {
-                for (Contact c : contacts) {
-                    chatListModel.addElement(c);
-                }
-            }
-        } catch (Exception e) {
-            logger.severe("Error cargando contactos: " + e.getMessage());
-        }
-    }
+//    private void loadContacts() {
+//        try {
+//            chatListModel.clear();
+//            java.util.List<Contact> contacts = ContactDao.getInstance().findByOwner(this.userId);
+//            if (contacts != null) {
+//                for (Contact c : contacts) {
+//                    chatListModel.addElement(c);
+//                }
+//            }
+//        } catch (Exception e) {
+//            logger.severe("Error cargando contactos: " + e.getMessage());
+//        }
+//    }
 
-    private void loadMessages(String contactId) {
-        chatArea.setText("");
-        try {
-            java.util.List<Message> messages = MessageDAO.getInstance().findByContact(contactId);
+//    private void loadMessages(String contactId) {
+//        chatArea.setText("");
+//        try {
+//            java.util.List<Message> messages = MessageDAO.getInstance().findByContact(contactId);
+//
+//            if (messages != null) {
+//                for (Message msg : messages) {
+//                    String senderName;
+//                    if (msg.getStatusMessage().toString().equals("SENT")) {
+//                        senderName = this.username;
+//                    } else {
+//                        senderName = currentContact.getName();
+//                    }
+//                    chatArea.append(senderName + " | " + msg.getBody() + "\n");
+//                }
+//            }
+//        } catch (Exception e) {
+//            logger.severe("Error cargando mensajes: " + e.getMessage());
+//        }
+//    }
 
-            if (messages != null) {
-                for (Message msg : messages) {
-                    String senderName;
-                    if (msg.getStatusMessage().toString().equals("SENT")) {
-                        senderName = this.username;
-                    } else {
-                        senderName = currentContact.getName();
-                    }
-                    chatArea.append(senderName + " | " + msg.getBody() + "\n");
-                }
-            }
-        } catch (Exception e) {
-            logger.severe("Error cargando mensajes: " + e.getMessage());
-        }
-    }
 }

@@ -1,4 +1,4 @@
-package edu.upb.chatupb_v2;
+package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.model.entities.Contact;
 

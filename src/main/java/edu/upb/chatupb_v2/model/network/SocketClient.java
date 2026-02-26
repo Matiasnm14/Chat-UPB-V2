@@ -1,6 +1,8 @@
-package edu.upb.chatupb_v2.bl.server;
+package edu.upb.chatupb_v2.model.network;
 
-import edu.upb.chatupb_v2.repository.comands.*;
+import edu.upb.chatupb_v2.controller.Controller;
+import edu.upb.chatupb_v2.model.entities.comands.*;
+//import edu.upb.chatupb_v2.model.repository.comands.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -94,6 +96,7 @@ public class SocketClient extends Thread {
         try {
             String message;
             while ((message = br.readLine()) != null) {
+                System.out.println(message);
                 String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
 

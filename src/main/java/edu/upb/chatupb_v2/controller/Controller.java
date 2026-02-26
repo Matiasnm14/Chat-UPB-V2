@@ -1,20 +1,17 @@
-package edu.upb.chatupb_v2.bl.server;
+package edu.upb.chatupb_v2.controller;
 
-import edu.upb.chatupb_v2.JUi;
-import edu.upb.chatupb_v2.repository.Message;
-import edu.upb.chatupb_v2.repository.MessageDAO;
-import edu.upb.chatupb_v2.repository.comands.*;
-import edu.upb.chatupb_v2.repository.enums.StatusMessage;
-import edu.upb.chatupb_v2.repository.enums.TypeMessage;
+import edu.upb.chatupb_v2.view.JUi;
+import edu.upb.chatupb_v2.model.entities.comands.*;
+import edu.upb.chatupb_v2.model.network.SocketClient;
+import edu.upb.chatupb_v2.model.repository.MessageDAO;
+//import edu.upb.chatupb_v2.model.repository.comands.*;
+
 import lombok.Getter;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-public class Controller {
+public class Controller  {
     @Getter
     private Map<String, SocketClient> clients = new HashMap<>();
     @Getter

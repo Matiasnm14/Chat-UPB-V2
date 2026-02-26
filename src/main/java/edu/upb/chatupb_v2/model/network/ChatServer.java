@@ -1,4 +1,4 @@
-package edu.upb.chatupb_v2.bl.server;
+package edu.upb.chatupb_v2.model.network;
 
 import lombok.Setter;
 

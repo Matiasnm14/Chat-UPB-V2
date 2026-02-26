@@ -1,4 +1,4 @@
-package edu.upb.chatupb_v2.repository.comands;
+package edu.upb.chatupb_v2.model.entities.comands;
 
 import lombok.Getter;
 

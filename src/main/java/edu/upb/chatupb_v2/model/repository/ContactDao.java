@@ -1,8 +1,9 @@
-package edu.upb.chatupb_v2.repository;
+package edu.upb.chatupb_v2.model.repository;
 
+
+import edu.upb.chatupb_v2.model.entities.Contact;
 
 import java.net.ConnectException;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
