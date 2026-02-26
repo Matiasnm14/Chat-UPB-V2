@@ -14,6 +14,7 @@ import edu.upb.chatupb_v2.model.entities.commands.Chat;
 import lombok.Getter;
 
 import javax.swing.*;
+import javax.swing.plaf.synth.SynthOptionPaneUI;
 import java.awt.*;
 import java.util.List;
 import java.util.UUID;
@@ -98,6 +99,10 @@ public class JUi extends JFrame implements IChatView {
             if (!e.getValueIsAdjusting()) {
                 currentContact = chatList.getSelectedValue();
                 if (currentContact != null) {
+                    System.out.println("///////////Datos////////////");
+                    System.out.println(currentContact.getId());
+                    System.out.println(currentContact.getName());
+                    System.out.println("//////////////////////////////");
                     messageController.onLoadMessages(currentContact.getId());
 //                    loadMessages(currentContact.getId());
                 }
@@ -212,7 +217,7 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void showChat(Chat chat) {
         String name = Controller.getInstance().getClients().get(chat.getIdUser()).getNombre();
-        chatArea.append(name + " | " + chat.getMessage());
+        chatArea.append(name + " | " + chat.getMessage()+ "\n");
     }
 
     @Override
@@ -241,7 +246,7 @@ public class JUi extends JFrame implements IChatView {
             for (Message msg : messages) {
                 String senderName;
                 if (msg.getStatusMessage().toString().equals("SENT")) {
-                    senderName = this.username;
+                    senderName = "Tú";
                 } else {
                     senderName = currentContact.getName();
                 }

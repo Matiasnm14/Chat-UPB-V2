@@ -8,8 +8,8 @@ import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
-import edu.upb.chatupb_v2.repository.enums.StatusMessage;
-import edu.upb.chatupb_v2.repository.enums.TypeMessage;
+import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
+import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -69,9 +69,10 @@ public class ChatService implements SocketClient.SocketListener{
                 socketClient.start();
 
                 Invitation myInvite = new Invitation(userId, username);
+                pendingClients.add(socketClient);
                 socketClient.send(myInvite.createFormat());
 
-                pendingClients.add(socketClient);
+
 
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
 
@@ -177,11 +178,13 @@ public class ChatService implements SocketClient.SocketListener{
                 nuevoContacto.setUserId(this.userId);
 
                 nuevoContacto.setStateConnect(true);
-
+                System.out.println("Contacto 1:" + nuevoContacto.getId());
                 ContactDao.getInstance().save(nuevoContacto);
 
                 SwingUtilities.invokeLater(() -> {
                     if (view instanceof JUi) {
+                        System.out.println("Contacto 2:" + nuevoContacto.getId());
+                        nuevoContacto.setId(invitation.getIdUser());
                         ((JUi) view).addModel(nuevoContacto);
                     }
                 });
@@ -192,14 +195,6 @@ public class ChatService implements SocketClient.SocketListener{
                 }
             } catch (Exception e) {
                 System.out.println("Error procesando invitación aceptada: " + e.getMessage());
-            }
-
-            try {
-                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
-                    if (sc != null)
-                        sc.send(acp.createFormat());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
         } else {
             Decline dec = new Decline();
@@ -217,11 +212,13 @@ public class ChatService implements SocketClient.SocketListener{
     public void onAcceptReceived(Accept accept) {
         
         SwingUtilities.invokeLater(() -> {
-
-            pendingClients.getFirst().setUid(accept.getIdUser());
-            pendingClients.getFirst().setUserName(accept.getUserName());
-            Controller.getInstance().addClients(pendingClients.getFirst());
-            pendingClients.removeFirst();
+            System.out.println("Size: "+pendingClients.size());
+            if(pendingClients.size() != 0){
+                pendingClients.getFirst().setUid(accept.getIdUser());
+                pendingClients.getFirst().setUserName(accept.getUserName());
+                Controller.getInstance().addClients(pendingClients.getFirst());
+                pendingClients.removeFirst();
+            }
 
 //            Controller.getInstance().addContact(accept.getUserName());
             view.updateStatus("Status: Online");
@@ -235,10 +232,12 @@ public class ChatService implements SocketClient.SocketListener{
                     nuevoContacto.setIp(sc.getIp());
                     nuevoContacto.setUserId(this.userId);
                     nuevoContacto.setStateConnect(true);
-
+                    System.out.println("Nuevo Contacto: "+nuevoContacto.getId());
                     ContactDao.getInstance().save(nuevoContacto);
 
                     if (view instanceof JUi) {
+                        nuevoContacto.setId(accept.getIdUser());
+                        System.out.println("Nuevo Contacto 2:"+nuevoContacto.getId());
                         ((JUi) view).addModel(nuevoContacto);
                     }
 

@@ -1,8 +1,8 @@
 package edu.upb.chatupb_v2.model.repository;
 
 import edu.upb.chatupb_v2.model.entities.Message;
-import edu.upb.chatupb_v2.repository.enums.StatusMessage;
-import edu.upb.chatupb_v2.repository.enums.TypeMessage;
+import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
+import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 
 import java.net.ConnectException;
 import java.sql.PreparedStatement;

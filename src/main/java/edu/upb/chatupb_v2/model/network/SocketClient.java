@@ -97,11 +97,12 @@ public class SocketClient extends Thread {
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
-
+                System.out.println(message);
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
                         fixClients(inv);
+
                         Controller.getInstance().notificarUI(inv);
                         break;
                     }
@@ -163,11 +164,11 @@ public class SocketClient extends Thread {
                         Theme thm = Theme.parse(message);
                         break;
                     }
-                    case "0018": {
-                        Bye bye = Bye.parse(message);
-                        Controller.getInstance().notificarUI(bye);
-                        break;
-                    }
+//                    case "0018": {
+//                        Bye bye = Bye.parse(message);
+//                        Controller.getInstance().notificarUI(bye);
+//                        break;
+//                    }
                 }
             }
         } catch (SocketException socketException){
