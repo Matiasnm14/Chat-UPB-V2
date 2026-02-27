@@ -17,5 +17,6 @@ public class Main {
         contactController.onLoadContacts();
         jUi.setMessageController(messageController);
         Controller.getInstance().setServer(new ChatServer(jUi.getUsername(), jUi.getUserId()));
+        Controller.getInstance().startHelloService();
     }
 }

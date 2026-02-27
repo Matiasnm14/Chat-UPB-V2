@@ -8,6 +8,7 @@ import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.repository.enums.TypeMessage;
 import edu.upb.chatupb_v2.view.IChatView;
 import edu.upb.chatupb_v2.view.JUi;
+import lombok.Getter;
 import lombok.Setter;
 
 import javax.swing.*;
@@ -21,11 +22,16 @@ import java.util.List;
 import java.util.UUID;
 
 public class ChatServer extends Thread {
+    @Getter
     private final String username;
+    @Getter
     private final String userId;
     private SocketClient socketClient;
     private ServerSocket serverSocket;
+    @Setter
+    @Getter
     private Thread helloThread;
+    @Getter
     private boolean isRunning = true;
 
 
@@ -33,7 +39,6 @@ public class ChatServer extends Thread {
         this.username = username;
         this.userId = userId;
         startServer();
-        startHelloService();
     }
     //ALGO
 //    @Override
@@ -78,107 +83,107 @@ public class ChatServer extends Thread {
             }
         }).start();
     }
-    public void connect(String ip) {
-        new Thread(() -> {
-            try {
-                socketClient = new SocketClient(ip);
-                socketClient.setListener(username, userId, Controller.getInstance());
+//    public void connect(String ip) {
+//        new Thread(() -> {
+//            try {
+//                socketClient = new SocketClient(ip);
+//                socketClient.setListener(username, userId, Controller.getInstance());
+//
+//                socketClient.start();
+//
+//                Invitation myInvite = new Invitation(userId, username);
+//                socketClient.send(myInvite.createFormat());
+//
+//                Controller.getInstance().getPendingClients().add(socketClient);
+//
+//                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
+//                    updateStatus("Status: Enviando invitación..."));
+//
+//            } catch (Exception e) {
+//                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId)
+//                        .showError("Error de conexión: " + e.getMessage()));
+//            }
+//        }).start();
+//    }
 
-                socketClient.start();
-
-                Invitation myInvite = new Invitation(userId, username);
-                socketClient.send(myInvite.createFormat());
-
-                Controller.getInstance().getPendingClients().add(socketClient);
-
-                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
-                    updateStatus("Status: Enviando invitación..."));
-
-            } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId)
-                        .showError("Error de conexión: " + e.getMessage()));
-            }
-        }).start();
-    }
-
-    public void sendMessage(String messageText, String destinationId) {
-        if (destinationId == null || destinationId.trim().isEmpty()) {
-            SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
-                    showError("Selecciona un contacto primero."));
-            return;
-        }
-
-        try {
-            Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
-
-            Message msgDb = new Message(
-                    chat.getIdMessage(),
-                    destinationId,
-                    messageText,
-                    TypeMessage.TEXT,
-                    StatusMessage.SENT,
-                    LocalDate.now().toString()
-            );
-            MessageDAO.getInstance().save(msgDb);
-
-            SocketClient sc = Controller.getInstance().getClients().get(destinationId);
-
-            if (sc != null) {
-                sc.send(chat.createFormat());
-                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
-                        showMessage("Tú | " + messageText));
-            } else {
-                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
-                        showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error al enviar mensaje: " + e.getMessage());
-        }
-    }
-
-    public void sendBuzz() {
-        for (SocketClient sc : Controller.getInstance().getClients().values()) {
-            Buzzing bz = new Buzzing(this.userId);
-            try {
-                sc.send(bz.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
-        }
-    }
-
-    public void sendBye(){
-        for (SocketClient sc : Controller.getInstance().getClients().values()) {
-            Bye bye = new Bye(this.userId);
-            try {
-                sc.send(bye.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
-        }
-    }
-
-    private void startHelloService() {
-        helloThread = new Thread(() -> {
-            while (isRunning) {
-                try {
-                    Thread.sleep(5000);
-                    for (SocketClient client : Controller.getInstance().getClients().values()) {
-                        Hello hello = new Hello(userId);
-                        try {
-                            client.send(hello.createFormat());
-                        } catch (IOException e) {
-                            System.out.println(e.getMessage());
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        });
-        helloThread.start();
-    }
+//    public void sendMessage(String messageText, String destinationId) {
+//        if (destinationId == null || destinationId.trim().isEmpty()) {
+//            SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
+//                    showError("Selecciona un contacto primero."));
+//            return;
+//        }
+//
+//        try {
+//            Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
+//
+//            Message msgDb = new Message(
+//                    chat.getIdMessage(),
+//                    destinationId,
+//                    messageText,
+//                    TypeMessage.TEXT,
+//                    StatusMessage.SENT,
+//                    LocalDate.now().toString()
+//            );
+//            MessageDAO.getInstance().save(msgDb);
+//
+//            SocketClient sc = Controller.getInstance().getClients().get(destinationId);
+//
+//            if (sc != null) {
+//                sc.send(chat.createFormat());
+//                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
+//                        showMessage("Tú | " + messageText));
+//            } else {
+//                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(userId).
+//                        showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
+//            }
+//
+//        } catch (Exception e) {
+//            System.out.println("Error al enviar mensaje: " + e.getMessage());
+//        }
+//    }
+//
+//    public void sendBuzz() {
+//        for (SocketClient sc : Controller.getInstance().getClients().values()) {
+//            Buzzing bz = new Buzzing(this.userId);
+//            try {
+//                sc.send(bz.createFormat());
+//            } catch (IOException e) {
+//                System.out.println(e.getMessage());
+//            }
+//        }
+//    }
+//
+//    public void sendBye(){
+//        for (SocketClient sc : Controller.getInstance().getClients().values()) {
+//            Bye bye = new Bye(this.userId);
+//            try {
+//                sc.send(bye.createFormat());
+//            } catch (IOException e) {
+//                System.out.println(e.getMessage());
+//            }
+//        }
+//    }
+//
+//    private void startHelloService() {
+//        helloThread = new Thread(() -> {
+//            while (isRunning) {
+//                try {
+//                    Thread.sleep(5000);
+//                    for (SocketClient client : Controller.getInstance().getClients().values()) {
+//                        Hello hello = new Hello(userId);
+//                        try {
+//                            client.send(hello.createFormat());
+//                        } catch (IOException e) {
+//                            System.out.println(e.getMessage());
+//                        }
+//                    }
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                    break;
+//                }
+//            }
+//        });
+//        helloThread.start();
+//    }
 
 }
