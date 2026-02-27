@@ -63,7 +63,7 @@ public class JUi extends JFrame implements IChatView {
         }catch (Exception e){
             e.printStackTrace();
         }
-        Controller.getInstance().createServer(this);
+
         System.out.println(userId);
         Controller.getInstance().addUi(this);
 

@@ -8,6 +8,7 @@ import edu.upb.chatupb_v2.model.repository.MessageDAO;
 //import edu.upb.chatupb_v2.model.repository.comands.*;
 
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,7 +23,7 @@ public class Controller implements SocketClient.SocketListener {
     private static Controller instance;
     @Getter
     private List<SocketClient> pendingClients = new ArrayList<>();
-
+    @Setter
     private ChatServer server;
 
     public static Controller getInstance() {
@@ -126,12 +127,7 @@ public class Controller implements SocketClient.SocketListener {
         uis.remove(idUi);
     }
 
-    public ChatServer createServer(JUi view){
-        if (server == null){
-            server = new ChatServer(view.getUsername(), view.getUserId());
-        }
-        return server;
-    }
+
 
     public void sendMessage(String texto, String idContacto){
         if (clients.containsKey(idContacto)){
