@@ -1,20 +1,16 @@
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.controller.ChatService;
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Controller;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
-import edu.upb.chatupb_v2.model.repository.ContactDao;
-import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import edu.upb.chatupb_v2.model.repository.UserDao;
 import edu.upb.chatupb_v2.model.entities.commands.Chat;
 import lombok.Getter;
 
 import javax.swing.*;
-import javax.swing.plaf.synth.SynthOptionPaneUI;
 import java.awt.*;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +18,7 @@ import java.util.logging.Logger;
 
 public class JUi extends JFrame implements IChatView {
 
-    private ChatService chatService;
+    private Controller controller;
     private ContactController contactController;
     private MessageController messageController;
     private String username;
@@ -37,7 +33,6 @@ public class JUi extends JFrame implements IChatView {
     private DefaultListModel<Contact> chatListModel;
     private JList<Contact> chatList;
 
-    // Añade esta variable para llevar el control del chat actual:
     private Contact currentContact;
 
     public JUi() {
@@ -56,19 +51,11 @@ public class JUi extends JFrame implements IChatView {
         }catch (Exception e){
             e.printStackTrace();
         }
-        this.chatService = new ChatService(this, username, userId);
+        this.controller = Controller.getInstance();
+        controller.initController(username,userId,this);
         System.out.println(userId);
         Controller.getInstance().addUi(this);
-
-
-
     }
-//    public void addModel(String contact){
-//        if(!chatListModel.contains(contact)){
-//            chatListModel.add(chatListModel.size(),contact);
-//        }
-//    }
-
     private String askForUsername() {
         return JOptionPane.showInputDialog(
                 this,
@@ -89,9 +76,8 @@ public class JUi extends JFrame implements IChatView {
         chatListModel = new DefaultListModel<>();
         chatList = new JList<>(chatListModel);
         chatList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        chatList.setFixedCellHeight(40); // Ajusta la altura si lo ves muy separado
+        chatList.setFixedCellHeight(40);
 
-        // ¡AQUÍ USAS TU RENDERER PERSONALIZADO!
         chatList.setCellRenderer(new ContactRender());
 
 
@@ -104,7 +90,6 @@ public class JUi extends JFrame implements IChatView {
                     System.out.println(currentContact.getName());
                     System.out.println("//////////////////////////////");
                     messageController.onLoadMessages(currentContact.getId());
-//                    loadMessages(currentContact.getId());
                 }
             }
         });
@@ -159,18 +144,18 @@ public class JUi extends JFrame implements IChatView {
 
             if (!texto.isEmpty() && currentContact != null) {
 
-                chatService.sendMessage(texto, currentContact.getId());
+                controller.sendMessage(texto, currentContact.getId());
                 jTextMensaje.setText("");
             } else if (currentContact == null) {
                 showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
             }
         });
 
-        btnBuzz.addActionListener(e -> chatService.sendBuzz());
-        btnOffline.addActionListener(e -> chatService.sendBye());
+        btnBuzz.addActionListener(e -> controller.sendBuzz());
+        btnOffline.addActionListener(e -> controller.sendBye());
 
         btnNewConnection.addActionListener(e ->
-                new ConnectionDialog(this, chatService).setVisible(true)
+                new ConnectionDialog(this, controller).setVisible(true)
         );
     }
 
@@ -255,7 +240,8 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
-    public void addModel(Contact contact) {
+    @Override
+    public void onAddModel(Contact contact) {
         boolean exists = false;
         for (int i = 0; i < chatListModel.size(); i++) {
             if (chatListModel.get(i).getId().equals(contact.getId())) {
@@ -266,23 +252,6 @@ public class JUi extends JFrame implements IChatView {
         if (!exists) {
             chatListModel.addElement(contact);
         }
-    }
-
-
-    // ================= DB LOADERS =================
-//    private void loadContacts() {
-//        try {
-//
-////            java.util.List<Contact> contacts = ContactDao.getInstance().findByOwner(this.userId);
-//
-//        } catch (Exception e) {
-//            logger.severe("Error cargando contactos: " + e.getMessage());
-//        }
-//    }
-
-    private void loadMessages(String contactId) {
-
-
     }
     public void setContactController(ContactController contactController){
         this.contactController = contactController;

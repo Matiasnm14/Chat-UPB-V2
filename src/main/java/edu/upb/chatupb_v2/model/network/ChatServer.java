@@ -1,7 +1,9 @@
 package edu.upb.chatupb_v2.model.network;
 
+import edu.upb.chatupb_v2.controller.Controller;
 import lombok.Setter;
 
+import javax.swing.*;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -10,17 +12,15 @@ import java.util.UUID;
 
 public class ChatServer extends Thread {
     private static final int port = 1900;
-    private DataOutputStream dout;
     private final ServerSocket server;
-    private final UUID id = UUID.randomUUID();
-    private String name;
-    @Setter
-    private SocketClient.SocketListener uiListener;
-    SocketClient socketClient;
+    private final String username;
+    private final String userId;
 
-    public ChatServer() throws IOException {
+    public ChatServer(String username, String userId) throws IOException {
+        this.username = username;
+        this.userId = userId;
         this.server = new ServerSocket(port);
-        this.start();
+        System.out.println("Servidor escuchando en puerto " + port + "...");
     }
     //ALGO
     @Override
@@ -28,17 +28,16 @@ public class ChatServer extends Thread {
         while (true) {
             try {
                 Socket socket = server.accept();
-                System.out.println("Conexión entrante aceptada.");
+                System.out.println("Conexión entrante aceptada desde: " + socket.getInetAddress());
 
-                this.socketClient = new SocketClient(socket);
+                SocketClient newClient = new SocketClient(socket);
+                newClient.setListener(username, userId, Controller.getInstance());
 
-                if (uiListener != null) {
-                    this.socketClient.setListener(name, id.toString(), uiListener);
-                }
+                Controller.getInstance().getPendingClients().add(newClient);
+                newClient.start();
 
-                this.socketClient.start();
             } catch (IOException io) {
-                System.out.println(getAllStackTraces());
+                System.out.println("Error en el servidor: " + io.getMessage());
             }
         }
     }

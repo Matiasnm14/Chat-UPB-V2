@@ -16,4 +16,5 @@ public interface IChatView {
     void showByeNotification(String id);
     void onLoadContacts(List<Contact> contacts);
     void onLoadMessages(List<Message> messages);
+    void onAddModel(Contact contact);
 }
