@@ -25,4 +25,8 @@ public class MessageController {
             e.printStackTrace();
         }
     }
+
+    public void save(Message mesg) throws Exception{
+        messageDAO.save(mesg);
+    }
 }

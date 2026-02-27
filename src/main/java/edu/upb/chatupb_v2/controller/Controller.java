@@ -80,6 +80,7 @@ public class Controller implements SocketClient.SocketListener {
             if (command instanceof Chat) {
 
                 sl.onChatReceived((Chat) command);
+
             }
 
             if (command instanceof ConfirmRecived) {

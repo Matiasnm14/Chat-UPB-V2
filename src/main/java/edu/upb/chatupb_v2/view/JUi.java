@@ -392,7 +392,7 @@ public class JUi extends JFrame implements IChatView {
                     StatusMessage.READ,
                     LocalDate.now().toString()
             );
-            MessageDAO.getInstance().save(msgDb);
+            messageController.save(msgDb);
 
         } catch (Exception e) {
             System.out.println("Error al guardar mensaje recibido: " + e.getMessage());
