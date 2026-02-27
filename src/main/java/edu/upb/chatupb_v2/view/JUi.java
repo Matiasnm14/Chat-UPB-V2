@@ -4,10 +4,10 @@
  */
 package edu.upb.chatupb_v2.view;
 
+import edu.upb.chatupb_v2.controller.ChatServer;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
-import edu.upb.chatupb_v2.model.network.ChatService;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import edu.upb.chatupb_v2.model.network.SocketClient;
@@ -15,6 +15,7 @@ import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -27,10 +28,9 @@ import java.util.UUID;
  * @author USER 1
  */
 @Getter
-public class JUi extends IChatView {
+public class JUi extends JFrame implements IChatView {
     //YA NO HAY CHAT SERVER!
-//    ChatServer server;
-    private ChatService chatService;
+    private ChatServer chatServer;
     private MessageController messageController;
 //    SocketClient socketClient;
     private final String username = "Ciro";
@@ -52,9 +52,14 @@ public class JUi extends IChatView {
 
     public JUi() {
         initComponents();
-        this.chatService = new ChatService(this, username, userId.toString());
         this.messageController = new MessageController(this);
         Mediator.getInstance().addUi(this);
+        try {
+            this.chatServer = new ChatServer();
+        } catch (IOException e) {
+            showError("No se pudo iniciar el servidor (¿Puerto 1900 ocupado?): " + e.getMessage());
+        }
+        Mediator.getInstance().startHelloService(userId.toString());
     }
 
     private void initComponents() {
@@ -109,7 +114,7 @@ public class JUi extends IChatView {
         styleButtonPrimary(jbEnviar);
         styleButtonGhost(jBforBuzzing);
 
-        jbConectar.addActionListener(evt -> chatService.connect(jIP.getText()));
+        jbConectar.addActionListener(evt -> Mediator.getInstance().connect(jIP.getText(), username, userId.toString(), this));
         jbEnviar.addActionListener(evt -> {
             String text = jTextMensaje.getText() == null ? "" : jTextMensaje.getText().trim();
             if (text.isEmpty()) {
@@ -120,10 +125,10 @@ public class JUi extends IChatView {
                 senderName = username;
             }
             addChatMessage(text, true, senderName);
-            chatService.sendMessage(text);
+            Mediator.getInstance().sendMessage(text, userId.toString());
             jTextMensaje.setText("");
         });
-        jBforBuzzing.addActionListener(evt -> chatService.sendBuzz());
+        jBforBuzzing.addActionListener(evt -> Mediator.getInstance().sendBuzz(userId.toString()));
 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BG_APP);

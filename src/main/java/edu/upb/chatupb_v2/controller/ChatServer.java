@@ -37,7 +37,7 @@ public class ChatServer extends Thread {
                     this.socketClient.setClient(name, id.toString());
                 }
 
-                Mediator.getInstance().addClients(socketClient);
+                Mediator.getInstance().addPendingClient(socketClient);
 
                 this.socketClient.start();
             } catch (IOException io) {

@@ -5,6 +5,7 @@ import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import edu.upb.chatupb_v2.model.network.SocketClient;
+import edu.upb.chatupb_v2.view.IChatView;
 import edu.upb.chatupb_v2.view.JUi;
 import lombok.Getter;
 
@@ -12,20 +13,26 @@ import javax.swing.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class Mediator implements SocketClient.SocketListener {
     @Getter
     private Map<String, SocketClient> clients = new HashMap<>();
     @Getter
     private Map<String, JUi> uis = new HashMap<>();
+    private final Deque<SocketClient> pendingClients = new ArrayDeque<>();
     private final ContactDao contactDao = new ContactDao();
     private final Set<String> blacklistedUsers = new HashSet<>();
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Mediator instance;
+    private Thread helloThread;
+    private volatile boolean helloRunning;
 
     private Mediator() {}
 
@@ -42,12 +49,91 @@ public class Mediator implements SocketClient.SocketListener {
         clients.remove(idUser);
     }
 
+    public void addPendingClient(SocketClient client) {
+        if (client != null) {
+            pendingClients.addLast(client);
+        }
+    }
+
     public void addUi(JUi ui) {
         uis.putIfAbsent(ui.getUserId().toString(), ui);
     }
 
     public void delUi(String idUi) {
         uis.remove(idUi);
+    }
+
+    public void connect(String ip, String username, String userId, IChatView view) {
+        new Thread(() -> {
+            try {
+                SocketClient socketClient = new SocketClient(ip);
+                socketClient.setClient(username, userId);
+                Mediator.getInstance().addClients(socketClient);
+                socketClient.start();
+
+                Invitation myInvite = new Invitation(userId, username);
+                socketClient.send(myInvite.createFormat());
+
+                if (view != null) {
+                    SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
+                }
+            } catch (Exception e) {
+                if (view != null) {
+                    SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
+                }
+            }
+        }).start();
+    }
+
+    public void sendMessage(String messageText, String userId) {
+        try {
+            String messageId = UUID.randomUUID().toString();
+            Chat chat = new Chat(userId, messageId, messageText);
+            for (SocketClient sc : Mediator.getInstance().getClients().values()) {
+                sc.send(chat.createFormat());
+                String recipientCode = sc.getUID() != null ? sc.getUID() : sc.getIp();
+                saveOutgoingMessage(messageId, userId, recipientCode, messageText, sc.getIp());
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public void sendBuzz(String userId) {
+        for (SocketClient sc : Mediator.getInstance().getClients().values()) {
+            Buzzing bz = new Buzzing(userId);
+            try {
+                sc.send(bz.createFormat());
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
+    public void startHelloService(String userId) {
+        if (helloRunning) {
+            return;
+        }
+        helloRunning = true;
+        helloThread = new Thread(() -> {
+            while (helloRunning) {
+                try {
+                    Thread.sleep(5000);
+                    for (SocketClient client : Mediator.getInstance().getClients().values()) {
+                        Hello hello = new Hello(userId);
+                        try {
+                            client.send(hello.createFormat());
+                        } catch (IOException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+        helloThread.start();
     }
 
     @Override
@@ -90,12 +176,10 @@ public class Mediator implements SocketClient.SocketListener {
             boolean autoRejected = isBlacklisted(invitation.getIdUser());
             boolean accepted = !autoRejected && view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
 
-            SocketClient pendingClient = null;
-            if (!view.getChatService().getPendingClients().isEmpty()) {
-                pendingClient = view.getChatService().getPendingClients().getFirst();
+            SocketClient pendingClient = pendingClients.pollFirst();
+            if (pendingClient != null) {
                 pendingClient.setUid(invitation.getIdUser());
                 Mediator.getInstance().addClients(pendingClient);
-                view.getChatService().getPendingClients().removeFirst();
             }
 
             if (accepted) {
@@ -201,23 +285,21 @@ public class Mediator implements SocketClient.SocketListener {
 
     public void onChatReceived(Chat chat, String clientId) {
         for (JUi view : uis.values()) {
-            if (view.getChatService().isOnline()) {
-                System.out.println("Mensaje: " + chat.getMessage());
-                SocketClient sc = Mediator.getInstance().getClients().get(chat.getIdUser());
-                saveIncomingMessage(chat, view.getUserId().toString(), sc != null ? sc.getIp() : null);
-                String name = "Desconocido";
-                if (sc != null && sc.getNombre() != null) {
-                    name = sc.getNombre();
-                }
-                String finalName = name;
-                SwingUtilities.invokeLater(() -> view.addChatMessage(chat.getMessage(), false, finalName));
-                ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-                for (SocketClient client : Mediator.getInstance().getClients().values()) {
-                    try {
-                        client.send(confirmRecived.createFormat());
-                    } catch (IOException e) {
-                        System.out.println(e.getMessage());
-                    }
+            System.out.println("Mensaje: " + chat.getMessage());
+            SocketClient sc = Mediator.getInstance().getClients().get(chat.getIdUser());
+            saveIncomingMessage(chat, view.getUserId().toString(), sc != null ? sc.getIp() : null);
+            String name = "Desconocido";
+            if (sc != null && sc.getNombre() != null) {
+                name = sc.getNombre();
+            }
+            String finalName = name;
+            SwingUtilities.invokeLater(() -> view.addChatMessage(chat.getMessage(), false, finalName));
+            ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
+            for (SocketClient client : Mediator.getInstance().getClients().values()) {
+                try {
+                    client.send(confirmRecived.createFormat());
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
                 }
             }
         }
@@ -292,6 +374,26 @@ public class Mediator implements SocketClient.SocketListener {
             new MessageDAO().save(message);
         } catch (Exception e) {
             System.out.println("No se pudo guardar mensaje recibido: " + e.getMessage());
+        }
+    }
+
+    private void saveOutgoingMessage(String codMessage, String senderCode, String recipientCode, String content, String roomCode) {
+        if (content == null || content.isBlank()) {
+            return;
+        }
+        MessageDAO.Message message = MessageDAO.Message.builder()
+                .codMessage(codMessage)
+                .senderCode(senderCode)
+                .recipientCode(recipientCode)
+                .message(content)
+                .type(TypeMessage.TEXT)
+                .createdDate(LocalDateTime.now().format(DATE_FORMAT))
+                .roomCode(roomCode)
+                .build();
+        try {
+            new MessageDAO().save(message);
+        } catch (Exception e) {
+            System.out.println("No se pudo guardar mensaje: " + e.getMessage());
         }
     }
 
