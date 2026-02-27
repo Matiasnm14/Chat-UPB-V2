@@ -53,20 +53,7 @@ public class SocketClient extends Thread {
 
     //ALGO
     public interface SocketListener {
-        void onInvitationReceived(Invitation invitation);
-        void onAcceptReceived(Accept accept);
-        void onDeclineReceived(Decline decline);
-        void onHelloReceived(Hello hello);
-        void onAcceptHelloReceived(AcceptHello acceptHello);
-        void onDeclineHelloReceived(DeclineHello declineHello);
-        void onChatReceived(Chat chat);
-        void onConfirmedReceived(ConfirmRecived confirmRecived);
-        void onDeleteMessageReceived(DeleteMessage deleteMessage);
-        void onBuzzingReceived(Buzzing buzzing);
-        void onPinMessageReceived(PinMessage pinMessage);
-        void onUniqueMessageReceived(UniqueMessage uniqueMessage);
-        void onThemeReceived(Theme theme);
-        void onByeReceived(Bye bye);
+        void notificarUI(Command command, String clientId) throws Exception;
     }
 
     public void setListener(String name, String key, SocketListener listener) {
@@ -104,53 +91,53 @@ public class SocketClient extends Thread {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
                         fixClients(inv);
-                        Controller.getInstance().notificarUI(inv);
+                        Controller.getInstance().notificarUI(inv, uid);
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
                         fixClients(acp);
-                        Controller.getInstance().notificarUI(acp);
+                        Controller.getInstance().notificarUI(acp, uid);
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
-                        Controller.getInstance().notificarUI(dec);
+                        Controller.getInstance().notificarUI(dec, uid);
                         break;
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
-                        Controller.getInstance().notificarUI(hel);
+                        Controller.getInstance().notificarUI(hel, uid);
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
-                        Controller.getInstance().notificarUI(acpHel);
+                        Controller.getInstance().notificarUI(acpHel, uid);
                         break;
                     }
                     case "006": {
                         DeclineHello decHel = DeclineHello.parse(message);
-                        Controller.getInstance().notificarUI(decHel);
+                        Controller.getInstance().notificarUI(decHel, uid);
                         break;
                     }
                     case "007": {
                         Chat cht = Chat.parse(message);
-                        Controller.getInstance().notificarUI(cht);
+                        Controller.getInstance().notificarUI(cht, uid);
                         break;
                     }
                     case "008": {
                         ConfirmRecived conRec = ConfirmRecived.parse(message);
-                        Controller.getInstance().notificarUI(conRec);
+                        Controller.getInstance().notificarUI(conRec, uid);
                         break;
                     }
                     case "009": {
                         DeleteMessage delMes = DeleteMessage.parse(message);
-                        Controller.getInstance().notificarUI(delMes);
+                        Controller.getInstance().notificarUI(delMes, uid);
                         break;
                     }
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
-                        Controller.getInstance().notificarUI(buz);
+                        Controller.getInstance().notificarUI(buz, uid);
                         break;
                     }
                     case "011": {
@@ -167,7 +154,7 @@ public class SocketClient extends Thread {
                     }
                     case "0018": {
                         Bye bye = Bye.parse(message);
-                        Controller.getInstance().notificarUI(bye);
+                        Controller.getInstance().notificarUI(bye, uid);
                         break;
                     }
                 }

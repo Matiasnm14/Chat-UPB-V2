@@ -1,13 +1,13 @@
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.controller.ChatService;
+import edu.upb.chatupb_v2.controller.Controller;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class ConnectionDialog extends JDialog {
 
-    public ConnectionDialog(JFrame parent, ChatService chatService) {
+    public ConnectionDialog(JFrame parent) {
         super(parent, "Nueva Conexión", true);
 
         setSize(400, 200);
@@ -32,7 +32,7 @@ public class ConnectionDialog extends JDialog {
         add(btnConnect, BorderLayout.SOUTH);
 
         btnConnect.addActionListener(e -> {
-            chatService.connect(txtIP.getText());
+            Controller.getInstance().connect(txtIP.getText());
             dispose();
         });
     }
