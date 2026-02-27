@@ -1,6 +1,9 @@
 package edu.upb.chatupb_v2.VIews;
 
+import edu.upb.chatupb_v2.Model.entities.Message;
 import edu.upb.chatupb_v2.Model.entities.comands.Chat;
+
+import java.util.List;
 
 public interface IChatView {
     void updateStatus(String status);
@@ -11,5 +14,6 @@ public interface IChatView {
     void showChat(Chat chat);
 
     void renderContacts();
+    void renderMessages(List<Message> list);
     void showByeNotification(String id);
 }

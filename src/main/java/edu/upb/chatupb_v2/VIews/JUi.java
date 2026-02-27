@@ -3,6 +3,7 @@ package edu.upb.chatupb_v2.VIews;
 import edu.upb.chatupb_v2.Controller.ChatService;
 import edu.upb.chatupb_v2.Controller.ContactController;
 import edu.upb.chatupb_v2.Controller.Controller;
+import edu.upb.chatupb_v2.Model.entities.Message;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.repository.UserDAO;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -22,7 +24,7 @@ public class JUi extends JFrame implements IChatView {
 
     private ChatService chatService;
     private String username;
-    private final UUID userId = UUID.randomUUID();
+    private final UUID userId = UUID.fromString("557e37e7-4853-4136-aae5-fce08e133272");
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
     private DefaultListModel<User> chatListModel;
@@ -30,6 +32,7 @@ public class JUi extends JFrame implements IChatView {
 
     public void setController(ContactController controller) {
         this.controller = controller;
+        renderContacts();
     }
 
     private ContactController controller;
@@ -137,6 +140,11 @@ public class JUi extends JFrame implements IChatView {
                     try {
                         SocketClient cs = new SocketClient(selectedOne.getIp());
                         Invitation inv = new Invitation(this.userId.toString(), this.username);
+                        try{
+                            renderMessages(controller.returnMessages(this.userId.toString(), selectedOne.getId()));
+                        } catch (Exception ex){
+                            System.out.println(ex.getMessage());
+                        }
                         cs.send(inv.createFormat());
                     } catch (IOException ex) {
                         showError("Error conectando con el usuario.");
@@ -145,7 +153,6 @@ public class JUi extends JFrame implements IChatView {
             }
         });
 
-        renderContacts();
     }
 
     public void init() {
@@ -213,16 +220,32 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void renderContacts() {
         chatListModel.clear();
-        java.util.List<User> users = new ArrayList<>();
         try {
-            users = UserDAO.getInstance().findAll();
-        } catch (SQLException | ConnectException e) {
-            logger.warning(e.getMessage());
+            List<User> users = controller.returnContacts();
+            for (User user : users) {
+                chatListModel.addElement(user);
+            }
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
+    @Override
+    public void renderMessages(List<Message> messages) {
+        messagesPanel.removeAll();
+
+        for (Message message : messages) {
+            boolean isOwn = message.getIdUser().equals(userId.toString());
+            MessageBubble bubble = new MessageBubble(message.getBody(), isOwn);
+            messagesPanel.add(bubble);
         }
 
-        for (User user : users) {
-            chatListModel.addElement(user);
-        }
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+
+        SwingUtilities.invokeLater(() -> {
+            JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            vertical.setValue(vertical.getMaximum());
+        });
     }
 
     @Override

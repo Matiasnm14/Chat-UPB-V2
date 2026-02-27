@@ -1,6 +1,7 @@
 package edu.upb.chatupb_v2.Controller;
 
 import edu.upb.chatupb_v2.Model.entities.comands.*;
+import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
 import lombok.Getter;
@@ -23,7 +24,7 @@ public class Controller {
 
     public void notificarUI(Command command) throws Exception {
         if (command instanceof Invitation){
-            SocketClient.SocketListener sl = clients
+            SocketListener sl = clients
                     .get(((Invitation) command)
                             .getIdUser())
                     .getListener()
@@ -32,7 +33,7 @@ public class Controller {
             sl.onInvitationReceived((Invitation) command);
         }
         if (command instanceof Accept) {
-            SocketClient.SocketListener sl = clients
+            SocketListener sl = clients
                     .get(((Accept) command)
                             .getIdUser())
                     .getListener()
@@ -42,19 +43,19 @@ public class Controller {
         }
         if (command instanceof Decline){
             for (SocketClient sc : clients.values()){
-                SocketClient.SocketListener sl = sc.getListener().get(sc.getUID());
+                SocketListener sl = sc.getListener().get(sc.getUID());
                 sl.onDeclineReceived((Decline) command);
             }
         }
         if (command instanceof Hello){
             for (SocketClient sc : clients.values()){
-                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                for (SocketListener sl : sc.getListener().values()){
                     sl.onHelloReceived((Hello) command);
                 }
             }
         }
         if (command instanceof AcceptHello){
-            SocketClient.SocketListener sl = clients
+            SocketListener sl = clients
                     .get(((AcceptHello) command)
                             .getIdUser())
                     .getListener()
@@ -64,14 +65,14 @@ public class Controller {
         }
         if (command instanceof DeclineHello){
             for (SocketClient sc : clients.values()){
-                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                for (SocketListener sl : sc.getListener().values()){
                     sl.onDeclineHelloReceived((DeclineHello) command);
                 }
             }
         }
 
         if (command instanceof Chat) {
-            SocketClient.SocketListener sl = clients
+            SocketListener sl = clients
                     .get(((Chat) command)
                             .getIdUser())
                     .getListener()
@@ -82,7 +83,7 @@ public class Controller {
 
         if (command instanceof ConfirmRecived){
             for (SocketClient sc : clients.values()){
-                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                for (SocketListener sl : sc.getListener().values()){
                     sl.onConfirmedReceived((ConfirmRecived) command);
                 }
             }
@@ -94,14 +95,14 @@ public class Controller {
         }
 
         if (command instanceof Buzzing){
-            SocketClient.SocketListener sl = clients.get(((Buzzing) command).getIdUser()).getListener().get(((Buzzing) command).getIdUser());
+            SocketListener sl = clients.get(((Buzzing) command).getIdUser()).getListener().get(((Buzzing) command).getIdUser());
             sl.onBuzzingReceived((Buzzing) command);
         }
 
 
         if (command instanceof Bye){
             for (SocketClient sc : clients.values()){
-                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                for (SocketListener sl : sc.getListener().values()){
                     sl.onByeReceived((Bye) command);
                 }
             }

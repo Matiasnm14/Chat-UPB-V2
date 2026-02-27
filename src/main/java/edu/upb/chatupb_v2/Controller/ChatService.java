@@ -1,6 +1,7 @@
 package edu.upb.chatupb_v2.Controller;
 
 import edu.upb.chatupb_v2.Model.entities.comands.*;
+import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import edu.upb.chatupb_v2.Model.entities.Message;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
@@ -17,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class ChatService implements SocketClient.SocketListener {
+public class ChatService implements SocketListener {
     private final IChatView view;
     private final String username;
     private final String userId;
@@ -83,8 +84,6 @@ public class ChatService implements SocketClient.SocketListener {
                     chat.getIdMessage(),
                     this.userId,
                     messageText,
-                    TypeMessage.TEXT,
-                    StatusMessage.SENT,
                     LocalDate.now().toString()
             ));
             for (SocketClient sc : Controller.getInstance().getClients().values()) {
