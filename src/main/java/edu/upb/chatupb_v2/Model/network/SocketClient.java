@@ -1,6 +1,7 @@
 package edu.upb.chatupb_v2.Model.network;
 
-import edu.upb.chatupb_v2.Controller.Controller;
+import edu.upb.chatupb_v2.Controller.ClientController;
+import edu.upb.chatupb_v2.Controller.exceptions.ChatException;
 import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
@@ -19,8 +20,6 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class SocketClient extends Thread {
-    @Getter
-    private final Map<String, SocketListener> listener = new HashMap<>();
     private final DataOutputStream dout;
     private final BufferedReader br;
     private final Socket socket;
@@ -29,6 +28,10 @@ public class SocketClient extends Thread {
     private String uid;
     @Getter
     private final String ip;
+
+    @Getter
+    @Setter
+    private SocketListener socketListener;
 
     public String getUID() {
         return uid;
@@ -54,26 +57,30 @@ public class SocketClient extends Thread {
 
     //ALGO
 
-    public void setListener(String name, String key, SocketListener listener) {
-        this.listener.put(key, listener);
-        this.uid = key;
-        this.name = name;
+    private void handleInvitation(Invitation inv) throws Exception {
+
+        this.uid = inv.getIdUser();
+        this.name = inv.getUserName();
+
+        ClientController.getInstance().registerClient(this);
+
+        if (!UserDAO.getInstance().existByCode(uid)) {
+            UserDAO.getInstance().save(new User(uid, name, this.ip));
+        }
+        ClientController.getInstance().notificarUI(inv);
     }
 
-    private void fixClients(Command c) throws Exception {
-        SocketListener sl = listener.get(uid);
-        listener.remove(uid);
-        if (c instanceof Invitation) {
-            this.name = ((Invitation) c).getUserName();
-            this.uid = ((Invitation) c).getIdUser();
-        } else if (c instanceof Accept) {
-            this.name = ((Accept) c).getUserName();
-            this.uid = ((Accept) c).getIdUser();
+    private void handleAccept(Accept acp) throws Exception {
+        this.uid = acp.getIdUser();
+        this.name = acp.getUserName();
+
+        ClientController.getInstance().registerClient(this);
+
+        if (!UserDAO.getInstance().existByCode(uid)) {
+            UserDAO.getInstance().save(new User(uid, name, this.ip));
         }
-        listener.put(uid, sl);
-        Controller.getInstance().addClients(this);
-        if (!UserDAO.getInstance().existByCode(uid))
-            UserDAO.getInstance().save(new User(uid,name,this.ip));
+
+        ClientController.getInstance().notificarUI(acp);
     }
 
     @Override
@@ -87,54 +94,52 @@ public class SocketClient extends Thread {
                 switch (split[0]) {
                     case "001": {
                         Invitation inv = Invitation.parse(message);
-                        fixClients(inv);
-                        Controller.getInstance().notificarUI(inv);
+                        handleInvitation(inv);
                         break;
                     }
                     case "002": {
                         Accept acp = Accept.parse(message);
-                        fixClients(acp);
-                        Controller.getInstance().notificarUI(acp);
+                        handleAccept(acp);
                         break;
                     }
                     case "003": {
                         Decline dec = Decline.parse(message);
-                        Controller.getInstance().notificarUI(dec);
+                        ClientController.getInstance().notificarUI(dec);
                         break;
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
-                        Controller.getInstance().notificarUI(hel);
+                        ClientController.getInstance().notificarUI(hel);
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
-                        Controller.getInstance().notificarUI(acpHel);
+                        ClientController.getInstance().notificarUI(acpHel);
                         break;
                     }
                     case "006": {
                         DeclineHello decHel = DeclineHello.parse(message);
-                        Controller.getInstance().notificarUI(decHel);
+                        ClientController.getInstance().notificarUI(decHel);
                         break;
                     }
                     case "007": {
                         Chat cht = Chat.parse(message);
-                        Controller.getInstance().notificarUI(cht);
+                        ClientController.getInstance().notificarUI(cht);
                         break;
                     }
                     case "008": {
                         ConfirmRecived conRec = ConfirmRecived.parse(message);
-                        Controller.getInstance().notificarUI(conRec);
+                        ClientController.getInstance().notificarUI(conRec);
                         break;
                     }
                     case "009": {
                         DeleteMessage delMes = DeleteMessage.parse(message);
-                        Controller.getInstance().notificarUI(delMes);
+                        ClientController.getInstance().notificarUI(delMes);
                         break;
                     }
                     case "010": {
                         Buzzing buz = Buzzing.parse(message);
-                        Controller.getInstance().notificarUI(buz);
+                        ClientController.getInstance().notificarUI(buz);
                         break;
                     }
                     case "011": {
@@ -151,7 +156,7 @@ public class SocketClient extends Thread {
                     }
                     case "0018": {
                         Bye bye = Bye.parse(message);
-                        Controller.getInstance().notificarUI(bye);
+                        ClientController.getInstance().notificarUI(bye);
                         break;
                     }
                 }
@@ -159,6 +164,7 @@ public class SocketClient extends Thread {
         } catch (SocketException socketException){
             System.out.println("Socket cerrado [Excepción de SocketClient]");
             this.close();
+            throw new ChatException("MUERTO");
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } catch (Exception e) {

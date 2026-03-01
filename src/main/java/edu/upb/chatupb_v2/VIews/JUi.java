@@ -1,32 +1,17 @@
 package edu.upb.chatupb_v2.VIews;
 
-import edu.upb.chatupb_v2.Controller.ChatService;
-import edu.upb.chatupb_v2.Controller.ContactController;
-import edu.upb.chatupb_v2.Controller.Controller;
-import edu.upb.chatupb_v2.Model.entities.Message;
-import edu.upb.chatupb_v2.Model.network.SocketClient;
-import edu.upb.chatupb_v2.Model.entities.User;
-import edu.upb.chatupb_v2.Model.repository.UserDAO;
-import edu.upb.chatupb_v2.Model.entities.comands.Chat;
-import edu.upb.chatupb_v2.Model.entities.comands.Invitation;
+import edu.upb.chatupb_v2.Controller.*;
+import edu.upb.chatupb_v2.Model.entities.*;
+import edu.upb.chatupb_v2.Model.entities.comands.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.net.ConnectException;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Logger;
-
 public class JUi extends JFrame implements IChatView {
-
-    private ChatService chatService;
+    private UIController UIController;
     private String username;
     private final UUID userId = UUID.fromString("557e37e7-4853-4136-aae5-fce08e133272");
-    private static final Logger logger = Logger.getLogger(JUi.class.getName());
-
     private DefaultListModel<User> chatListModel;
     private JList<User> chatList;
 
@@ -48,7 +33,7 @@ public class JUi extends JFrame implements IChatView {
             System.exit(0);
         }
         initComponents();
-        this.chatService = new ChatService(this, username, userId.toString());
+        this.UIController = new UIController(this, username, userId.toString());
     }
 
     private String askForUsername() {
@@ -121,39 +106,29 @@ public class JUi extends JFrame implements IChatView {
             String text = jTextMensaje.getText().trim();
             if (!text.isEmpty()) {
                 addMessage(text, true);  // mensaje propio
-                chatService.sendMessage(text);
+                UIController.sendMessage(text);
                 jTextMensaje.setText("");
             }
         });
 
-        btnBuzz.addActionListener(e -> chatService.sendBuzz());
-        btnOffline.addActionListener(e -> chatService.sendBye());
+        btnBuzz.addActionListener(e -> UIController.sendBuzz());
+        btnOffline.addActionListener(e -> UIController.sendBye());
 
         btnNewConnection.addActionListener(e ->
-                new ConnectionDialog(this, chatService).setVisible(true)
+                new ConnectionDialog(this, UIController).setVisible(true)
         );
 
         chatList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 User selectedOne = chatList.getSelectedValue();
                 if (selectedOne != null) {
-                    try {
-                        SocketClient cs = new SocketClient(selectedOne.getIp());
-                        Invitation inv = new Invitation(this.userId.toString(), this.username);
-                        try{
-                            renderMessages(controller.returnMessages(this.userId.toString(), selectedOne.getId()));
-                        } catch (Exception ex){
-                            System.out.println(ex.getMessage());
-                        }
-                        cs.send(inv.createFormat());
-                    } catch (IOException ex) {
-                        showError("Error conectando con el usuario.");
-                    }
+                    ClientController.getInstance().selectedUserAction(selectedOne);
+                    renderMessages(controller.returnMessages(this.userId.toString(), selectedOne.getId()));
                 }
             }
         });
-
     }
+
 
     public void init() {
         EventQueue.invokeLater(() -> setVisible(true));
@@ -209,7 +184,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showChat(Chat chat) {
-        String name = Controller.getInstance()
+        String name = ClientController.getInstance()
                 .getClients()
                 .get(chat.getIdUser())
                 .getNombre();

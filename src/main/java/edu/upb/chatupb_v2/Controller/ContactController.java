@@ -1,5 +1,7 @@
 package edu.upb.chatupb_v2.Controller;
 
+import edu.upb.chatupb_v2.Controller.exceptions.ConnectionException;
+import edu.upb.chatupb_v2.Controller.exceptions.DatabaseException;
 import edu.upb.chatupb_v2.Model.entities.Message;
 import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
@@ -21,8 +23,16 @@ public class ContactController {
     public List<User> returnContacts() throws SQLException, ConnectException {
         return daoInstance.findAll();
     }
-    public List<Message> returnMessages(String id_me, String id_other) throws SQLException, ConnectException {
-        return MessageDAO.getInstance().getConversation(id_me, id_other);
+    public List<Message> returnMessages(String id_me, String id_other) {
+        List<Message> messages = null;
+        try {
+             messages = MessageDAO.getInstance().getConversation(id_me, id_other);
+        } catch (SQLException sql){
+            throw new DatabaseException("Conexión a Base de Datos Fallida");
+        } catch (ConnectException conn){
+            throw new ConnectionException("Problemas en la Conexión");
+        }
+        return messages;
     }
 
 }
