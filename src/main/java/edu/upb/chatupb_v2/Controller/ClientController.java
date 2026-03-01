@@ -34,9 +34,13 @@ public class ClientController {
                 System.out.println("Nuevo cliente registrado: " + uid);
                 return client;
             }
-
-            System.out.println("Cliente reconectado: " + uid);
-
+            // Si es el mismo objeto, no hay nada que hacer
+            if (existingClient == client) {
+                System.out.println("Cliente ya registrado (mismo socket): " + uid);
+                return existingClient;
+            }
+            // Solo cerrar si es un socket diferente (reconexión real)
+            System.out.println("Cliente reconectado con nuevo socket: " + uid);
             existingClient.close();
             return client;
         });
@@ -126,11 +130,15 @@ public class ClientController {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        Invitation inv = new Invitation();
+        Invitation inv = new Invitation("MY-USER", "ME");
         try {
             cs.send(inv.createFormat());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void connectNewUser(User user){
+
     }
 }

@@ -122,7 +122,7 @@ public class JUi extends JFrame implements IChatView {
             if (!e.getValueIsAdjusting()) {
                 User selectedOne = chatList.getSelectedValue();
                 if (selectedOne != null) {
-                    ClientController.getInstance().selectedUserAction(selectedOne);
+                    //ClientController.getInstance().selectedUserAction(selectedOne);
                     renderMessages(controller.returnMessages(this.userId.toString(), selectedOne.getId()));
                 }
             }

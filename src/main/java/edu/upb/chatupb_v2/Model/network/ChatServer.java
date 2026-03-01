@@ -2,7 +2,9 @@ package edu.upb.chatupb_v2.Model.network;
 
 import edu.upb.chatupb_v2.Controller.ClientController;
 import edu.upb.chatupb_v2.Controller.UIController;
+import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.Hello;
+import edu.upb.chatupb_v2.Model.entities.comands.Invitation;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import lombok.Setter;
 
@@ -51,6 +53,8 @@ public class ChatServer extends Thread {
         });
         helloThread.start();
     }
+
+
 
 
     //ALGO
