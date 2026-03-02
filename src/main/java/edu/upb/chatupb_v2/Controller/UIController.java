@@ -1,6 +1,5 @@
 package edu.upb.chatupb_v2.Controller;
 
-import edu.upb.chatupb_v2.Controller.exceptions.ChatException;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
@@ -10,11 +9,7 @@ import edu.upb.chatupb_v2.VIews.IChatView;
 
 import javax.swing.*;
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 public class UIController implements SocketListener {
@@ -22,54 +17,19 @@ public class UIController implements SocketListener {
     private final String username;
     private String userId;
     private SocketClient socketClient;
-    private ServerSocket serverSocket;
-    private boolean isRunning = true;
     public UIController(IChatView view, String username, String userId) {
         this.view = view;
         this.username = username;
         this.userId = userId;
-        startServer();
     }
-
-    private void startServer() {
-        new Thread(() -> {
-            try {
-                serverSocket = new ServerSocket(1900);
-                System.out.println("Servidor escuchando en puerto 1900...");
-
-                while (isRunning) {
-                    Socket clientSocket = serverSocket.accept();
-                    SocketClient newClient = new SocketClient(clientSocket);
-                    newClient.setSocketListener(this);
-
-                    newClient.start();
-                    System.out.println("Nuevo cliente conectado desde: " + clientSocket.getInetAddress());
-                }
-            } catch (IOException e) {
-                SwingUtilities.invokeLater(() ->
-                        view.showError("No se pudo iniciar el servidor (¿Puerto 1900 ocupado?): " + e.getMessage())
-                );
-            }
-        }).start();
-    }
-
+    // UIController - solo orquesta, no toca sockets directamente
     public void connect(String ip) {
         new Thread(() -> {
             try {
-                socketClient = new SocketClient(ip);
-                socketClient.setSocketListener(this);
-                socketClient.start();
-            } catch (Exception e) {
-//                SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
-                throw new ChatException("FAILED CONNECTION!");
-            }
-            try {
-                Invitation myInvite = new Invitation(userId, username);
-                socketClient.send(myInvite.createFormat());
-
+                ClientController.getInstance().connectTo(ip, userId, username, this);
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
-            } catch (Exception e){
-                throw new ChatException("INVITATION NOT SEND CORRECTLY!");
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
             }
         }).start();
     }
@@ -114,8 +74,9 @@ public class UIController implements SocketListener {
     }
 
     @Override
-    public void onInvitationReceived(Invitation invitation) {
+    public void onInvitationReceived(Invitation invitation, SocketClient client) {
 
+        ClientController.getInstance().registerClient(client);
         boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
 
         if (accepted) {
@@ -140,7 +101,8 @@ public class UIController implements SocketListener {
     }
 
     @Override
-    public void onAcceptReceived(Accept accept) {
+    public void onAcceptReceived(Accept accept, SocketClient client) {
+        ClientController.getInstance().registerClient(client);
         SwingUtilities.invokeLater(() -> {
             view.renderContacts();
             view.updateStatus("Status: Online");

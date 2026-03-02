@@ -29,6 +29,7 @@ public class ChatServer extends Thread {
 
     public ChatServer() throws IOException {
         this.server = new ServerSocket(port);
+        this.startHelloService();
         this.start();
     }
 
@@ -53,9 +54,6 @@ public class ChatServer extends Thread {
         });
         helloThread.start();
     }
-
-
-
 
     //ALGO
     @Override

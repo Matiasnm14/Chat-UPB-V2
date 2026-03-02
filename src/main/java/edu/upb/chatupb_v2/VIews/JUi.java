@@ -184,6 +184,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showChat(Chat chat) {
+
         String name = ClientController.getInstance()
                 .getClients()
                 .get(chat.getIdUser())

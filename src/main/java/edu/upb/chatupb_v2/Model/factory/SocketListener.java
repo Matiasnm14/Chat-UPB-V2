@@ -1,10 +1,11 @@
 package edu.upb.chatupb_v2.Model.factory;
 
 import edu.upb.chatupb_v2.Model.entities.comands.*;
+import edu.upb.chatupb_v2.Model.network.SocketClient;
 
 public interface SocketListener {
-    void onInvitationReceived(Invitation invitation);
-    void onAcceptReceived(Accept accept);
+    void onInvitationReceived(Invitation invitation, SocketClient socketClient);
+    void onAcceptReceived(Accept accept, SocketClient socketClient);
     void onDeclineReceived(Decline decline);
     void onHelloReceived(Hello hello);
     void onAcceptHelloReceived(AcceptHello acceptHello);
