@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.controller;
 
+import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.commands.*;
@@ -19,6 +20,7 @@ import java.net.ServerSocket;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
+
 
 public class Controller implements SocketClient.SocketListener{
     @Getter
@@ -132,7 +134,6 @@ public class Controller implements SocketClient.SocketListener{
                 }
             }
         }
-
     }
     public void initController(String username, String userId, JUi ui){
         this.userId = userId;
@@ -148,19 +149,6 @@ public class Controller implements SocketClient.SocketListener{
             view.showMessage("No se pudo iniciar el servidor (¿Puerto 1900 ocupado?): " + e.getMessage());
         }
     }
-    public void addUi(JUi ui) {
-        uis.putIfAbsent(ui.getUserId().toString(), ui);
-    }
-//    public void addContact(String contact){
-//        for (JUi view : uis.values()){
-//            view.addModel(contact);
-//        }
-//    }
-
-    public void delUi(String idUi) {
-        uis.remove(idUi);
-    }
-
     public void connect(String ip) {
         new Thread(() -> {
             try {
@@ -169,17 +157,24 @@ public class Controller implements SocketClient.SocketListener{
 
                 socketClient.start();
 
-                Invitation myInvite = new Invitation(userId, username);
-                pendingClients.add(socketClient);
-                socketClient.send(myInvite.createFormat());
-
-
-
-                SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
 
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
+                throw new OperationException("No se logro establecer la conexion");
             }
+
+
+            Invitation myInvite = new Invitation(userId, username);
+            pendingClients.add(socketClient);
+
+            try{
+                socketClient.send(myInvite.createFormat());
+                SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
+            }catch (Exception e){
+                SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
+                throw new OperationException("No se logro mandar la invitacion!");
+            }
+
         }).start();
     }
 
@@ -189,30 +184,36 @@ public class Controller implements SocketClient.SocketListener{
             return;
         }
 
-        try {
-            Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
+        Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
 
-            Message msgDb = new Message(
-                    chat.getIdMessage(),
-                    destinationId,
-                    messageText,
-                    TypeMessage.TEXT,
-                    StatusMessage.SENT,
-                    LocalDate.now().toString()
-            );
+        Message msgDb = new Message(
+                chat.getIdMessage(),
+                destinationId,
+                messageText,
+                TypeMessage.TEXT,
+                StatusMessage.SENT,
+                LocalDate.now().toString()
+        );
+
+
+        try {
             MessageDAO.getInstance().save(msgDb);
 
-            SocketClient sc = Controller.getInstance().getClients().get(destinationId);
+        } catch (Exception e) {
+            throw new OperationException("Error en guardar el Mensaje en la base de datos");
+        }
 
+        SocketClient sc = Controller.getInstance().getClients().get(destinationId);
+
+        try{
             if (sc != null) {
                 sc.send(chat.createFormat());
                 SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText));
             } else {
                 SwingUtilities.invokeLater(() -> view.showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
             }
-
-        } catch (Exception e) {
-            System.out.println("Error al enviar mensaje: " + e.getMessage());
+        }catch (Exception e){
+            throw new OperationException("Error en enviar el chat a SocketClient");
         }
     }
 
@@ -308,7 +309,7 @@ public class Controller implements SocketClient.SocketListener{
     public void onAcceptReceived(Accept accept) {
         SwingUtilities.invokeLater(() -> {
             System.out.println("Size: "+pendingClients.size());
-            if(pendingClients.size() != 0){
+            if(!pendingClients.isEmpty()){
                 pendingClients.getFirst().setUid(accept.getIdUser());
                 pendingClients.getFirst().setUserName(accept.getUserName());
                 Controller.getInstance().addClients(pendingClients.getFirst());

@@ -54,7 +54,8 @@ public class JUi extends JFrame implements IChatView {
         this.controller = Controller.getInstance();
         controller.initController(username,userId,this);
         System.out.println(userId);
-        Controller.getInstance().addUi(this);
+
+//        Controller.getInstance().addUi(this);
     }
     private String askForUsername() {
         return JOptionPane.showInputDialog(
