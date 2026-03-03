@@ -6,12 +6,16 @@ import edu.upb.chatupb_v2.Model.entities.comands.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.util.List;
 import java.util.UUID;
 public class JUi extends JFrame implements IChatView {
     private UIController UIController;
     private String username;
     private final UUID userId = UUID.fromString("557e37e7-4853-4136-aae5-fce08e133272");
+
+    private User selectedUser;
     private DefaultListModel<User> chatListModel;
     private JList<User> chatList;
 
@@ -106,7 +110,7 @@ public class JUi extends JFrame implements IChatView {
             String text = jTextMensaje.getText().trim();
             if (!text.isEmpty()) {
                 addMessage(text, true);  // mensaje propio
-                UIController.sendMessage(text);
+                UIController.sendMessage(text, selectedUser);
                 jTextMensaje.setText("");
             }
         });
@@ -120,11 +124,58 @@ public class JUi extends JFrame implements IChatView {
 
         chatList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                User selectedOne = chatList.getSelectedValue();
-                if (selectedOne != null) {
+                selectedUser = chatList.getSelectedValue();
+                if (selectedUser != null) {
                     //ClientController.getInstance().selectedUserAction(selectedOne);
-                    renderMessages(controller.returnMessages(this.userId.toString(), selectedOne.getId()));
+                    renderMessages(controller.returnMessages(this.userId.toString(), selectedUser.getId()));
                 }
+            }
+        });
+        JPopupMenu popup = new JPopupMenu();
+
+        JMenuItem j1 = new JMenuItem("ACCIÓN A");
+        JMenuItem j2 = new JMenuItem("ACCIÓN B");
+        popup.add(j1);
+        popup.add(j2);
+
+        j1.addActionListener(e -> {
+            User selected = chatList.getSelectedValue();
+            UIController.connectPrev(selected.getIp());
+        });
+
+        j2.addActionListener(e -> {
+            String selected = chatList.getSelectedValue().toString();
+            System.out.println("ACCIÓN B AND" + selected);
+        });
+
+        chatList.addMouseListener(new MouseListener() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)){
+                    int index = chatList.locationToIndex(e.getPoint());
+                    chatList.setSelectedIndex(index);
+                    popup.show(chatList, e.getX(), e.getY());
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+
             }
         });
     }
@@ -182,12 +233,14 @@ public class JUi extends JFrame implements IChatView {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
+
+    //TODO
     @Override
     public void showChat(Chat chat) {
 
         String name = ClientController.getInstance()
                 .getClients()
-                .get(chat.getIdUser())
+                .get(chat.getSendUser())
                 .getNombre();
 
         addMessage(name + ": " + chat.getMessage(), false);
@@ -210,7 +263,7 @@ public class JUi extends JFrame implements IChatView {
         messagesPanel.removeAll();
 
         for (Message message : messages) {
-            boolean isOwn = message.getIdUser().equals(userId.toString());
+            boolean isOwn = message.getSendUser().equals(userId.toString());
             MessageBubble bubble = new MessageBubble(message.getBody(), isOwn);
             messagesPanel.add(bubble);
         }

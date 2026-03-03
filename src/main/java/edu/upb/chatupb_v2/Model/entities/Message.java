@@ -14,18 +14,19 @@ import java.io.Serializable;
 public class Message implements Serializable, Model {
 
     private String idMessage;
-    private String idUser;
+    private String sendUser;
+    private String receiveUser;
     private String body;
-//    private TypeMessage typeMessage;
-//    private StatusMessage statusMessage;
+    private TypeMessage typeMessage;
+    private StatusMessage statusMessage;
     private String date;
     public static final class Column{
         public static final String ID_MESSAGE = "id_message";
-        public static final String ID_USER = "id_user";
+        public static final String SENDER_ID = "sender_id";
+        public static final String RECEIVER_ID = "receiver_id";
         public static final String BODY ="body";
-//        public static final String TYPEMESSAGE ="type";
-//        public static final String STATUSMESSAGE = "Status";
-//        public static final String STATUSMESSAGE = "Status";
+        public static final String TYPEMESSAGE ="type";
+        public static final String STATUSMESSAGE = "Status";
         public static final String DATE = "date";
     }
 
@@ -37,13 +38,4 @@ public class Message implements Serializable, Model {
         return " ";
     }
 
-    @Override
-    public String toString() {
-        return "Message{" +
-                "idMessage='" + idMessage + '\'' +
-                ", idUser='" + idUser + '\'' +
-                ", body='" + body + '\'' +
-                ", date='" + date + '\'' +
-                '}';
-    }
 }

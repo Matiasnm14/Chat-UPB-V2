@@ -111,7 +111,7 @@ public class SocketClient extends Thread {
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
-                        socketListener.onHelloReceived(hel);
+                        socketListener.onHelloReceived(hel, this);
                         break;
                     }
                     case "005": {

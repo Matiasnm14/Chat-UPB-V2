@@ -1,6 +1,9 @@
 package edu.upb.chatupb_v2.Controller;
 
+import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
+import edu.upb.chatupb_v2.Model.entities.enums.StatusMessage;
+import edu.upb.chatupb_v2.Model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import edu.upb.chatupb_v2.Model.entities.Message;
@@ -33,19 +36,31 @@ public class UIController implements SocketListener {
             }
         }).start();
     }
+
+    public void connectPrev(String ip) {
+        new Thread(() -> {
+            try {
+                ClientController.getInstance().connectToPrevious(ip, userId, this);
+                SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando Hello..."));
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
+            }
+        }).start();
+    }
 //CONNECTFORHELLOS: ESTA MISMA HACE QUE SE HAGA FETCH DE LA BASE DE DATOS PARA CONSEGUIR LAS IPS, CONECTARSE Y MANDAR UN HELLO EN VEZ DE UN INVITATION
-    public void sendMessage(String messageText) {
+    public void sendMessage(String messageText, User target) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
             MessageDAO.getInstance().save(new Message(
                     chat.getIdMessage(),
                     this.userId,
+                    target.getId(),
                     messageText,
+                    TypeMessage.TEXT,
+                    StatusMessage.SENT,
                     LocalDate.now().toString()
             ));
-            for (SocketClient sc : ClientController.getInstance().getClients().values()) {
-                sc.send(chat.createFormat());
-            }
+            ClientController.getInstance().getClients().get(target.getId()).send(chat.createFormat());
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -121,12 +136,13 @@ public class UIController implements SocketListener {
     }
 
     @Override
-    public void onHelloReceived(Hello hello) {
+    public void onHelloReceived(Hello hello, SocketClient client) {
+        ClientController.getInstance().registerClient(client);
         AcceptHello acceptHello = new AcceptHello(userId);
-        SocketClient client = ClientController.getInstance().getClients().get(hello.getIdUser());
-        if (client != null) {
+        SocketClient clienst = ClientController.getInstance().getClients().get(hello.getIdUser());
+        if (clienst != null) {
             try {
-                client.send(acceptHello.createFormat());
+                clienst.send(acceptHello.createFormat());
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }
@@ -138,18 +154,19 @@ public class UIController implements SocketListener {
         view.showChat(chat);
         System.out.println(chat.getMessage());
         try {
-//            MessageDAO.getInstance().save(new Message(
-//                    chat.getIdMessage(),
-//                    chat.getIdUser(),
-//                    chat.getMessage(),
-//                    TypeMessage.TEXT,
-//                    StatusMessage.READ,
-//                    LocalDate.now().toString()));
+            MessageDAO.getInstance().save(new Message(
+                    chat.getIdMessage(),
+                    chat.getSendUser(),
+                    userId,
+                    chat.getMessage(),
+                    TypeMessage.TEXT,
+                    StatusMessage.READ,
+                    LocalDate.now().toString()));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-        SocketClient client = ClientController.getInstance().getClients().get(chat.getIdUser());
+        SocketClient client = ClientController.getInstance().getClients().get(chat.getSendUser());
         try {
             client.send(confirmRecived.createFormat());
         } catch (IOException e) {

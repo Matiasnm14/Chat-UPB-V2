@@ -8,12 +8,13 @@ import java.util.regex.Pattern;
 @Getter
 @Setter
 public class Chat extends Command{
-    private String idUser;
     private String idMessage;
+    private String sendUser;
+    private String receiveUser;
     private String message;
     @Override
     public String createFormat() {
-        return getID() + "|" + idUser + "|" + idMessage + "|" + message + System.lineSeparator();
+        return getID() + "|" + sendUser + "|" + idMessage + "|" + message + System.lineSeparator();
     }
 
     public Chat() {
@@ -21,7 +22,7 @@ public class Chat extends Command{
     }
     public Chat(String idUser,String idMessage,String message){
         super("007");
-        this.idUser = idUser;
+        this.sendUser = idUser;
         this.idMessage = idMessage;
         this.message = message;
     }

@@ -29,38 +29,41 @@ public class MessageDAO {
         if (existColumn(result, Message.Column.ID_MESSAGE)) {
             prefacturaSync.setIdMessage(result.getString(Message.Column.ID_MESSAGE));
         }
-        if (existColumn(result, Message.Column.ID_USER)) {
-            prefacturaSync.setIdUser(result.getString(Message.Column.ID_USER));
+        if (existColumn(result, Message.Column.SENDER_ID)) {
+            prefacturaSync.setSendUser(result.getString(Message.Column.SENDER_ID));
+        }
+        if (existColumn(result, Message.Column.RECEIVER_ID)) {
+            prefacturaSync.setReceiveUser(result.getString(Message.Column.RECEIVER_ID));
         }
         if (existColumn(result, Message.Column.BODY)) {
             prefacturaSync.setBody(result.getString(Message.Column.BODY));
         }
-//        if (existColumn(result, Message.Column.STATUSMESSAGE)) {
-//            switch (result.getString(Message.Column.STATUSMESSAGE).toLowerCase()){
-//                case "sent":
-//                    prefacturaSync.setStatusMessage(StatusMessage.SENT);
+        if (existColumn(result, Message.Column.STATUSMESSAGE)) {
+            switch (result.getString(Message.Column.STATUSMESSAGE).toLowerCase()){
+                case "sent":
+                    prefacturaSync.setStatusMessage(StatusMessage.SENT);
+                    break;
+//                case "received":
+//                    prefacturaSync.setStatusMessage(StatusMessage.RECEIVED);
 //                    break;
-////                case "received":
-////                    prefacturaSync.setStatusMessage(StatusMessage.RECEIVED);
-////                    break;
-//                case "read":
-//                    prefacturaSync.setStatusMessage(StatusMessage.READ);
-//                    break;
-////                case "error":
-////                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
-//
-//            }
-//
-//        }
-//        if (existColumn(result, Message.Column.TYPEMESSAGE)) {
-//            switch (result.getString(Message.Column.TYPEMESSAGE).toLowerCase()){
-//                case "text":
-//                    prefacturaSync.setTypeMessage(TypeMessage.TEXT);
-//                    break;
-//                case "image":
-//                    prefacturaSync.setTypeMessage(TypeMessage.IMAGE);
-//            }
-//        }
+                case "read":
+                    prefacturaSync.setStatusMessage(StatusMessage.READ);
+                    break;
+//                case "error":
+//                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
+
+            }
+
+        }
+        if (existColumn(result, Message.Column.TYPEMESSAGE)) {
+            switch (result.getString(Message.Column.TYPEMESSAGE).toLowerCase()){
+                case "text":
+                    prefacturaSync.setTypeMessage(TypeMessage.TEXT);
+                    break;
+                case "image":
+                    prefacturaSync.setTypeMessage(TypeMessage.IMAGE);
+            }
+        }
         if (existColumn(result, Message.Column.DATE)) {
             prefacturaSync.setDate(result.getString(Message.Column.DATE));
         }
@@ -86,15 +89,17 @@ public class MessageDAO {
             throws ConnectException, SQLException {
 
         String query = """
-        SELECT id_message, id_user, body, date FROM Messages
-        WHERE (id_user = ?)
-           OR (id_user = ?)
+        SELECT id_message, sender_id, receiver_id, body, date FROM Messages
+        WHERE ((sender_id = ?) AND (receiver_id = ?))
+           OR ((sender_id = ?) AND (receiver_id = ?))
         ORDER BY date ASC
     """;
 
         DaoHelper.QueryParameters params = pst -> {
             pst.setString(1, user1Id);
             pst.setString(2, user2Id);
+            pst.setString(3, user2Id);
+            pst.setString(4, user1Id);
         };
 
         return helper.executeQuery(query, params, resultReader);
@@ -125,16 +130,17 @@ public class MessageDAO {
     }
 
     public void save(Message message) throws Exception {
-        String query = "INSERT INTO Messages(id_message, id_user, body, date) values (?,?,?,?)";
+        String query = "INSERT INTO Messages(id_message, sender_id, receiver_id, body,type_message,status_message, date) values (?,?,?,?,?,?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
                 pst.setString(1, message.getIdMessage());
-                pst.setString(2, message.getIdUser());
-                pst.setString(3, message.getBody());
-//                pst.setString(4, message.getTypeMessage().toString());
-//                pst.setString(5, message.getStatusMessage().toString());
-                pst.setString(4, message.getDate());
+                pst.setString(2, message.getSendUser());
+                pst.setString(3, message.getReceiveUser());
+                pst.setString(4, message.getBody());
+                pst.setString(5, message.getTypeMessage().toString());
+                pst.setString(6, message.getStatusMessage().toString());
+                pst.setString(7, message.getDate());
             }
         };
         helper.insert(query, params, message);

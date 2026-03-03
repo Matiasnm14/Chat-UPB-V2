@@ -5,6 +5,7 @@ import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
+import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import lombok.Getter;
 
 import java.io.IOException;
@@ -32,16 +33,18 @@ public class ClientController {
         clients.compute(uid, (key, existingClient) -> {
             if (existingClient == null) {
                 System.out.println("Nuevo cliente registrado: " + uid);
+                try {
+                    UserDAO.getInstance().save(new User(client.getUID(), client.getName(), client.getIp()));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 return client;
             }
-            // Si es el mismo objeto, no hay nada que hacer
             if (existingClient == client) {
                 System.out.println("Cliente ya registrado (mismo socket): " + uid);
                 return existingClient;
             }
-            // Solo cerrar si es un socket diferente (reconexión real)
             System.out.println("Cliente reconectado con nuevo socket: " + uid);
-            //existingClient.close();
             return client;
         });
     }
@@ -52,6 +55,15 @@ public class ClientController {
         sc.start();
         Invitation inv = new Invitation(userId, username);
         sc.send(inv.createFormat());
+        // No registrar aquí — el registro ocurre cuando llega el Accept (handleAccept)
+    }
+
+    public void connectToPrevious(String ip, String userId, SocketListener listener) throws IOException {
+        SocketClient sc = new SocketClient(ip);
+        sc.setSocketListener(listener);
+        sc.start();
+        Hello hel = new Hello(userId);
+        sc.send(hel.createFormat());
         // No registrar aquí — el registro ocurre cuando llega el Accept (handleAccept)
     }
 

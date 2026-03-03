@@ -7,7 +7,7 @@ public interface SocketListener {
     void onInvitationReceived(Invitation invitation, SocketClient socketClient);
     void onAcceptReceived(Accept accept, SocketClient socketClient);
     void onDeclineReceived(Decline decline);
-    void onHelloReceived(Hello hello);
+    void onHelloReceived(Hello hello, SocketClient client);
     void onAcceptHelloReceived(AcceptHello acceptHello);
     void onDeclineHelloReceived(DeclineHello declineHello);
     void onChatReceived(Chat chat);
