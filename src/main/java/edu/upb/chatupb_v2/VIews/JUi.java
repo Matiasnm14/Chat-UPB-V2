@@ -3,14 +3,19 @@ package edu.upb.chatupb_v2.VIews;
 import edu.upb.chatupb_v2.Controller.*;
 import edu.upb.chatupb_v2.Model.entities.*;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 public class JUi extends JFrame implements IChatView {
+    @Setter
+    @Getter
     private UIController UIController;
     private String username;
     private final UUID userId = UUID.fromString("557e37e7-4853-4136-aae5-fce08e133272");
@@ -126,7 +131,7 @@ public class JUi extends JFrame implements IChatView {
             if (!e.getValueIsAdjusting()) {
                 selectedUser = chatList.getSelectedValue();
                 if (selectedUser != null) {
-                    //ClientController.getInstance().selectedUserAction(selectedOne);
+                    UIController.connectPrev(selectedUser.getIp());
                     renderMessages(controller.returnMessages(this.userId.toString(), selectedUser.getId()));
                 }
             }

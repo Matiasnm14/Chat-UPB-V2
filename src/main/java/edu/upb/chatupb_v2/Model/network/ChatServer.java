@@ -2,13 +2,9 @@ package edu.upb.chatupb_v2.Model.network;
 
 import edu.upb.chatupb_v2.Controller.ClientController;
 import edu.upb.chatupb_v2.Controller.UIController;
-import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.Hello;
-import edu.upb.chatupb_v2.Model.entities.comands.Invitation;
-import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import lombok.Setter;
 
-import javax.swing.*;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -27,9 +23,10 @@ public class ChatServer extends Thread {
     private UIController uiListener;
     SocketClient socketClient;
 
-    public ChatServer() throws IOException {
+    public ChatServer(UIController uiController) throws IOException {
         this.server = new ServerSocket(port);
         this.startHelloService();
+        this.uiListener = uiController;
         this.start();
     }
 

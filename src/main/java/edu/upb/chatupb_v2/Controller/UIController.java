@@ -17,19 +17,22 @@ import java.util.UUID;
 
 public class UIController implements SocketListener {
     private final IChatView view;
+    private SocketClient active;
     private final String username;
     private String userId;
     private SocketClient socketClient;
+
     public UIController(IChatView view, String username, String userId) {
         this.view = view;
         this.username = username;
         this.userId = userId;
     }
+
     // UIController - solo orquesta, no toca sockets directamente
     public void connect(String ip) {
         new Thread(() -> {
             try {
-                ClientController.getInstance().connectTo(ip, userId, username, this);
+                ClientController.getInstance().connectTo(ip, userId, username, this, 1);
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
@@ -40,14 +43,15 @@ public class UIController implements SocketListener {
     public void connectPrev(String ip) {
         new Thread(() -> {
             try {
-                ClientController.getInstance().connectToPrevious(ip, userId, this);
+                ClientController.getInstance().connectTo(ip, userId, username, this, 2);
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando Hello..."));
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
             }
         }).start();
     }
-//CONNECTFORHELLOS: ESTA MISMA HACE QUE SE HAGA FETCH DE LA BASE DE DATOS PARA CONSEGUIR LAS IPS, CONECTARSE Y MANDAR UN HELLO EN VEZ DE UN INVITATION
+
+    //CONNECTFORHELLOS: ESTA MISMA HACE QUE SE HAGA FETCH DE LA BASE DE DATOS PARA CONSEGUIR LAS IPS, CONECTARSE Y MANDAR UN HELLO EN VEZ DE UN INVITATION
     public void sendMessage(String messageText, User target) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
@@ -77,7 +81,7 @@ public class UIController implements SocketListener {
         }
     }
 
-    public void sendBye(){
+    public void sendBye() {
         for (SocketClient sc : ClientController.getInstance().getClients().values()) {
             Bye bye = new Bye(this.userId);
             try {
@@ -99,7 +103,7 @@ public class UIController implements SocketListener {
             try {
                 SocketClient sc = ClientController.getInstance().getClients().get(invitation.getIdUser());
                 if (sc != null)
-                        sc.send(acp.createFormat());
+                    sc.send(acp.createFormat());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -131,20 +135,29 @@ public class UIController implements SocketListener {
             view.updateStatus("Status: Rejected");
             view.showMessage("Conexión Rechazada");
             ClientController.getInstance().delClients(socketClient.getUID());
-            if(socketClient != null) socketClient.close();
+            if (socketClient != null) socketClient.close();
         });
     }
 
     @Override
     public void onHelloReceived(Hello hello, SocketClient client) {
         ClientController.getInstance().registerClient(client);
-        AcceptHello acceptHello = new AcceptHello(userId);
-        SocketClient clienst = ClientController.getInstance().getClients().get(hello.getIdUser());
-        if (clienst != null) {
+        Command response;
+        if (ClientController.getInstance().userInDB(hello.getIdUser())) {
             try {
-                clienst.send(acceptHello.createFormat());
+                System.out.println("DECLINED!!!");
+                response = new DeclineHello();
+                client.send(response.createFormat());
             } catch (IOException e) {
-                System.out.println(e.getMessage());
+                throw new RuntimeException(e);
+            }
+        } else {
+            try {
+                System.out.println("ACCEPTED!!!");
+                response = new AcceptHello(userId);
+                client.send(response.createFormat());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -185,25 +198,37 @@ public class UIController implements SocketListener {
         SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
     }
 
-    @Override public void onByeReceived(Bye bye){
+    @Override
+    public void onByeReceived(Bye bye) {
         String id = bye.getIdUser();
-        System.out.println("ID: " + id );
+        System.out.println("ID: " + id);
         SocketClient sc = ClientController.getInstance().getClients().get(id);
-        if (sc != null){
+        if (sc != null) {
             sc.close();
         }
         SwingUtilities.invokeLater(() -> view.showByeNotification(id));
     }
-    @Override public void onAcceptHelloReceived(AcceptHello acceptHello) {}
-    @Override public void onDeclineHelloReceived(DeclineHello declineHello) {}
-    @Override public void onConfirmedReceived(ConfirmRecived confirmRecived) {
-        System.out.println("Recibido");
-//        try {
-//            MessageDAO.getInstance().updateMessage(confirmRecived.getIdMessage());
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
+
+    @Override
+    public void onAcceptHelloReceived(AcceptHello acceptHello, SocketClient client) {
+        ClientController.getInstance().registerClient(client);
     }
+
+    @Override
+    public void onDeclineHelloReceived(DeclineHello declineHello, SocketClient client) {
+        client.close();
+    }
+
+    @Override
+    public void onConfirmedReceived(ConfirmRecived confirmRecived) {
+        System.out.println("Recibido");
+        try {
+            MessageDAO.getInstance().updateMessage(confirmRecived.getIdMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
 //        String id_message = deleteMessage.getIdMessage();
@@ -213,9 +238,17 @@ public class UIController implements SocketListener {
 //            throw new RuntimeException(e);
 //        }
     }
-    @Override public void onPinMessageReceived(PinMessage pinMessage) {}
-    @Override public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+
+    @Override
+    public void onPinMessageReceived(PinMessage pinMessage) {
+    }
+
+    @Override
+    public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
         System.out.println("MENSAJE ÚNICO");
     }
-    @Override public void onThemeReceived(Theme theme) {}
+
+    @Override
+    public void onThemeReceived(Theme theme) {
+    }
 }

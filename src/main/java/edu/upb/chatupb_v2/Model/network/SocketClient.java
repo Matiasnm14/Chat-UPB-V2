@@ -87,6 +87,7 @@ public class SocketClient extends Thread {
             String message;
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
+                System.out.println(message);
                 if(split.length == 0) continue;
 
                 switch (split[0]) {
@@ -111,17 +112,18 @@ public class SocketClient extends Thread {
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
+                        this.uid = hel.getIdUser();
                         socketListener.onHelloReceived(hel, this);
                         break;
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
-                        socketListener.onAcceptHelloReceived(acpHel);
+                        socketListener.onAcceptHelloReceived(acpHel, this);
                         break;
                     }
                     case "006": {
                         DeclineHello decHel = DeclineHello.parse(message);
-                        socketListener.onDeclineHelloReceived(decHel);
+                        socketListener.onDeclineHelloReceived(decHel, this);
                         break;
                     }
                     case "007": {

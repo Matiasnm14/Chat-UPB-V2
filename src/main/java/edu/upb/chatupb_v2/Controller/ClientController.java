@@ -9,6 +9,8 @@ import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import lombok.Getter;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,28 +35,53 @@ public class ClientController {
         clients.compute(uid, (key, existingClient) -> {
             if (existingClient == null) {
                 System.out.println("Nuevo cliente registrado: " + uid);
-                try {
-                    UserDAO.getInstance().save(new User(client.getUID(), client.getName(), client.getIp()));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                if (!userInDB(uid)) {
+                    try {
+                        UserDAO.getInstance().save(new User(client.getUID(), client.getNombre(), client.getIp()));
+                        System.out.println("REGISTRADO");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    return client;
                 }
-                return client;
             }
             if (existingClient == client) {
                 System.out.println("Cliente ya registrado (mismo socket): " + uid);
                 return existingClient;
             }
             System.out.println("Cliente reconectado con nuevo socket: " + uid);
+
             return client;
         });
     }
 
-    public void connectTo(String ip, String userId, String username, SocketListener listener) throws IOException {
+    public boolean userInDB(String id){
+        User user = null;
+        try {
+            user = UserDAO.getInstance().findById(id);
+        } catch (ConnectException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        if (user != null){
+            return true;
+        }
+        return false;
+    }
+
+    public void connectTo(String ip, String userId, String username, SocketListener listener, int election) throws IOException {
         SocketClient sc = new SocketClient(ip);
         sc.setSocketListener(listener);
         sc.start();
-        Invitation inv = new Invitation(userId, username);
-        sc.send(inv.createFormat());
+        if (election == 1){
+            Invitation inv = new Invitation(userId, username);
+            sc.send(inv.createFormat());
+        }
+        if (election == 2){
+            Hello hel = new Hello(userId);
+            sc.send(hel.createFormat());
+        }
         // No registrar aquí — el registro ocurre cuando llega el Accept (handleAccept)
     }
 
