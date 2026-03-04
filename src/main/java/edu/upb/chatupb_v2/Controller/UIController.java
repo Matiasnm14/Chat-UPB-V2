@@ -141,21 +141,25 @@ public class UIController implements SocketListener {
 
     @Override
     public void onHelloReceived(Hello hello, SocketClient client) {
-        ClientController.getInstance().registerClient(client);
         Command response;
         if (ClientController.getInstance().userInDB(hello.getIdUser())) {
+            // Usuario ya conocido: aceptar y actualizar socket activo
+            ClientController.getInstance().registerClient(client);
             try {
-                System.out.println("DECLINED!!!");
-                response = new DeclineHello();
+                System.out.println("HELLO ACCEPTED (known user)!");
+                response = new AcceptHello(userId);
                 client.send(response.createFormat());
+                SwingUtilities.invokeLater(() -> view.renderContacts());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else {
+            // Usuario desconocido: rechazar
             try {
-                System.out.println("ACCEPTED!!!");
-                response = new AcceptHello(userId);
+                System.out.println("HELLO DECLINED (unknown user)!");
+                response = new DeclineHello();
                 client.send(response.createFormat());
+                client.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -211,7 +215,12 @@ public class UIController implements SocketListener {
 
     @Override
     public void onAcceptHelloReceived(AcceptHello acceptHello, SocketClient client) {
+        client.setUid(acceptHello.getIdUser());
         ClientController.getInstance().registerClient(client);
+        SwingUtilities.invokeLater(() -> {
+            view.renderContacts();
+            view.updateStatus("Status: Online");
+        });
     }
 
     @Override

@@ -33,23 +33,24 @@ public class ClientController {
         }
 
         clients.compute(uid, (key, existingClient) -> {
+            if (existingClient != null && existingClient == client) {
+                System.out.println("Cliente ya registrado (mismo socket): " + uid);
+                return existingClient;
+            }
+
             if (existingClient == null) {
                 System.out.println("Nuevo cliente registrado: " + uid);
                 if (!userInDB(uid)) {
                     try {
                         UserDAO.getInstance().save(new User(client.getUID(), client.getNombre(), client.getIp()));
-                        System.out.println("REGISTRADO");
+                        System.out.println("REGISTRADO EN BD: " + uid);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
-                    return client;
                 }
+            } else {
+                System.out.println("Cliente reconectado con nuevo socket: " + uid);
             }
-            if (existingClient == client) {
-                System.out.println("Cliente ya registrado (mismo socket): " + uid);
-                return existingClient;
-            }
-            System.out.println("Cliente reconectado con nuevo socket: " + uid);
 
             return client;
         });
