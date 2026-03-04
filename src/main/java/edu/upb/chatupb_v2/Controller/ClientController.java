@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 public class ClientController {
     @Getter
@@ -23,6 +25,28 @@ public class ClientController {
         return instance;
     }
     public  void delClients(String idUser){clients.remove(idUser);}
+
+    private final Map<String, Queue<String>> pendingMessages = new HashMap<>();
+
+    public void sendToClient(String targetId, String targetIp, String message, SocketListener listener) throws IOException {
+        SocketClient sc = clients.get(targetId);
+        if (sc == null) {
+            pendingMessages.computeIfAbsent(targetId, k -> new LinkedList<>()).add(message);
+            connectTo(targetIp, targetId, null, listener, 2);
+        } else {
+            sc.send(message);
+        }
+    }
+
+    public void flushPending(String targetId) throws IOException {
+        Queue<String> pending = pendingMessages.remove(targetId);
+        if (pending == null) return;
+        SocketClient sc = clients.get(targetId);
+        if (sc == null) return;
+        while (!pending.isEmpty()) {
+            sc.send(pending.poll());
+        }
+    }
 
     public void registerClient(SocketClient client) {
 

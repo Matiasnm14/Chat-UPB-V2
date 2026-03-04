@@ -217,6 +217,11 @@ public class UIController implements SocketListener {
     public void onAcceptHelloReceived(AcceptHello acceptHello, SocketClient client) {
         client.setUid(acceptHello.getIdUser());
         ClientController.getInstance().registerClient(client);
+        try {
+            ClientController.getInstance().flushPending(acceptHello.getIdUser()); // <--
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         SwingUtilities.invokeLater(() -> {
             view.renderContacts();
             view.updateStatus("Status: Online");

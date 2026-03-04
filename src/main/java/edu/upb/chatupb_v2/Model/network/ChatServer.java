@@ -25,7 +25,7 @@ public class ChatServer extends Thread {
 
     public ChatServer(UIController uiController) throws IOException {
         this.server = new ServerSocket(port);
-        this.startHelloService();
+        //this.startHelloService();
         this.uiListener = uiController;
         this.start();
     }
