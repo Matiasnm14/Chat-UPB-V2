@@ -28,6 +28,8 @@ public class UIController implements SocketListener {
         this.userId = userId;
     }
 
+    public String getUserId() { return userId; }
+
     // UIController - solo orquesta, no toca sockets directamente
     public void connect(String ip) {
         new Thread(() -> {
@@ -40,10 +42,10 @@ public class UIController implements SocketListener {
         }).start();
     }
 
-    public void connectPrev(String ip) {
+    public void connectPrev(User user) {
         new Thread(() -> {
             try {
-                ClientController.getInstance().connectTo(ip, userId, username, this, 2);
+                ClientController.getInstance().connectToPrevious(user.getIp(), userId, this);
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando Hello..."));
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
@@ -64,7 +66,7 @@ public class UIController implements SocketListener {
                     StatusMessage.SENT,
                     LocalDate.now().toString()
             ));
-            ClientController.getInstance().getClients().get(target.getId()).send(chat.createFormat());
+            ClientController.getInstance().sendToClient(target.getId(), target.getIp(), chat.createFormat(), this);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -94,7 +96,9 @@ public class UIController implements SocketListener {
 
     @Override
     public void onInvitationReceived(Invitation invitation, SocketClient client) {
-
+        System.out.println("Invitation idUser: " + invitation.getIdUser());
+        System.out.println("Client UID: " + client.getUID());
+        System.out.println("Client nombre: " + client.getNombre());
         ClientController.getInstance().registerClient(client);
         boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
 
@@ -218,7 +222,7 @@ public class UIController implements SocketListener {
         client.setUid(acceptHello.getIdUser());
         ClientController.getInstance().registerClient(client);
         try {
-            ClientController.getInstance().flushPending(acceptHello.getIdUser()); // <--
+            ClientController.getInstance().flushPending(client); // usa el socket como clave
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

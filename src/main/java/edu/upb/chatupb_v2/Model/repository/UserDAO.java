@@ -29,6 +29,9 @@ public class UserDAO {
         if (existColumn(result, User.Column.NAME)) {
             prefacturaSync.setName(result.getString(User.Column.NAME));
         }
+        if (existColumn(result, User.Column.IP_USER)) {
+            prefacturaSync.setIp(result.getString(User.Column.IP_USER));
+        }
 //        if (existColumn(result, User.Column.STATUSUSER)) {
 //            switch (result.getString(User.Column.STATUSUSER).toLowerCase()){
 //                case "online":

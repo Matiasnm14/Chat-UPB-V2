@@ -18,7 +18,7 @@ public class User implements Serializable,Model {
     public static final class Column{
         public static final String ID= "id";
         public static final String NAME= "name";
-        public static final String IP= "ip";
+        public static final String IP_USER = "ip_user";
 //        public static final String STATUSUSER ="status";
 //        public static final String IP_ADDRESS ="ip";
     }

@@ -145,7 +145,8 @@ public class JUi extends JFrame implements IChatView {
 
         j1.addActionListener(e -> {
             User selected = chatList.getSelectedValue();
-            UIController.connectPrev(selected.getIp());
+            System.out.println("USER: "+selected.getIp());
+            UIController.connectPrev(selected);
         });
 
         j2.addActionListener(e -> {

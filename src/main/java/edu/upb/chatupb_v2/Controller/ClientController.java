@@ -27,22 +27,29 @@ public class ClientController {
     public  void delClients(String idUser){clients.remove(idUser);}
 
     private final Map<String, Queue<String>> pendingMessages = new HashMap<>();
+    // Mapea socketClient → targetId original, para resolver el flush cuando llega AcceptHello
+    private final Map<SocketClient, String> socketToTargetId = new HashMap<>();
 
     public void sendToClient(String targetId, String targetIp, String message, SocketListener listener) throws IOException {
         SocketClient sc = clients.get(targetId);
         if (sc == null) {
             pendingMessages.computeIfAbsent(targetId, k -> new LinkedList<>()).add(message);
-            connectTo(targetIp, targetId, null, listener, 2);
+            SocketClient newSc = new SocketClient(targetIp);
+            newSc.setSocketListener(listener);
+            newSc.start();
+            socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
+            Hello hel = new Hello(((UIController) listener).getUserId());
+            newSc.send(hel.createFormat());
         } else {
             sc.send(message);
         }
     }
 
-    public void flushPending(String targetId) throws IOException {
+    public void flushPending(SocketClient sc) throws IOException {
+        String targetId = socketToTargetId.remove(sc);
+        if (targetId == null) return;
         Queue<String> pending = pendingMessages.remove(targetId);
         if (pending == null) return;
-        SocketClient sc = clients.get(targetId);
-        if (sc == null) return;
         while (!pending.isEmpty()) {
             sc.send(pending.poll());
         }
