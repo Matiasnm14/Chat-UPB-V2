@@ -2,8 +2,10 @@ package edu.upb.chatupb_v2.model.repository;
 
 
 import edu.upb.chatupb_v2.model.entities.Contact;
+import edu.upb.chatupb_v2.model.entities.enums.StatusUser;
 
 import java.net.ConnectException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -58,7 +60,7 @@ public class ContactDao {
     }
 
     public boolean existByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM Contacts WHERE code='" + code + "'";
+        String query = "SELECT count(*) FROM Contacts WHERE id='" + code + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
 
@@ -122,5 +124,23 @@ public class ContactDao {
             query = String.format("%s %s", query, conditionWhere);
         }
         helper.update(query, null);
+    }
+    public void updateIp(String idContacto, String nuevaIp) throws Exception{
+        String sql = "UPDATE Contacts SET ip = ? WHERE id = ?";
+
+        DaoHelper.QueryParameters params = pstmt -> {
+            pstmt.setString(1, nuevaIp);
+            pstmt.setString(2, idContacto);
+        };
+        helper.update(sql, params);
+    }
+    public void updateStatus(String idCoontact) throws Exception{
+        String sql = "UPDATE Contacts SET status = ? WHERE id = ?";
+
+        DaoHelper.QueryParameters params = pstmt -> {
+            pstmt.setString(1, StatusUser.ONLINE.toString());
+            pstmt.setString(2, idCoontact);
+        };
+        helper.update(sql, params);
     }
 }

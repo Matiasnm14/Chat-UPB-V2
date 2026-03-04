@@ -70,7 +70,7 @@ public class MessageDAO {
     }
 
     public boolean existById(String id) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM Messages WHERE id_message='" + id + "'";
+        String query = "SELECT count(*) FROM Messages WHERE id='" + id + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
 
@@ -136,5 +136,19 @@ public class MessageDAO {
             query = String.format("%s %s", query, conditionWhere);
         }
         helper.update(query, null);
+    }
+    public void updateStatus(String idMessage)throws SQLException, ConnectException{
+        String sql = "UPDATE Messages SET status = ? WHERE id = ?";
+
+        DaoHelper.QueryParameters params = pstmt -> {
+            pstmt.setString(1, StatusMessage.READ.toString());
+            pstmt.setString(2, idMessage);
+        };
+        helper.update(sql, params);
+    }
+    public void updateStatus(List<Message> messages)throws SQLException, ConnectException{
+        for (Message m : messages){
+            updateStatus(m.getIdMessage());
+        }
     }
 }

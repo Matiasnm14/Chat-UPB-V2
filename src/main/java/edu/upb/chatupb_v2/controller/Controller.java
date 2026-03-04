@@ -40,6 +40,8 @@ public class Controller implements SocketClient.SocketListener{
     private boolean isRunning = true;
     @Getter
     private List<SocketClient> pendingClients = new ArrayList<>();
+
+    private HashMap<String, List<ConfirmRecived>> listOfConfirms = new HashMap<>();
     public static Controller getInstance(){
         if (instance == null) instance = new Controller();
         return instance;
@@ -75,20 +77,16 @@ public class Controller implements SocketClient.SocketListener{
             }
         }
         if (command instanceof Hello){
-            for (SocketClient sc : clients.values()){
-                for (SocketClient.SocketListener sl : sc.getListener().values()){
-                    sl.onHelloReceived((Hello) command);
-                }
-            }
+//            for (SocketClient sc : clients.values()){
+//                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                    onHelloReceived((Hello) command);
+//                }
+//            }
         }
         if (command instanceof AcceptHello){
-            SocketClient.SocketListener sl = clients
-                    .get(((AcceptHello) command)
-                            .getIdUser())
-                    .getListener()
-                    .get(((AcceptHello) command)
-                            .getIdUser());
-            sl.onAcceptHelloReceived((AcceptHello) command);
+
+//            SocketClient.SocketListener sl = pendingClients.getFirst().getListener().get(((AcceptHello)command).getIdUser());
+            onAcceptHelloReceived((AcceptHello) command);
         }
         if (command instanceof DeclineHello){
             for (SocketClient sc : clients.values()){
@@ -99,21 +97,16 @@ public class Controller implements SocketClient.SocketListener{
         }
 
         if (command instanceof Chat) {
-            SocketClient.SocketListener sl = clients
-                    .get(((Chat) command)
-                            .getIdUser())
-                    .getListener()
-                    .get(((Chat) command)
-                            .getIdUser());
-            sl.onChatReceived((Chat) command);
+
+            onChatReceived((Chat) command);
         }
 
         if (command instanceof ConfirmRecived){
-            for (SocketClient sc : clients.values()){
-                for (SocketClient.SocketListener sl : sc.getListener().values()){
-                    sl.onConfirmedReceived((ConfirmRecived) command);
-                }
-            }
+//            for (SocketClient sc : clients.values()){
+//                for (SocketClient.SocketListener sl : sc.getListener().values()){
+                    onConfirmedReceived((ConfirmRecived) command);
+//                }
+//            }
         }
 
         if (command instanceof DeleteMessage){
@@ -122,8 +115,8 @@ public class Controller implements SocketClient.SocketListener{
         }
 
         if (command instanceof Buzzing){
-            SocketClient.SocketListener sl = clients.get(((Buzzing) command).getIdUser()).getListener().get(((Buzzing) command).getIdUser());
-            sl.onBuzzingReceived((Buzzing) command);
+//            SocketClient.SocketListener sl = clients.get(((Buzzing) command).getIdUser()).getListener().get(((Buzzing) command).getIdUser());
+            onBuzzingReceived((Buzzing) command);
         }
 
 
@@ -143,7 +136,7 @@ public class Controller implements SocketClient.SocketListener{
             if (chatServer == null) {
                 chatServer = new ChatServer(username, userId);
                 chatServer.start();
-                startHelloService();
+//                startHelloService();
             }
         } catch (IOException e) {
             view.showMessage("No se pudo iniciar el servidor (¿Puerto 1900 ocupado?): " + e.getMessage());
@@ -208,7 +201,7 @@ public class Controller implements SocketClient.SocketListener{
         try{
             if (sc != null) {
                 sc.send(chat.createFormat());
-                SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText));
+                SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText + " |Enviado"));
             } else {
                 SwingUtilities.invokeLater(() -> view.showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
             }
@@ -261,6 +254,50 @@ public class Controller implements SocketClient.SocketListener{
         helloThread.start();
     }
 
+    public void sendHello(String ip, String username, String id){
+        SocketClient sc;
+        try{
+            sc = new SocketClient(ip);
+            sc.setUserName(username);
+            sc.setUid(id);
+            sc.setListener(username,id,this);
+            System.out.println(sc.getListener().get(id));
+            pendingClients.add(sc);
+
+            sc.start();
+
+
+        }catch (Exception e){
+            throw new OperationException("No se logro conectar con el cliente");
+        }
+
+        Hello hello = new Hello(this.userId);
+
+        try {
+            sc.send(hello.createFormat());
+        }catch (Exception e){
+            throw new OperationException("No se logro enviar el Hello");
+        }
+    }
+
+    public void markRead(Contact contact){
+        try{
+            if(contact !=null && clients.containsKey(contact.getId())){
+                SocketClient sc = clients.get(contact.getId());
+                if(listOfConfirms.containsKey(contact.getId())){
+                    for (ConfirmRecived cr : listOfConfirms.get(contact.getId())){
+                        sc.send(cr.createFormat());
+                    }
+                    listOfConfirms.get(contact.getId()).clear();
+                    listOfConfirms.remove(contact.getId());
+                }
+            }
+        }catch (Exception e){
+
+        }
+
+    }
+
     @Override
     public void onInvitationReceived(Invitation invitation) {
         boolean accepted = view.showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
@@ -280,11 +317,19 @@ public class Controller implements SocketClient.SocketListener{
 
                 nuevoContacto.setStateConnect(true);
                 System.out.println("Contacto 1:" + nuevoContacto.getId());
-                ContactDao.getInstance().save(nuevoContacto);
-                SwingUtilities.invokeLater(() -> {
-                    nuevoContacto.setId(invitation.getIdUser());
-                    view.onAddModel(nuevoContacto); //<-- Agregamos el contacto a la UI mediante la interfaz
-                });
+
+                System.out.println("IP: "+nuevoContacto.getIp());;
+                if(ContactDao.getInstance().existByCode(nuevoContacto.getId())){
+                    System.out.println("Se actualizo la IP");
+                    ContactDao.getInstance().updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
+                }else {
+                    ContactDao.getInstance().save(nuevoContacto);
+                    SwingUtilities.invokeLater(() -> {
+                        nuevoContacto.setId(invitation.getIdUser());
+                        view.onAddModel(nuevoContacto);
+                    });
+                }
+
 
                 SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
                 if (sc != null) {
@@ -327,10 +372,16 @@ public class Controller implements SocketClient.SocketListener{
                     nuevoContacto.setUserId(this.userId);
                     nuevoContacto.setStateConnect(true);
 
-                    ContactDao.getInstance().save(nuevoContacto);
-                    nuevoContacto.setId(accept.getIdUser());
 
-                    view.onAddModel(nuevoContacto);
+                    if(ContactDao.getInstance().existByCode(nuevoContacto.getId())){
+                        System.out.println("Se actualizo la IP");
+                        ContactDao.getInstance().updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
+                    }else{
+                        ContactDao.getInstance().save(nuevoContacto);
+//                    nuevoContacto.setId(accept.getIdUser());
+                        view.onAddModel(nuevoContacto);
+                    }
+
                     view.updateStatus("Status: Online");
                     view.showMessage("Conexión Aceptada con " + accept.getUserName());
                 }
@@ -352,47 +403,100 @@ public class Controller implements SocketClient.SocketListener{
 
     @Override
     public void onHelloReceived(Hello hello) {
-        AcceptHello acceptHello = new AcceptHello(userId);
-        SocketClient client = Controller.getInstance().getClients().get(hello.getIdUser());
-        if (client != null) {
-            try {
-                Contact contact = ContactDao.getInstance().findById(hello.getIdUser());
-                if (!contact.isStateConnect())
-                    contact.setStateConnect(true);
-                client.send(acceptHello.createFormat());
-            } catch (IOException | SQLException e) {
-                System.out.println(e.getMessage());
+        String senderId = hello.getIdUser();
+
+        SocketClient incomingSocket = null;
+        for (SocketClient sc : pendingClients) {
+            if (sc.getUID() == null || !sc.getUID().equals(senderId)) {
+                incomingSocket = sc;
+                break;
             }
         }
+
+        if (incomingSocket == null && !pendingClients.isEmpty()) {
+            incomingSocket = pendingClients.getFirst();
+        }
+        if (incomingSocket == null) return;
+
+        incomingSocket.setUid(senderId);
+
+
+        try {
+            if (ContactDao.getInstance().existByCode(senderId)) {
+                incomingSocket.setName(ContactDao.getInstance().findById(hello.getIdUser()).getName());
+                System.out.println("onHelloReceived: Contacto reconocido!");
+
+//                ContactDao.getInstance().updateStatus(senderId);
+                view.onLoadContacts(ContactDao.getInstance().findAll());
+
+                pendingClients.remove(incomingSocket);
+                addClients(incomingSocket);
+
+                AcceptHello accept = new AcceptHello(this.userId);
+                incomingSocket.send(accept.createFormat());
+            } else {
+                pendingClients.remove(incomingSocket);
+                DeclineHello declineHello = new DeclineHello();
+                incomingSocket.send(declineHello.createFormat());
+                incomingSocket.close();
+            }
+        } catch (Exception e) {
+            System.out.println("Error en onHelloReceived: " + e.getMessage());
+        }
+
     }
 
     @Override
     public void onAcceptHelloReceived(AcceptHello acceptHello) {
+        String responderId = acceptHello.getIdUser();
+
         try {
-            Contact contact = ContactDao.getInstance().findById(acceptHello.getIdUser());
-            if(!contact.isStateConnect()){
-                contact.setStateConnect(true);
+//            ContactDao.getInstance().updateStatus(responderId);
+            view.onLoadContacts(ContactDao.getInstance().findAll());
+
+            SocketClient outgoingSocket = null;
+            for (SocketClient sc : pendingClients) {
+                if (responderId.equals(sc.getUID())) {
+                    outgoingSocket = sc;
+                    break;
+                }
             }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+
+            if (outgoingSocket != null) {
+                pendingClients.remove(outgoingSocket);
+                addClients(outgoingSocket);
+                System.out.println("Conexión reestablecida con éxito.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error en onAcceptHelloReceived: " + e.getMessage());
         }
     }
 
     @Override
     public void onDeclineHelloReceived(DeclineHello declineHello) {
+        try{
 
+            for(SocketClient sc : pendingClients){
+                if(sc.getUID().equals(this.userId))continue;
+                socketClient.close();
+                pendingClients.removeFirst();
+                break;
+            }
+        }catch (Exception e){}
     }
 
     @Override
     public void onChatReceived(Chat chat) {
-        view.showChat(chat);
+        if(view.getCurrentContact() !=null && view.getCurrentContact().getId().equals(chat.getIdUser()))
+            view.showChat(chat);
         try {
             Message msgDb = new Message(
                     chat.getIdMessage(),
                     chat.getIdUser(),
                     chat.getMessage(),
                     TypeMessage.TEXT,
-                    StatusMessage.READ,
+                    StatusMessage.RECEIVED,
                     LocalDate.now().toString()
             );
             MessageDAO.getInstance().save(msgDb);
@@ -403,7 +507,15 @@ public class Controller implements SocketClient.SocketListener{
         ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
         SocketClient client = Controller.getInstance().getClients().get(chat.getIdUser());
         try {
-            client.send(confirmRecived.createFormat());
+            if(view.getCurrentContact() != null && view.getCurrentContact().getId().equals(chat.getIdUser())){
+                client.send(confirmRecived.createFormat());
+            }else{
+                if(!listOfConfirms.containsKey(chat.getIdUser())){
+                    listOfConfirms.put(chat.getIdUser(),new ArrayList<>());
+                }
+                listOfConfirms.get(chat.getIdUser()).add(confirmRecived);
+            }
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -411,6 +523,22 @@ public class Controller implements SocketClient.SocketListener{
 
     @Override
     public void onConfirmedReceived(ConfirmRecived confirmRecived) {
+        try{
+            if(MessageDAO.getInstance().existById(confirmRecived.getIdMessage())){
+                System.out.println("Se recibió confirmación del mensaje: " + confirmRecived.getIdMessage());
+
+                MessageDAO.getInstance().updateStatus(confirmRecived.getIdMessage());
+
+                SwingUtilities.invokeLater(() -> {
+                    view.refreshChatView();
+
+                });
+
+            }
+
+        }catch (Exception e){
+
+        }
 
     }
 
@@ -455,6 +583,4 @@ public class Controller implements SocketClient.SocketListener{
         }
         SwingUtilities.invokeLater(() -> view.showByeNotification(id));
     }
-
-
 }

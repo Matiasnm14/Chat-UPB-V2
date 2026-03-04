@@ -17,4 +17,6 @@ public interface IChatView {
     void onLoadContacts(List<Contact> contacts);
     void onLoadMessages(List<Message> messages);
     void onAddModel(Contact contact);
+    void refreshChatView();
+    Contact getCurrentContact();
 }

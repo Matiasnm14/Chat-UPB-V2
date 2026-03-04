@@ -91,6 +91,9 @@ public class JUi extends JFrame implements IChatView {
                     System.out.println(currentContact.getName());
                     System.out.println("//////////////////////////////");
                     messageController.onLoadMessages(currentContact.getId());
+
+                    controller.markRead(currentContact);
+
                 }
             }
         });
@@ -115,11 +118,14 @@ public class JUi extends JFrame implements IChatView {
         JButton btnBuzz = new JButton("Buzz");
         JButton btnOffline = new JButton("Fuera de Línea");
         JButton btnNewConnection = new JButton("Nueva Conexión");
+        JButton btnConnect = new JButton("Conectar");
+
 
         jOnline = new JLabel("Status: Offline");
 
         // Top Panel (SOLO Buzz y Offline + Nueva Conexión)
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        topPanel.add(btnConnect);
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
         topPanel.add(btnOffline);
@@ -158,6 +164,16 @@ public class JUi extends JFrame implements IChatView {
         btnNewConnection.addActionListener(e ->
                 new ConnectionDialog(this, controller).setVisible(true)
         );
+        btnConnect.addActionListener(e->{
+            if(currentContact != null){
+                System.out.println("CurrentContact: " + currentContact.getName());
+                if(!controller.getClients().containsKey(currentContact.getId())){
+                    controller.sendHello(currentContact.getIp(),currentContact.getName(),currentContact.getId());
+                }
+
+            }
+        }
+                );
     }
 
     public void init() {
@@ -231,14 +247,21 @@ public class JUi extends JFrame implements IChatView {
         if (messages != null) {
             for (Message msg : messages) {
                 String senderName;
-                if (msg.getStatusMessage().toString().equals("SENT")) {
-                    senderName = "Tú";
-                } else {
+                if (msg.getStatusMessage().toString().equals("RECEIVED")) {
                     senderName = currentContact.getName();
+                    chatArea.append(senderName + " | " + msg.getBody() + "\n");
+                } else {
+                    senderName = "Tú";
+                    if(msg.getStatusMessage().toString().equals("SENT")){
+                        chatArea.append(senderName + " | " + msg.getBody() + " | ENVIADO" +"\n");
+                    }else if (msg.getStatusMessage().toString().equals("READ")){
+                        chatArea.append(senderName + " | " + msg.getBody() + " | LEIDO" +"\n");
+                    }
                 }
-                chatArea.append(senderName + " | " + msg.getBody() + "\n");
             }
         }
+        chatArea.setAutoscrolls(false);
+        chatArea.setAutoscrolls(true);
     }
 
     @Override
@@ -254,6 +277,19 @@ public class JUi extends JFrame implements IChatView {
             chatListModel.addElement(contact);
         }
     }
+
+    @Override
+    public void refreshChatView() {
+        if (currentContact != null) {
+            messageController.onLoadMessages(currentContact.getId());
+        }
+    }
+
+    @Override
+    public Contact getCurrentContact() {
+        return currentContact;
+    }
+
     public void setContactController(ContactController contactController){
         this.contactController = contactController;
     }

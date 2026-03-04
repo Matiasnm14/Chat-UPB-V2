@@ -33,7 +33,12 @@ public class ChatServer extends Thread {
                 SocketClient newClient = new SocketClient(socket);
                 newClient.setListener(username, userId, Controller.getInstance());
 
+                while (!Controller.getInstance().getPendingClients().isEmpty()){
+
+                }
                 Controller.getInstance().getPendingClients().add(newClient);
+
+
                 newClient.start();
 
             } catch (IOException io) {
