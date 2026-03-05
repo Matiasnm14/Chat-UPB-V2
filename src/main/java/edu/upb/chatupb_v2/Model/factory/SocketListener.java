@@ -18,4 +18,5 @@ public interface SocketListener {
     void onUniqueMessageReceived(UniqueMessage uniqueMessage);
     void onThemeReceived(Theme theme);
     void onByeReceived(Bye bye);
+    void onNewConnectionEstablished(String userName);
 }

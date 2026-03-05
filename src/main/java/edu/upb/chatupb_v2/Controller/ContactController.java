@@ -20,8 +20,8 @@ public class ContactController {
         UserDAO us = UserDAO.getInstance();
         this.iChatView = iChatView;
     }
-    public List<User> returnContacts() throws SQLException, ConnectException {
-        return daoInstance.findAll();
+    public List<User> returnContacts(String id) throws SQLException, ConnectException {
+        return daoInstance.findAllContactsForUser(id);
     }
     public List<Message> returnMessages(String id_me, String id_other) {
         List<Message> messages = null;

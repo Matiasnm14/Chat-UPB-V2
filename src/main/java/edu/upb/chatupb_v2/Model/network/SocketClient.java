@@ -57,30 +57,6 @@ public class SocketClient extends Thread {
 
     //ALGO
 
-//    private void handleInvitation(Invitation inv) throws Exception {
-//
-//
-//
-//        ClientController.getInstance().registerClient(this);
-//
-//        if (!UserDAO.getInstance().existByCode(uid)) {
-//            UserDAO.getInstance().save(new User(uid, name, this.ip));
-//        }
-//        ClientController.getInstance().notificarUI(inv);
-//    }
-
-//    private void handleAccept(Accept acp) throws Exception {
-//
-//
-//        ClientController.getInstance().registerClient(this);
-//
-//        if (!UserDAO.getInstance().existByCode(uid)) {
-//            UserDAO.getInstance().save(new User(uid, name, this.ip));
-//        }
-//
-//        ClientController.getInstance().notificarUI(acp);
-//    }
-
     @Override
     public void run() {
         try {

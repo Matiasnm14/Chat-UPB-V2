@@ -25,9 +25,8 @@ public class ClientController {
         return instance;
     }
     public  void delClients(String idUser){clients.remove(idUser);}
-
+    public static String my_uid;
     private final Map<String, Queue<String>> pendingMessages = new HashMap<>();
-    // Mapea socketClient → targetId original, para resolver el flush cuando llega AcceptHello
     private final Map<SocketClient, String> socketToTargetId = new HashMap<>();
 
     public void sendToClient(String targetId, String targetIp, String message, SocketListener listener) throws IOException {
@@ -73,7 +72,7 @@ public class ClientController {
                 System.out.println("Nuevo cliente registrado: " + uid);
                 if (!userInDB(uid)) {
                     try {
-                        UserDAO.getInstance().save(new User(client.getUID(), client.getNombre(), client.getIp()));
+                        UserDAO.getInstance().save(new User(client.getUID(), client.getNombre(), client.getIp(), my_uid));
                         System.out.println("REGISTRADO EN BD: " + uid);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
@@ -102,43 +101,26 @@ public class ClientController {
         return false;
     }
 
-    public void connectTo(String ip, String userId, String username, SocketListener listener, int election) throws IOException {
+    public void connectTo(String ip, String userId, String username, SocketListener listener) throws IOException {
+        if (my_uid == null){
+            my_uid = userId;
+        }
         SocketClient sc = new SocketClient(ip);
         sc.setSocketListener(listener);
         sc.start();
-        if (election == 1){
-            Invitation inv = new Invitation(userId, username);
-            sc.send(inv.createFormat());
-        }
-        if (election == 2){
-            Hello hel = new Hello(userId);
-            sc.send(hel.createFormat());
-        }
-        // No registrar aquí — el registro ocurre cuando llega el Accept (handleAccept)
+        Invitation inv = new Invitation(userId, username);
+        sc.send(inv.createFormat());
     }
 
     public void connectToPrevious(String ip, String userId, SocketListener listener) throws IOException {
+        if (my_uid == null){
+            my_uid = userId;
+        }
         SocketClient sc = new SocketClient(ip);
         sc.setSocketListener(listener);
         sc.start();
         Hello hel = new Hello(userId);
         sc.send(hel.createFormat());
-        // No registrar aquí — el registro ocurre cuando llega el Accept (handleAccept)
     }
-
-////    public void selectedUserAction(User user){
-////        SocketClient cs = null;
-////        try {
-////            cs = new SocketClient(user.getIp());
-////        } catch (IOException e) {
-////            throw new RuntimeException(e);
-////        }
-////        Invitation inv = new Invitation("MY-USER", "ME");
-////        try {
-////            cs.send(inv.createFormat());
-////        } catch (IOException e) {
-////            throw new RuntimeException(e);
-////        }
-////    }
 
 }

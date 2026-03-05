@@ -34,7 +34,7 @@ public class UIController implements SocketListener {
     public void connect(String ip) {
         new Thread(() -> {
             try {
-                ClientController.getInstance().connectTo(ip, userId, username, this, 1);
+                ClientController.getInstance().connectTo(ip, userId, username, this);
                 SwingUtilities.invokeLater(() -> view.updateStatus("Status: Enviando invitación..."));
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> view.showError("Error de conexión: " + e.getMessage()));
@@ -53,7 +53,6 @@ public class UIController implements SocketListener {
         }).start();
     }
 
-    //CONNECTFORHELLOS: ESTA MISMA HACE QUE SE HAGA FETCH DE LA BASE DE DATOS PARA CONSEGUIR LAS IPS, CONECTARSE Y MANDAR UN HELLO EN VEZ DE UN INVITATION
     public void sendMessage(String messageText, User target) {
         try {
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
@@ -111,6 +110,13 @@ public class UIController implements SocketListener {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+
+            SwingUtilities.invokeLater(() -> {
+                view.renderContacts();
+                view.updateStatus("Status: Online");
+                view.showMessage("Conexión Establecida con " + invitation.getUserName());
+            });
+
         } else {
             Decline dec = new Decline();
             try {
@@ -245,6 +251,12 @@ public class UIController implements SocketListener {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void onNewConnectionEstablished(String userName) {
+        view.renderContacts();
+        view.updateStatus("Status: Online");
     }
 
     @Override

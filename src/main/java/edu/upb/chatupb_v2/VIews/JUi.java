@@ -10,15 +10,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
+
 public class JUi extends JFrame implements IChatView {
     @Setter
     @Getter
     private UIController UIController;
     private String username;
-    private final UUID userId = UUID.fromString("557e37e7-4853-4136-aae5-fce08e133272");
+    private static String userId;
 
     private User selectedUser;
     private DefaultListModel<User> chatListModel;
@@ -37,21 +36,14 @@ public class JUi extends JFrame implements IChatView {
     private JLabel jOnline;
 
     public JUi() {
-        this.username = askForUsername();
-        if (this.username == null || this.username.trim().isEmpty()) {
+        Account account = ConnectionDialog.showAccountPicker(this);
+        if (account == null) {
             System.exit(0);
         }
+        this.username = account.getNombre();
+        this.userId = account.getId();
         initComponents();
-        this.UIController = new UIController(this, username, userId.toString());
-    }
-
-    private String askForUsername() {
-        return JOptionPane.showInputDialog(
-                this,
-                "Ingresa tu nombre de usuario:",
-                "Bienvenida a ChatUPB",
-                JOptionPane.QUESTION_MESSAGE
-        );
+        this.UIController = new UIController(this, username, userId);
     }
 
     private void initComponents() {
@@ -124,7 +116,7 @@ public class JUi extends JFrame implements IChatView {
         btnOffline.addActionListener(e -> UIController.sendBye());
 
         btnNewConnection.addActionListener(e ->
-                new ConnectionDialog(this, UIController).setVisible(true)
+                showConnectDialog()
         );
 
         chatList.addListSelectionListener(e -> {
@@ -132,7 +124,7 @@ public class JUi extends JFrame implements IChatView {
                 User newSelected = chatList.getSelectedValue();
                 if (newSelected != null) {
                     selectedUser = newSelected;
-                    renderMessages(controller.returnMessages(this.userId.toString(), selectedUser.getId()));
+                    renderMessages(controller.returnMessages(this.userId, selectedUser.getId()));
                 }
             }
         });
@@ -186,6 +178,18 @@ public class JUi extends JFrame implements IChatView {
         });
     }
 
+
+    private void showConnectDialog() {
+        String ip = JOptionPane.showInputDialog(
+                this,
+                "Dirección IP del servidor:",
+                "Nueva Conexión",
+                JOptionPane.QUESTION_MESSAGE
+        );
+        if (ip != null && !ip.trim().isEmpty()) {
+            UIController.connect(ip.trim());
+        }
+    }
 
     public void init() {
         EventQueue.invokeLater(() -> setVisible(true));
@@ -243,7 +247,6 @@ public class JUi extends JFrame implements IChatView {
     //TODO
     @Override
     public void showChat(Chat chat) {
-
         String name = ClientController.getInstance()
                 .getClients()
                 .get(chat.getSendUser())
@@ -256,7 +259,7 @@ public class JUi extends JFrame implements IChatView {
     public void renderContacts() {
         chatListModel.clear();
         try {
-            List<User> users = controller.returnContacts();
+            List<User> users = controller.returnContacts(userId);
             for (User user : users) {
                 chatListModel.addElement(user);
             }
@@ -269,7 +272,7 @@ public class JUi extends JFrame implements IChatView {
         messagesPanel.removeAll();
 
         for (Message message : messages) {
-            boolean isOwn = message.getSendUser().equals(userId.toString());
+            boolean isOwn = message.getSendUser().equals(userId);
             MessageBubble bubble = new MessageBubble(message.getBody(), isOwn);
             messagesPanel.add(bubble);
         }

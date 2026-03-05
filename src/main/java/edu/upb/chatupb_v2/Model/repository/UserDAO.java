@@ -32,6 +32,10 @@ public class UserDAO {
         if (existColumn(result, User.Column.IP_USER)) {
             prefacturaSync.setIp(result.getString(User.Column.IP_USER));
         }
+
+        if (existColumn(result, User.Column.SAVED_BY_ID)) {
+            prefacturaSync.setSavedById(result.getString(User.Column.SAVED_BY_ID));
+        }
 //        if (existColumn(result, User.Column.STATUSUSER)) {
 //            switch (result.getString(User.Column.STATUSUSER).toLowerCase()){
 //                case "online":
@@ -60,6 +64,12 @@ public class UserDAO {
         return helper.executeQuery(query, resultReader);
     }
 
+    public List<User> findAllContactsForUser(String id) throws ConnectException, SQLException {
+        String query = "SELECT * FROM Users WHERE saved_by_id = '" + id +"'"  ;
+        List <User> res = helper.executeQuery(query, resultReader);
+        return helper.executeQuery(query, resultReader);
+    }
+
     public boolean exist(String argument) throws ConnectException, SQLException {
         String query = "SELECT count(*) FROM Users WHERE " + argument;
         return helper.executeQueryCount(query, null) == 1;
@@ -85,13 +95,14 @@ public class UserDAO {
     }
 
     public void save(User user) throws Exception {
-        String query = "INSERT INTO Users(id, name, ip_user) values (?,?,?)";
+        String query = "INSERT INTO Users(id, name, ip_user, saved_by_id) values (?,?,?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
                 pst.setString(1, user.getId());
                 pst.setString(2, user.getName());
                 pst.setString(3, user.getIp());
+                pst.setString(4, user.getSavedById());
             }
         };
         helper.insert(query, params, user);
