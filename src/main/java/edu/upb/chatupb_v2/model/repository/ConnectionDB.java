@@ -33,6 +33,9 @@ public class ConnectionDB {
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection("jdbc:sqlite:chat_upb_v2.sqlite");
             if (conn != null) {
+                try(Statement stm = conn.createStatement()){
+                    stm.execute("PRAGMA foreign_keys = ON");
+                }
                 System.out.println("Conexión exitosa.");
             } else {
                 System.out.println("Conexión fallida");
@@ -56,9 +59,9 @@ public class ConnectionDB {
 
             stmt.execute("CREATE TABLE IF NOT EXISTS Contacts (" +
                     "id TEXT PRIMARY KEY, " +
+                    "Users_id TEXT, " +
                     "name TEXT, " +
-                    "ip TEXT, " +
-                    "Users_id TEXT " +
+                    "ip TEXT " +
                     ");");
 
 

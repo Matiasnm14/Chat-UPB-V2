@@ -201,7 +201,7 @@ public class Controller implements SocketClient.SocketListener{
         try{
             if (sc != null) {
                 sc.send(chat.createFormat());
-                SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText + " |Enviado"));
+//                SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText + " |Enviado"));
             } else {
                 SwingUtilities.invokeLater(() -> view.showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
             }
@@ -322,6 +322,7 @@ public class Controller implements SocketClient.SocketListener{
                 if(ContactDao.getInstance().existByCode(nuevoContacto.getId())){
                     System.out.println("Se actualizo la IP");
                     ContactDao.getInstance().updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
+//                    ContactDao.getInstance().findById(nuevoContacto.getId()).setStateConnect(true);
                 }else {
                     ContactDao.getInstance().save(nuevoContacto);
                     SwingUtilities.invokeLater(() -> {
@@ -492,8 +493,8 @@ public class Controller implements SocketClient.SocketListener{
 
     @Override
     public void onChatReceived(Chat chat) {
-        if(view.getCurrentContact() !=null && view.getCurrentContact().getId().equals(chat.getIdUser()))
-            view.showChat(chat);
+
+
         try {
             Message msgDb = new Message(
                     chat.getIdMessage(),
@@ -504,6 +505,10 @@ public class Controller implements SocketClient.SocketListener{
                     LocalDate.now().toString()
             );
             MessageDAO.getInstance().save(msgDb);
+
+            SwingUtilities.invokeLater(() -> {
+                view.showChat(chat);
+            });
 
         } catch (Exception e) {
             System.out.println("Error al guardar mensaje recibido: " + e.getMessage());
@@ -523,6 +528,8 @@ public class Controller implements SocketClient.SocketListener{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+//
+
     }
 
     @Override

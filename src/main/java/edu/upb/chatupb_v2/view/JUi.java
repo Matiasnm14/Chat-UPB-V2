@@ -14,6 +14,8 @@ import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -29,7 +31,8 @@ public class JUi extends JFrame implements IChatView {
     private String userId;
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
-    private JTextArea chatArea;
+    private DefaultListModel<Message> messageListModel;
+    private JList<Message> messageList;
     private JTextField jTextMensaje;
     private JLabel jOnline;
 
@@ -100,12 +103,18 @@ public class JUi extends JFrame implements IChatView {
 
         // ================= RIGHT PANEL =================
 
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        chatArea.setLineWrap(true);
-        chatArea.setWrapStyleWord(true);
+        messageListModel = new DefaultListModel<>();
+        messageList = new JList<>(messageListModel);
+        messageList.setCellRenderer(new MessageRender()); // ¡Aquí inyectamos tus globos!
+        messageList.setBackground(new Color(240, 240, 240)); // Un gris claro de fondo
+        messageList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        JScrollPane chatScrollPane = new JScrollPane(chatArea);
+        JScrollPane chatScrollPane = new JScrollPane(messageList);
+        chatScrollPane.setBorder(null);
+
+        setupMessageContextMenu();
+
+
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
@@ -198,6 +207,65 @@ public class JUi extends JFrame implements IChatView {
         timer.start();
     }
 
+
+    private void setupMessageContextMenu() {
+        JPopupMenu popupMenu = new JPopupMenu();
+
+        JMenuItem pinItem = new JMenuItem("Pin mensaje");
+        JMenuItem deleteMeItem = new JMenuItem("Eliminar para mí");
+        JMenuItem deleteAllItem = new JMenuItem("Eliminar para todos");
+
+        popupMenu.add(pinItem);
+        popupMenu.add(deleteMeItem);
+        popupMenu.add(deleteAllItem);
+
+        // Acciones de los botones del menú
+        pinItem.addActionListener(e -> {
+            Message selectedMsg = messageList.getSelectedValue();
+            if (selectedMsg != null) {
+                System.out.println("Pin al mensaje: " + selectedMsg.getIdMessage());
+                // TODO: Lógica en controller para pinear
+            }
+        });
+
+        deleteMeItem.addActionListener(e -> {
+            Message selectedMsg = messageList.getSelectedValue();
+            if (selectedMsg != null) {
+                System.out.println("Eliminar localmente: " + selectedMsg.getIdMessage());
+                // TODO: Lógica en MessageDAO para eliminar de tu BD
+
+            }
+        });
+
+        deleteAllItem.addActionListener(e -> {
+            Message selectedMsg = messageList.getSelectedValue();
+            if (selectedMsg != null) {
+                System.out.println("Solicitar eliminar en red: " + selectedMsg.getIdMessage());
+                // TODO: Lógica en Controller para enviar un comando DeleteMessage al Socket
+            }
+        });
+
+        // Detectar el clic derecho en la lista
+        messageList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) { showPopup(e); }
+            @Override
+            public void mouseReleased(MouseEvent e) { showPopup(e); }
+
+            private void showPopup(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    // Seleccionar el ítem donde está el mouse
+                    int row = messageList.locationToIndex(e.getPoint());
+                    if (row >= 0) {
+                        messageList.setSelectedIndex(row);
+                        // Mostrar el menú
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    }
+                }
+            }
+        });
+    }
+
     // ================= IChatView =================
 
     @Override
@@ -207,8 +275,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showMessage(String message) {
-        chatArea.append(message + "\n");
-    }
+        JOptionPane.showMessageDialog(this, message, "Notificación", JOptionPane.INFORMATION_MESSAGE);    }
 
     @Override
     public void showError(String error) {
@@ -228,7 +295,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showBuzzNotification(String senderName) {
-        showMessage("\n--- ¡" + senderName + " te ha enviado un Zumbido! ---\n");
+//        showMessage("\n--- ¡" + senderName + " te ha enviado un Zumbido! ---\n");
 
         // 2. Reproducir el sonido usando nuestro Enum
         this.setExtendedState(javax.swing.JFrame.NORMAL);
@@ -241,8 +308,9 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showChat(Chat chat) {
-        String name = Controller.getInstance().getClients().get(chat.getIdUser()).getNombre();
-        chatArea.append(name + " | " + chat.getMessage()+ "\n");
+        if (currentContact != null && currentContact.getId().equals(chat.getIdUser())) {
+            refreshChatView();
+        }
     }
 
     @Override
@@ -266,25 +334,18 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void onLoadMessages(List<Message> messages) {
-        chatArea.setText("");
+        messageListModel.clear();
         if (messages != null) {
             for (Message msg : messages) {
-                String senderName;
-                if (msg.getStatusMessage().toString().equals("RECEIVED")) {
-                    senderName = currentContact.getName();
-                    chatArea.append(senderName + " | " + msg.getBody() + "\n");
-                } else {
-                    senderName = "Tú";
-                    if(msg.getStatusMessage().toString().equals("SENT")){
-                        chatArea.append(senderName + " | " + msg.getBody() + " | ENVIADO" +"\n");
-                    }else if (msg.getStatusMessage().toString().equals("READ")){
-                        chatArea.append(senderName + " | " + msg.getBody() + " | LEIDO" +"\n");
-                    }
-                }
+                messageListModel.addElement(msg);
+            }
+
+            // Hacer scroll hacia abajo automáticamente
+            int lastIndex = messageListModel.getSize() - 1;
+            if (lastIndex >= 0) {
+                messageList.ensureIndexIsVisible(lastIndex);
             }
         }
-        chatArea.setAutoscrolls(false);
-        chatArea.setAutoscrolls(true);
     }
 
     @Override
