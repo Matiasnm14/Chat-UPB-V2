@@ -357,8 +357,9 @@ public class Controller implements SocketClient.SocketListener{
             if(!pendingClients.isEmpty()){
                 pendingClients.getFirst().setUid(accept.getIdUser());
                 pendingClients.getFirst().setUserName(accept.getUserName());
-                Controller.getInstance().addClients(pendingClients.getFirst());
+                addClients(pendingClients.getFirst());
                 pendingClients.removeFirst();
+
             }
             view.updateStatus("Status: Online");
             view.showMessage("Conexión Aceptada");
@@ -378,7 +379,7 @@ public class Controller implements SocketClient.SocketListener{
                         ContactDao.getInstance().updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
                     }else{
                         ContactDao.getInstance().save(nuevoContacto);
-//                    nuevoContacto.setId(accept.getIdUser());
+                        nuevoContacto.setId(accept.getIdUser());
                         view.onAddModel(nuevoContacto);
                     }
 
@@ -427,6 +428,9 @@ public class Controller implements SocketClient.SocketListener{
                 System.out.println("onHelloReceived: Contacto reconocido!");
 
 //                ContactDao.getInstance().updateStatus(senderId);
+                ContactDao.getInstance().updateIp(hello.getIdUser(),incomingSocket.getIp());
+
+                System.out.println("IP ACTUALIZADA EN HELLO: "+ incomingSocket.getIp());
                 view.onLoadContacts(ContactDao.getInstance().findAll());
 
                 pendingClients.remove(incomingSocket);

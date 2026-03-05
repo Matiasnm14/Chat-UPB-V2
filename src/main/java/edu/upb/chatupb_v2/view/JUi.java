@@ -3,9 +3,11 @@ package edu.upb.chatupb_v2.view;
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Controller;
 import edu.upb.chatupb_v2.controller.MessageController;
+import edu.upb.chatupb_v2.controller.UserController;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
+import edu.upb.chatupb_v2.model.entities.enums.Sound;
 import edu.upb.chatupb_v2.model.repository.UserDao;
 import edu.upb.chatupb_v2.model.entities.commands.Chat;
 import lombok.Getter;
@@ -21,6 +23,7 @@ public class JUi extends JFrame implements IChatView {
     private Controller controller;
     private ContactController contactController;
     private MessageController messageController;
+    private UserController userController;
     private String username;
     @Getter
     private String userId;
@@ -35,36 +38,28 @@ public class JUi extends JFrame implements IChatView {
 
     private Contact currentContact;
 
-    public JUi() {
-        this.username = askForUsername();
-        if (this.username == null || this.username.trim().isEmpty()) {
-            System.exit(0);
-        }
+    public JUi(String name, String id) {
+
+
+        this.userId = id;
+        this.username = name;
+
         initComponents();
-        try {
-            if (UserDao.getInstance().exist("name='"+username+"'"))
-                userId = UserDao.getInstance().findByName(username).getId();
-            else{
-                userId = UUID.randomUUID().toString();
-                UserDao.getInstance().save(new User(userId,username));
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+
         this.controller = Controller.getInstance();
         controller.initController(username,userId,this);
         System.out.println(userId);
 
-//        Controller.getInstance().addUi(this);
+//
     }
-    private String askForUsername() {
-        return JOptionPane.showInputDialog(
-                this,
-                "Ingresa tu nombre de usuario:",
-                "Bienvenida a ChatUPB",
-                JOptionPane.QUESTION_MESSAGE
-        );
-    }
+//    private String askForUsername() {
+//        return JOptionPane.showInputDialog(
+//                this,
+//                "Ingresa tu nombre de usuario:",
+//                "Bienvenida a ChatUPB",
+//                JOptionPane.QUESTION_MESSAGE
+//        );
+//    }
 
     private void initComponents() {
         setTitle("ChatUPB");
@@ -180,6 +175,29 @@ public class JUi extends JFrame implements IChatView {
         EventQueue.invokeLater(() -> setVisible(true));
     }
 
+    private void shakeWindow() {
+        final Point originalLocation = this.getLocation();
+        final int shakeDistance = 15;
+
+        Timer timer = new Timer(30, new java.awt.event.ActionListener() {
+            int counter = 0;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (counter >= 20) {
+                    setLocation(originalLocation);
+                    ((Timer) e.getSource()).stop();
+                } else {
+                    int dx = (counter % 2 == 0) ? shakeDistance : -shakeDistance;
+                    int dy = (counter % 4 < 2) ? shakeDistance : -shakeDistance;
+                    setLocation(originalLocation.x + dx, originalLocation.y + dy);
+                    counter++;
+                }
+            }
+        });
+        timer.start();
+    }
+
     // ================= IChatView =================
 
     @Override
@@ -210,10 +228,15 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showBuzzNotification(String senderName) {
-        JOptionPane.showMessageDialog(this,
-                senderName + " te envió un buzz",
-                "Buzz",
-                JOptionPane.INFORMATION_MESSAGE);
+        showMessage("\n--- ¡" + senderName + " te ha enviado un Zumbido! ---\n");
+
+        // 2. Reproducir el sonido usando nuestro Enum
+        this.setExtendedState(javax.swing.JFrame.NORMAL);
+        this.toFront();
+        this.requestFocus();
+
+        shakeWindow();
+        Sound.BUZZ.play();
     }
 
     @Override
@@ -295,5 +318,8 @@ public class JUi extends JFrame implements IChatView {
     }
     public void setMessageController(MessageController messageController){
         this.messageController = messageController;
+    }
+    public void setUserController(UserController userController){
+        this.userController = userController;
     }
 }

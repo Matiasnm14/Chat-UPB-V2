@@ -7,6 +7,7 @@ package edu.upb.chatupb_v2.model.repository;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
  *
@@ -15,6 +16,7 @@ import java.sql.SQLException;
 public class ConnectionDB {
  
     private static final ConnectionDB connection = new ConnectionDB();
+    private static final String URL = "jdbc:sqlite:chat_upb_v2.sqlite";
     
     private ConnectionDB(){
        
@@ -41,5 +43,37 @@ public class ConnectionDB {
         
         }
         return conn;   
+    }
+
+    public static void initDatabase() {
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement()) {
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS Users (" +
+                    "id TEXT PRIMARY KEY, " +
+                    "name TEXT NOT NULL" +
+                    ");");
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS Contacts (" +
+                    "id TEXT PRIMARY KEY, " +
+                    "name TEXT, " +
+                    "ip TEXT, " +
+                    "Users_id TEXT " +
+                    ");");
+
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS Messages (" +
+                    "id TEXT PRIMARY KEY, " +
+                    "Contacts_id TEXT, " +
+                    "message TEXT, " +
+                    "date TEXT, " +
+                    "type TEXT, " +
+                    "status TEXT" +
+                    ");");
+
+            System.out.println("Base de datos verificada/creada con éxito.");
+        } catch (Exception e) {
+            System.out.println("Error inicializando la base de datos: " + e.getMessage());
+        }
     }
 }

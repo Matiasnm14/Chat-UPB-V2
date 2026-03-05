@@ -4,16 +4,17 @@ import edu.upb.chatupb_v2.model.entities.User;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.ConnectException;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
+
+
 
 @Slf4j
 public class UserDao {
 
 
     private DaoHelper<User> helper;
+    private final String URL = "jdbc:sqlite:chat_upb_v2.sqlite";
     private static final UserDao userDao = new UserDao();
     public static UserDao getInstance(){
         return userDao;
@@ -48,6 +49,21 @@ public class UserDao {
             //log.error("No se encontro la columna: {}", columnName); // log innecesario
         }
         return false;
+    }
+    public User getMyUser() {
+        String sql = "SELECT id, name FROM Users LIMIT 1";
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (rs.next()) {
+                // Retornamos el usuario encontrado
+                return new User(rs.getString("id"), rs.getString("username"));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al buscar el usuario: " + e.getMessage());
+        }
+        return null; // No hay usuario
     }
 
     public List<User> findAll() throws ConnectException, SQLException {
