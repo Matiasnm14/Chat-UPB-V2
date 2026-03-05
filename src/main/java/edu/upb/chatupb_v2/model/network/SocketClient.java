@@ -165,7 +165,12 @@ public class SocketClient extends Thread {
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } catch (Exception e) {
+            if (e.getMessage().equals("Formato de trama erroneo")) {
+                Controller.getInstance().getPendingClients().remove(this);
+                this.close();
+            }
             throw new RuntimeException(e);
+
         }
     }
 

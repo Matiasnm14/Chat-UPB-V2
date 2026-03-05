@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.controller;
 
+import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import edu.upb.chatupb_v2.view.IChatView;
@@ -28,5 +29,18 @@ public class MessageController {
 
     public void save(Message mesg) throws Exception{
         messageDAO.save(mesg);
+    }
+
+    public void updateReceived(String idMessage){
+        try {
+
+            messageDAO.updateMessageReceived(idMessage);
+        }catch (Exception e){
+            throw new OperationException("Error al actualizar el mensaje");
+        }
+    }
+
+    public String obtainContact(String id) throws Exception{
+        return messageDAO.findById(id).getContactId();
     }
 }

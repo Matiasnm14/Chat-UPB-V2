@@ -69,8 +69,10 @@ public class ChatServer extends Thread {
                 while (isRunning) {
                     Socket clientSocket = serverSocket.accept();
                     SocketClient newClient = new SocketClient(clientSocket);
+                    System.out.println(newClient.getIp());
 
                     newClient.setListener(username, userId, Controller.getInstance());
+                    while (!Controller.getInstance().getPendingClients().isEmpty());
                     Controller.getInstance().getPendingClients().add(newClient);
                     newClient.start();
                     System.out.println("Nuevo cliente conectado desde: " + clientSocket.getInetAddress());

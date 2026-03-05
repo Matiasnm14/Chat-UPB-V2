@@ -2,8 +2,10 @@ package edu.upb.chatupb_v2.model.repository;
 
 
 import edu.upb.chatupb_v2.model.entities.Contact;
+import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
 
 import java.net.ConnectException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -58,7 +60,7 @@ public class ContactDao {
     }
 
     public boolean existByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM Contacts WHERE code='" + code + "'";
+        String query = "SELECT count(*) FROM Contacts WHERE id='" + code + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
 
@@ -102,6 +104,18 @@ public class ContactDao {
             };
             helper.insert(query, params, contact);
         }
+    }
+
+    public void updateContact(String id_contact, String ip_contact) throws Exception {
+        String query = "UPDATE Contacts SET ip=? WHERE id =?";
+        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, ip_contact);
+                pst.setString(2, id_contact);
+            }
+        };
+        helper.update(query, params);
     }
 
 //    public void update(User user) throws Exception {

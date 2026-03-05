@@ -4,11 +4,12 @@ import edu.upb.chatupb_v2.bl.ChatService;
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Controller;
 import edu.upb.chatupb_v2.controller.MessageController;
+import edu.upb.chatupb_v2.controller.UserController;
+import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
 import edu.upb.chatupb_v2.model.entities.comands.*;
-import edu.upb.chatupb_v2.model.network.SocketClient;
 import edu.upb.chatupb_v2.model.repository.*;
 //import edu.upb.chatupb_v2.repository.*;
 import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
@@ -18,11 +19,15 @@ import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
+//import javax.swing.*;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 
 public class JUi extends JFrame implements IChatView {
 
@@ -37,18 +42,23 @@ public class JUi extends JFrame implements IChatView {
     private JTextField jTextMensaje;
     private JLabel jOnline;
 
-    private DefaultListModel<Contact> chatListModel;
-    private JList<Contact> chatList;
+    private DefaultListModel<Contact> contactListModel;
+    private JList<Contact> contactList;
 
     // Añade esta variable para llevar el control del chat actual:
+    @Getter
     private Contact currentContact;
     @Setter
     private ContactController contactController;
     @Setter
     private MessageController messageController;
+    @Setter
+    private UserController userController = new UserController(this);
+
+
 
     public JUi() {
-        this.username = askForUsername();
+        this.username = userController.onLoadUser();
         if (this.username == null || this.username.trim().isEmpty()) {
             System.exit(0);
         }
@@ -64,7 +74,10 @@ public class JUi extends JFrame implements IChatView {
             e.printStackTrace();
         }
 
-        System.out.println(userId);
+        System.out.println("------------------------------------------------------------------");
+        System.out.println("ID: " + userId);
+        System.out.println("Nombre: " + username);
+        System.out.println("------------------------------------------------------------------");
         Controller.getInstance().addUi(this);
 
 
@@ -76,13 +89,51 @@ public class JUi extends JFrame implements IChatView {
 //    }
 
     private String askForUsername() {
-        return JOptionPane.showInputDialog(
+        //Campo de texto
+        JTextField textField = new JTextField(20);
+
+        // Filtro
+        ((AbstractDocument) textField.getDocument()).setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+                if (string == null) return;
+                if ((fb.getDocument().getLength() + string.length()) <= 60) {
+                    super.insertString(fb, offset, string, attr);
+                }
+            }
+
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+                if (text == null) return;
+                if ((fb.getDocument().getLength() + text.length() - length) <= 60) {
+                    super.replace(fb, offset, length, text, attrs);
+                }
+            }
+        });
+
+
+        Object[] message = {
+                "Ingresa tu nombre de usuario (máx 60 caracteres):", textField
+        };
+
+
+        int option = JOptionPane.showConfirmDialog(
                 this,
-                "Ingresa tu nombre de usuario:",
-                "Bienvenida a ChatUPB",
+                message,
+                "Bienvenido a ChatUPB",
+                JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
+
+
+        if (option == JOptionPane.OK_OPTION) {
+            return textField.getText();
+        }
+
+        return null;
     }
+
+
 
     private void initComponents() {
         setTitle("ChatUPB");
@@ -92,25 +143,29 @@ public class JUi extends JFrame implements IChatView {
 
         // ================= LEFT PANEL =================
 
-        chatListModel = new DefaultListModel<>();
-        chatList = new JList<>(chatListModel);
-        chatList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        chatList.setFixedCellHeight(40); // Ajusta la altura si lo ves muy separado
+        contactListModel = new DefaultListModel<>();
+        contactList = new JList<>(contactListModel);
+        contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        contactList.setFixedCellHeight(40); // Ajusta la altura si lo ves muy separado
 
         // ¡AQUÍ USAS TU RENDERER PERSONALIZADO!
-        chatList.setCellRenderer(new ContactRender());
+        contactList.setCellRenderer(new ContactRender());
 
 
-        chatList.addListSelectionListener(e -> {
+        contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                currentContact = chatList.getSelectedValue();
+                currentContact = contactList.getSelectedValue();
                 if (currentContact != null) {
+                    System.out.println(currentContact.getId());
                     messageController.onLoadMessages(currentContact.getId());
+                    if (Controller.getInstance().getClients().containsKey(currentContact.getId())){
+                        Controller.getInstance().sendConfirms(currentContact.getId());
+                    }
                 }
             }
         });
 
-        JScrollPane leftScrollPane = new JScrollPane(chatList);
+        JScrollPane leftScrollPane = new JScrollPane(contactList);
         leftScrollPane.setPreferredSize(new Dimension(250, 600));
 
 
@@ -130,14 +185,17 @@ public class JUi extends JFrame implements IChatView {
         JButton btnBuzz = new JButton("Buzz");
         JButton btnOffline = new JButton("Fuera de Línea");
         JButton btnNewConnection = new JButton("Nueva Conexión");
+        JButton btnConectar = new JButton("Conectar a Contacto");
 
         jOnline = new JLabel("Status: Offline");
 
         // Top Panel (SOLO Buzz y Offline + Nueva Conexión)
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        topPanel.add(btnConectar);
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
         topPanel.add(btnOffline);
+
 
         // Bottom Panel (mensaje)
         JPanel bottomPanel = new JPanel(new BorderLayout());
@@ -165,6 +223,16 @@ public class JUi extends JFrame implements IChatView {
             } else if (currentContact == null) {
                 showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
             }
+        });
+
+        btnConectar.addActionListener(e -> {
+            if (currentContact != null) {
+                if (!Controller.getInstance().getClients().containsKey(currentContact.getId())) {
+                    SwingUtilities.invokeLater(() ->{
+                        Controller.getInstance().sendHello(currentContact.getIp(), currentContact.getName(), currentContact.getId());
+                    });
+                }
+            }else showError("Seleccione un Contacto Primero");
         });
 
         btnBuzz.addActionListener(e -> Controller.getInstance().sendBuzz());
@@ -232,47 +300,55 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void addModel(Contact contact) {
         boolean exists = false;
-        for (int i = 0; i < chatListModel.size(); i++) {
-            if (chatListModel.get(i).getId().equals(contact.getId())) {
+        for (int i = 0; i < contactListModel.size(); i++) {
+            if (contactListModel.get(i).getId().equals(contact.getId())) {
                 exists = true;
                 break;
             }
         }
         if (!exists) {
-            chatListModel.addElement(contact);
+            contactListModel.addElement(contact);
         }
     }
 
     @Override
     public void onLoadContacts(List<Contact> contacts) {
-        chatListModel.clear();
+        contactListModel.clear();
         if (contacts != null) {
             for (Contact c : contacts) {
-                chatListModel.addElement(c);
+                contactListModel.addElement(c);
             }
         }
+    }
+    @Override
+    public String onLoadUser(List<User> users){
+        if (users.isEmpty()){
+            return askForUsername();
+        }else return users.getFirst().getName();
     }
 
     @Override
     public void onLoadMessages(List<Message> messages) {
         chatArea.setText("");
-        if (messages != null) {
+        if (messages != null && currentContact != null) {
             for (Message msg : messages) {
                 String senderName;
                 if (msg.getStatusMessage().toString().equals("SENT")) {
                     senderName = "Tú";
-                } else {
-                    senderName = currentContact.getName();
-                }
+                } else if (msg.getStatusMessage().toString().equals("RECEIVED")) {
+                    senderName = "Tú (Recibido)";
+                }else senderName = currentContact.getName();
                 chatArea.append(senderName + " | " + msg.getBody() + "\n");
             }
         }
+        chatArea.setCaretPosition(chatArea.getDocument().getLength());
+
     }
     
     
     
     //=================LOGICA DE COMANDOS=============================
-    public void onInvitationReceived(Invitation invitation) {
+    public boolean onInvitationReceived(Invitation invitation) {
 
         boolean accepted = showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
         Controller.getInstance().getPendingClients().getFirst().setUid(invitation.getIdUser());
@@ -281,7 +357,7 @@ public class JUi extends JFrame implements IChatView {
 
         if (accepted) {
 //            Controller.getInstance().addContact(invitation.getUserName());
-            Accept acp = new Accept(userId, username);
+
             try {
                 Contact nuevoContacto = new Contact();
                 nuevoContacto.setId(invitation.getIdUser());
@@ -299,63 +375,41 @@ public class JUi extends JFrame implements IChatView {
                     addModel(nuevoContacto);
 
                 });
+                return true;
 
-                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
-                if (sc != null) {
-                    sc.send(acp.createFormat());
-                }
+
             } catch (Exception e) {
                 System.out.println("Error procesando invitación aceptada: " + e.getMessage());
             }
+            return true;
 
         } else {
-            Decline dec = new Decline();
-            try {
-                SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
-                if (sc != null)
-                    sc.send(dec.createFormat());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            return false;
+
         }
     }
 
 
-    public void onAcceptReceived(Accept accept) {
-        SwingUtilities.invokeLater(() -> {
+    public Contact onAcceptReceived(Accept accept, String ip) {
+        updateStatus("Status: Online");
+        showMessage("Conexión Aceptada");
+        Contact nuevoContacto = new Contact();
+        nuevoContacto.setId(accept.getIdUser());
+        nuevoContacto.setName(accept.getUserName());
+        nuevoContacto.setIp(ip);
+        nuevoContacto.setUserId(this.userId);
+        nuevoContacto.setStateConnect(true);
 
-            Controller.getInstance().getPendingClients().getFirst().setUid(accept.getIdUser());
-            Controller.getInstance().getPendingClients().getFirst().setUserName(accept.getUserName());
-            Controller.getInstance().addClients(Controller.getInstance().getPendingClients().getFirst());
-            Controller.getInstance().getPendingClients().removeFirst();
 
-//            Controller.getInstance().addContact(accept.getUserName());
-            updateStatus("Status: Online");
-            showMessage("Conexión Aceptada");
-            try {
-                SocketClient sc = Controller.getInstance().getClients().get(accept.getIdUser());
-                if (sc != null) {
-                    Contact nuevoContacto = new Contact();
-                    nuevoContacto.setId(accept.getIdUser());
-                    nuevoContacto.setName(accept.getUserName());
-                    nuevoContacto.setIp(sc.getIp());
-                    nuevoContacto.setUserId(this.userId);
-                    nuevoContacto.setStateConnect(true);
 
-                    ContactDao.getInstance().save(nuevoContacto);
 
-                   
-                    nuevoContacto.setId(accept.getIdUser());
-                    addModel(nuevoContacto);
-                    
+        nuevoContacto.setId(accept.getIdUser());
+        addModel(nuevoContacto);
 
-                    updateStatus("Status: Online");
-                    showMessage("Conexión Aceptada con " + accept.getUserName());
-                }
-            } catch (Exception e) {
-                System.out.println("Error guardando contacto al aceptar: " + e.getMessage());
-            }
-        });
+
+        updateStatus("Status: Online");
+        showMessage("Conexión Aceptada con " + accept.getUserName());
+        return nuevoContacto;
     }
 
 
@@ -368,21 +422,15 @@ public class JUi extends JFrame implements IChatView {
     }
 
 
-    public void onHelloReceived(Hello hello) {
+    public AcceptHello onHelloReceived(Hello hello) {
         AcceptHello acceptHello = new AcceptHello(userId);
-        SocketClient client = Controller.getInstance().getClients().get(hello.getIdUser());
-        if (client != null) {
-            try {
-                client.send(acceptHello.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
-        }
+        return acceptHello;
     }
 
 
-    public void onChatReceived(Chat chat) {
-        showChat(chat);
+    public ConfirmRecived onChatReceived(Chat chat) {
+        if (currentContact != null && currentContact.getId().equals(chat.getIdUser()))
+            showChat(chat);
         try {
             Message msgDb = new Message(
                     chat.getIdMessage(),
@@ -397,46 +445,19 @@ public class JUi extends JFrame implements IChatView {
         } catch (Exception e) {
             System.out.println("Error al guardar mensaje recibido: " + e.getMessage());
         }
-        ConfirmRecived confirmRecived = new ConfirmRecived(chat.getIdMessage());
-        SocketClient client = Controller.getInstance().getClients().get(chat.getIdUser());
-        try {
-            client.send(confirmRecived.createFormat());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return new ConfirmRecived(chat.getIdMessage());
     }
 
 
-    public void onBuzzingReceived(Buzzing buzzing) {
-        String name = "Desconocido";
-        SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
-        if (sc != null) {
-            name = sc.getNombre();
-        }
-        String finalName = name;
+    public void onBuzzingReceived(String finalName) {
+
         SwingUtilities.invokeLater(() -> showBuzzNotification(finalName));
     }
 
-    public void onByeReceived(Bye bye){
-        String id = bye.getIdUser();
-        System.out.println("ID: " + id );
-        SocketClient sc = Controller.getInstance().getClients().get(id);
-        if (sc != null){
-            sc.close();
-        }
-        SwingUtilities.invokeLater(() -> showByeNotification(id));
+    public void onByeReceived(){
+//        SwingUtilities.invokeLater(() -> showByeNotification());
     }
     public void onAcceptHelloReceived(AcceptHello acceptHello) {}
-    public void onDeclineHelloReceived(DeclineHello declineHello) {}
-    public void onConfirmedReceived(ConfirmRecived confirmRecived) {
-        System.out.println("Recibido");
-//        try {
-//            MessageDAO.getInstance().updateMessage(confirmRecived.getIdMessage());
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-    }
-
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
 //        String id_message = deleteMessage.getIdMessage();
 //        try {
@@ -444,6 +465,22 @@ public class JUi extends JFrame implements IChatView {
 //        } catch (Exception e) {
 //            throw new RuntimeException(e);
 //        }
+    }
+    public void onDeclineHelloReceived(DeclineHello declineHello) {}
+
+    public void onConfirmedReceived(ConfirmRecived confirmRecived) {
+
+        System.out.println("Recibido");
+        try {
+            messageController.updateReceived(confirmRecived.getIdMessage());
+//            chatArea.setText("");
+            messageController.onLoadMessages(messageController.obtainContact(confirmRecived.getIdMessage()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new OperationException("Error al actualizar el estado del mensaje");
+        }
+
     }
     public void onPinMessageReceived(PinMessage pinMessage) {}
     public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {

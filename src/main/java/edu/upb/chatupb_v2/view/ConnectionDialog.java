@@ -7,6 +7,7 @@ import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.regex.Pattern;
 
 public class ConnectionDialog extends JDialog {
 
@@ -61,8 +62,10 @@ public class ConnectionDialog extends JDialog {
         add(btnConnect, BorderLayout.SOUTH);
 
         btnConnect.addActionListener(e -> {
-            String ip = txtIP_1 + "." + txtIP_2 + "." + txtIP_3 + "." + txtIP_4;
-            if (ip.split(".").length == 4) {
+
+            String ip = txtIP_1.getText() + "." + txtIP_2.getText() + "." + txtIP_3.getText() + "." + txtIP_4.getText();
+            System.out.println(ip);
+            if (ip.split(Pattern.quote(".")).length == 4) {
                 Controller.getInstance().connect(ip);
                 dispose();
             }

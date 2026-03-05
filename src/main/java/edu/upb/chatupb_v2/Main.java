@@ -3,6 +3,7 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Controller;
 import edu.upb.chatupb_v2.controller.MessageController;
+import edu.upb.chatupb_v2.controller.UserController;
 import edu.upb.chatupb_v2.model.network.ChatServer;
 import edu.upb.chatupb_v2.view.JUi;
 
@@ -13,10 +14,12 @@ public class Main {
         jUi.init();
         ContactController contactController = new ContactController(jUi);
         MessageController messageController = new MessageController(jUi);
+//        UserController userController =
         jUi.setContactController(contactController);
         contactController.onLoadContacts();
         jUi.setMessageController(messageController);
+//        jUi.setUserController(userController);
         Controller.getInstance().setServer(new ChatServer(jUi.getUsername(), jUi.getUserId()));
-        Controller.getInstance().startHelloService();
+//        Controller.getInstance().startHelloService();
     }
 }

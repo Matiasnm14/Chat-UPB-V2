@@ -70,12 +70,12 @@ public class MessageDAO {
     }
 
     public boolean existById(String id) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM Messages WHERE id_message='" + id + "'";
+        String query = "SELECT count(*) FROM Messages WHERE id='" + id + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
 
     public Message findById(String id) throws ConnectException, SQLException {
-        String query = "SELECT * FROM Messages WHERE id_message ='" + id + "'";
+        String query = "SELECT * FROM Messages WHERE id ='" + id + "'";
         System.out.println(query);
         List<Message> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
@@ -107,11 +107,23 @@ public class MessageDAO {
     }
 
     public void updateMessage(String id_message) throws Exception {
-        String query = "UPDATE Messages SET status_message=? WHERE id_message =?";
+        String query = "UPDATE Messages SET status=? WHERE id =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
                 pst.setString(1, StatusMessage.READ.toString());
+                pst.setString(2, id_message);
+            }
+        };
+        helper.update(query, params);
+    }
+
+    public void updateMessageReceived(String id_message) throws Exception {
+        String query = "UPDATE Messages SET status=? WHERE id =?";
+        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, StatusMessage.RECEIVED.toString());
                 pst.setString(2, id_message);
             }
         };
