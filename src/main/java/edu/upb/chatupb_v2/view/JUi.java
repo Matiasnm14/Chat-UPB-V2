@@ -4,23 +4,19 @@
  */
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.controller.ChatServer;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
-import edu.upb.chatupb_v2.model.network.SocketClient;
 import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -30,11 +26,9 @@ import java.util.UUID;
 @Getter
 public class JUi extends JFrame implements IChatView {
     //YA NO HAY CHAT SERVER!
-    private ChatServer chatServer;
     private MessageController messageController;
-//    SocketClient socketClient;
-    private final String username = "Ciro";
-    private final UUID userId = UUID.randomUUID();
+    private final String username;
+    private final UUID userId;
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
     private static final Color BG_APP = new Color(0xF0F2F5);
     private static final Color BG_PANEL = new Color(0xFFFFFF);
@@ -46,20 +40,22 @@ public class JUi extends JFrame implements IChatView {
     private static final Color BUBBLE_OUT = new Color(0xDCF8C6);
     private static final Color BUBBLE_IN = new Color(0xFFFFFF);
     private static final Color TIME_TEXT = new Color(0x667781);
+    private static final Color PRESENCE_ONLINE = new Color(0x25D366);
     private static final int MESSAGE_MAX_WIDTH = 360;
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final Icon CHECK_SENT_ICON = loadIcon("/images/check_sent.png");
+    private static final Icon CHECK_READ_ICON = loadIcon("/images/check_read.png");
 
     public JUi() {
+        this(null);
+    }
+
+    public JUi(String username) {
+        this.username = sanitizeUsername(username);
+        this.userId = edu.upb.chatupb_v2.UserIdentity.loadOrCreateUserId();
         initComponents();
         this.messageController = new MessageController(this);
-        Mediator.getInstance().addUi(this);
-        try {
-            this.chatServer = new ChatServer();
-        } catch (IOException e) {
-            showError("No se pudo iniciar el servidor (¿Puerto 1900 ocupado?): " + e.getMessage());
-        }
-        Mediator.getInstance().startHelloService(userId.toString());
     }
 
     private void initComponents() {
@@ -68,6 +64,7 @@ public class JUi extends JFrame implements IChatView {
 
         jIP = new javax.swing.JTextField();
         jTextUserName = new JTextField();
+        jTextUserName.setText(username);
         jTextMensaje = new javax.swing.JTextField();
 
         jbConectar = new JButton("Conectar");
@@ -86,12 +83,29 @@ public class JUi extends JFrame implements IChatView {
         contactList.setCellRenderer(new ContactRenderer());
         contactList.setFixedCellHeight(44);
         contactList.setBackground(BG_PANEL);
+        contactList.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    ContactListItem selected = contactList.getSelectedValue();
+                    if (selected != null && !selected.isOnline()) {
+                        String senderName = jTextUserName.getText();
+                        if (senderName == null || senderName.isBlank()) {
+                            senderName = username;
+                        }
+                        final String finalSenderName = senderName;
+                        new Thread(() -> Mediator.getInstance().connectToContact(selected.getCode(), selected.getIp(), userId.toString(), finalSenderName)).start();
+                    }
+                }
+            }
+        });
         contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 ContactListItem selected = contactList.getSelectedValue();
                 if (selected != null) {
                     selectedContactCode = selected.getCode();
                     loadMessagesForContact(selected);
+                    Mediator.getInstance().setActiveContact(selected.getCode(), selected.getIp());
                 }
             }
         });
@@ -114,7 +128,23 @@ public class JUi extends JFrame implements IChatView {
         styleButtonPrimary(jbEnviar);
         styleButtonGhost(jBforBuzzing);
 
-        jbConectar.addActionListener(evt -> Mediator.getInstance().connect(jIP.getText(), username, userId.toString(), this));
+        jbConectar.addActionListener(evt -> {
+            String senderName = jTextUserName.getText();
+            if (senderName == null || senderName.isBlank()) {
+                senderName = username;
+            }
+            String target = jIP.getText();
+            if (target == null || target.isBlank()) {
+                showMessage("Ingresa el contacto.");
+                return;
+            }
+            String trimmedTarget = target.trim();
+            if (looksLikeIp(trimmedTarget)) {
+                Mediator.getInstance().invitacion(trimmedTarget, userId.toString(), senderName);
+            } else {
+                Mediator.getInstance().connectToContact(trimmedTarget, null, userId.toString(), senderName);
+            }
+        });
         jbEnviar.addActionListener(evt -> {
             String text = jTextMensaje.getText() == null ? "" : jTextMensaje.getText().trim();
             if (text.isEmpty()) {
@@ -124,8 +154,14 @@ public class JUi extends JFrame implements IChatView {
             if (senderName == null || senderName.isBlank()) {
                 senderName = username;
             }
-            addChatMessage(text, true, senderName);
-            Mediator.getInstance().sendMessage(text, userId.toString());
+            ContactListItem selected = contactList.getSelectedValue();
+            if (selected == null) {
+                showMessage("Selecciona un contacto para enviar el mensaje.");
+                return;
+            }
+            String messageId = UUID.randomUUID().toString();
+            addChatMessageWithTime(text, true, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
+            Mediator.getInstance().sendMessage(text, userId.toString(), messageId, selected.getCode(), selected.getIp());
             jTextMensaje.setText("");
         });
         jBforBuzzing.addActionListener(evt -> Mediator.getInstance().sendBuzz(userId.toString()));
@@ -184,7 +220,7 @@ public class JUi extends JFrame implements IChatView {
 
         gbc.gridx = 0;
         gbc.weightx = 0;
-        topBar.add(makeFieldLabel("IP"), gbc);
+        topBar.add(makeFieldLabel("Contacto"), gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1;
@@ -222,6 +258,22 @@ public class JUi extends JFrame implements IChatView {
         pack();
         setLocationRelativeTo(null);
     }
+
+    private static Icon loadIcon(String path) {
+        java.net.URL url = JUi.class.getResource(path);
+        return url != null ? new ImageIcon(url) : null;
+    }
+
+    private static String sanitizeUsername(String value) {
+        if (value == null) {
+            return "Usuario";
+        }
+        String trimmed = value.trim();
+        if (trimmed.isBlank()) {
+            return "Usuario";
+        }
+        return trimmed;
+    }
     public void init() {
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
@@ -252,6 +304,8 @@ public class JUi extends JFrame implements IChatView {
     private DefaultListModel<ContactListItem> contactListModel;
     private JList<ContactListItem> contactList;
     private String selectedContactCode;
+    private final java.util.Map<String, JLabel> outgoingStatusById = new java.util.HashMap<>();
+    private boolean autoHelloSent = false;
 
     private void loadContacts() {
         contactListModel.clear();
@@ -269,6 +323,7 @@ public class JUi extends JFrame implements IChatView {
             showError("No se pudieron cargar los contactos: " + e.getMessage());
         }
     }
+    // contact controller y devolverme una lista de contactos
 
     private void selectFirstContact() {
         if (contactListModel.size() > 0 && contactList.getSelectedIndex() < 0) {
@@ -276,6 +331,7 @@ public class JUi extends JFrame implements IChatView {
             ContactListItem selected = contactList.getSelectedValue();
             if (selected != null) {
                 selectedContactCode = selected.getCode();
+                Mediator.getInstance().setActiveContact(selected.getCode(), selected.getIp());
             }
         }
     }
@@ -298,11 +354,11 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
-    private void refreshContactPresence() {
-        Map<String, SocketClient> clients = Mediator.getInstance().getClients();
+    @Override
+    public void refreshContactPresence() {
         for (int i = 0; i < contactListModel.size(); i++) {
             ContactListItem item = contactListModel.get(i);
-            item.setOnline(isContactOnline(item, clients));
+            item.setOnline(Mediator.getInstance().isContactOnline(item.getCode(), item.getIp()));
         }
         contactList.repaint();
     }
@@ -320,25 +376,10 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
-    private boolean isContactOnline(ContactListItem item, Map<String, SocketClient> clients) {
-        if (item.getCode() != null && clients.containsKey(item.getCode())) {
-            return true;
-        }
-        if (item.getIp() == null || item.getIp().isBlank()) {
-            return false;
-        }
-        for (SocketClient client : clients.values()) {
-            if (item.getIp().equals(client.getIp())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void updateStatusIndicator(String status) {
         String lower = status == null ? "" : status.toLowerCase(Locale.ROOT);
         if (lower.contains("online")) {
-            statusIcon.setColor(ACCENT);
+            statusIcon.setColor(PRESENCE_ONLINE);
         } else if (lower.contains("enviando")) {
             statusIcon.setColor(new Color(0xF44242));
         } else if (lower.contains("rejected") || lower.contains("rechaz")) {
@@ -354,6 +395,10 @@ public class JUi extends JFrame implements IChatView {
         label.setForeground(TEXT_MUTED);
         label.setFont(new Font("SansSerif", Font.PLAIN, 12));
         return label;
+    }
+
+    private boolean looksLikeIp(String value) {
+        return value != null && value.matches("\\d{1,3}(\\.\\d{1,3}){3}");
     }
 
     private void styleButtonPrimary(JButton button) {
@@ -386,7 +431,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void addChatMessage(String message, boolean outgoing, String senderName) {
-        addChatMessageWithTime(message, outgoing, senderName, LocalTime.now().format(TIME_FORMAT));
+        addChatMessageWithTime(message, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), null, false);
     }
 
     @Override
@@ -402,29 +447,34 @@ public class JUi extends JFrame implements IChatView {
         }
         refreshContactPresence();
         selectFirstContact();
+        if (!autoHelloSent) {
+            autoHelloSent = true;
+            autoSendHelloToContacts(contacts);
+        }
     }
 
     @Override
     public void unloadMessages(List<MessageDAO.Message> messages) {
         messagesPanel.removeAll();
+        outgoingStatusById.clear();
         if (messages != null) {
             for (MessageDAO.Message message : messages) {
                 if (message.getMessage() == null || message.getMessage().isBlank()) {
                     continue;
                 }
                 boolean outgoing = userId.toString().equals(message.getSenderCode());
-                String senderName = outgoing ? username : (message.getSenderCode() != null ? message.getSenderCode() : "Desconocido");
+                String senderName = outgoing ? username : "Desconocido";
                 String time = extractTime(message.getCreatedDate());
-                addChatMessageWithTime(message.getMessage(), outgoing, senderName, time);
+                addChatMessageWithTime(message.getMessage(), outgoing, senderName, time, message.getCodMessage(), false);
             }
         }
         messagesPanel.revalidate();
         messagesPanel.repaint();
     }
 
-    private void addChatMessageWithTime(String message, boolean outgoing, String senderName, String time) {
+    private void addChatMessageWithTime(String message, boolean outgoing, String senderName, String time, String messageId, boolean read) {
         Runnable task = () -> {
-            MessageRow row = new MessageRow(message, outgoing, senderName, time);
+            MessageRow row = new MessageRow(message, outgoing, senderName, time, messageId, read);
             messagesPanel.add(row);
             messagesPanel.add(Box.createVerticalStrut(8));
             messagesPanel.revalidate();
@@ -452,7 +502,7 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public boolean showInvitationDialog(String userName, String id) {
         int respuesta = JOptionPane.showConfirmDialog(this,
-                "Invitaci\u00f3n recibida de: " + userName + " (ID: " + id + "). \u00bfAceptar?",
+                "Invitaci\u00f3n recibida de: " + userName + ". \u00bfAceptar?",
                 "Nueva Conexi\u00f3n Entrante",
                 JOptionPane.YES_NO_OPTION);
         return respuesta == JOptionPane.YES_OPTION;
@@ -467,6 +517,49 @@ public class JUi extends JFrame implements IChatView {
     public void showClientOffline(String senderName) {
         JOptionPane.showMessageDialog(null, senderName + " se ha desconectado", "Desconectado", JOptionPane.INFORMATION_MESSAGE);
         refreshContactPresence();
+    }
+
+    @Override
+    public void markMessageRead(String messageId) {
+        if (messageId == null || messageId.isBlank()) {
+            return;
+        }
+        Runnable task = () -> {
+            JLabel statusLabel = outgoingStatusById.get(messageId);
+            if (statusLabel != null) {
+                statusLabel.setIcon(CHECK_READ_ICON);
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
+        }
+    }
+
+    private void autoSendHelloToContacts(List<AcceptHello.User.Contact> contacts) {
+        if (contacts == null || contacts.isEmpty()) {
+            return;
+        }
+        String senderName = jTextUserName != null ? jTextUserName.getText() : null;
+        if (senderName == null || senderName.isBlank()) {
+            senderName = username;
+        }
+        String finalSenderName = senderName;
+        for (AcceptHello.User.Contact contact : contacts) {
+            if (contact == null) {
+                continue;
+            }
+            String code = contact.getCode();
+            String ip = contact.getIp();
+            if (code != null && code.equals(userId.toString())) {
+                continue;
+            }
+            if (ip == null || ip.isBlank()) {
+                continue;
+            }
+            new Thread(() -> Mediator.getInstance().connectToContact(code, ip, userId.toString(), finalSenderName)).start();
+        }
     }
 
     private void deleteSelectedContact() {
@@ -497,15 +590,21 @@ public class JUi extends JFrame implements IChatView {
     }
 
     private final class MessageRow extends JPanel {
-        private MessageRow(String message, boolean outgoing, String senderName, String time) {
+        private MessageRow(String message, boolean outgoing, String senderName, String time, String messageId, boolean read) {
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
 
             AvatarView avatar = new AvatarView(senderName, outgoing);
-            BubblePanel bubble = new BubblePanel(message, outgoing, time);
+            BubblePanel bubble = new BubblePanel(message, outgoing, time, read);
             bubble.setAlignmentY(Component.TOP_ALIGNMENT);
             avatar.setAlignmentY(Component.TOP_ALIGNMENT);
+            if (outgoing && messageId != null) {
+                JLabel statusLabel = bubble.getStatusLabel();
+                if (statusLabel != null) {
+                    outgoingStatusById.put(messageId, statusLabel);
+                }
+            }
 
             if (outgoing) {
                 add(Box.createHorizontalGlue());
@@ -523,8 +622,9 @@ public class JUi extends JFrame implements IChatView {
 
     private final class BubblePanel extends JPanel {
         private final Color bubbleColor;
+        private JLabel statusLabel;
 
-        private BubblePanel(String message, boolean outgoing, String time) {
+        private BubblePanel(String message, boolean outgoing, String time, boolean read) {
             this.bubbleColor = outgoing ? BUBBLE_OUT : BUBBLE_IN;
             setOpaque(false);
             setLayout(new BorderLayout());
@@ -547,12 +647,21 @@ public class JUi extends JFrame implements IChatView {
             timeLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
             timeLabel.setForeground(TIME_TEXT);
 
-            JPanel timePanel = new JPanel(new BorderLayout());
+            JPanel timePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
             timePanel.setOpaque(false);
-            timePanel.add(timeLabel, BorderLayout.EAST);
+            timePanel.add(timeLabel);
+            if (outgoing) {
+                statusLabel = new JLabel();
+                statusLabel.setIcon(read ? CHECK_READ_ICON : CHECK_SENT_ICON);
+                timePanel.add(statusLabel);
+            }
 
             add(messageArea, BorderLayout.CENTER);
             add(timePanel, BorderLayout.SOUTH);
+        }
+
+        public JLabel getStatusLabel() {
+            return statusLabel;
         }
 
         @Override
@@ -687,6 +796,7 @@ public class JUi extends JFrame implements IChatView {
             nameLabel.setForeground(TEXT_PRIMARY);
             ipLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
             ipLabel.setForeground(TEXT_MUTED);
+            ipLabel.setVisible(false);
 
             textPanel.add(nameLabel);
             textPanel.add(ipLabel);
@@ -705,8 +815,8 @@ public class JUi extends JFrame implements IChatView {
         ) {
             if (value != null) {
                 nameLabel.setText(value.getName());
-                ipLabel.setText(value.getIp() == null || value.getIp().isBlank() ? "" : value.getIp());
-                DotIcon icon = new DotIcon(value.isOnline() ? ACCENT : new Color(0xE74C3C), 10);
+                ipLabel.setText("");
+                DotIcon icon = new DotIcon(value.isOnline() ? PRESENCE_ONLINE : new Color(0xE74C3C), 10);
                 dotLabel.setIcon(icon);
             }
             setBackground(isSelected ? new Color(0xEAF5EF) : BG_PANEL);
@@ -714,3 +824,4 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 }
+

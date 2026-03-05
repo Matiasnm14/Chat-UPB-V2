@@ -51,24 +51,37 @@ public class ContactDao {
         return helper.executeQuery(query, resultReader);
     }
 
-    public boolean exist(String argument) throws ConnectException, SQLException {
-        String query = "SELECT count(*) FROM contact WHERE " + argument;
-        return helper.executeQueryCount(query, null) == 1;
-    }
-
     public boolean existByCode(String code) throws ConnectException, SQLException {
         String query = "SELECT count(*) FROM contact WHERE code='" + code + "'";
-        return helper.executeQueryCount(query, null) == 1;
+        return helper.executeQueryCount(query, null) >= 1;
     }
 
-    public AcceptHello.User.Contact findByCode(String code) throws ConnectException, SQLException {
-        String query = "SELECT * FROM contact WHERE code ='" + code + "'";
-        System.out.println(query);
+    public boolean existByIp(String ip) throws ConnectException, SQLException {
+        String query = "SELECT count(*) FROM contact WHERE ip='" + ip + "'";
+        return helper.executeQueryCount(query, null) >= 1;
+    }
+
+    public AcceptHello.User.Contact findByIp(String ip) throws ConnectException, SQLException {
+        String query = "SELECT * FROM contact WHERE ip ='" + ip + "'";
         List<AcceptHello.User.Contact> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
             return null;
         }
         return list.get(0);
+    }
+
+    public AcceptHello.User.Contact findByCode(String code) throws ConnectException, SQLException {
+        String query = "SELECT * FROM contact WHERE code ='" + code + "'";
+        List<AcceptHello.User.Contact> list = helper.executeQuery(query, resultReader);
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.get(0);
+    }
+
+    public void updateIpByCode(String code, String ip) throws Exception {
+        String query = "UPDATE contact SET ip='" + ip + "' WHERE code='" + code + "'";
+        helper.update(query, null);
     }
 
     public void update(String query) throws Exception {
@@ -88,31 +101,10 @@ public class ContactDao {
         helper.insert(query, params, contact);
     }
 
-    public void update(AcceptHello.User.Contact contact) throws Exception {
-        String query = "UPDATE contact SET IP=? WHERE code =?";
-        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
-            @Override
-            public void setParameters(PreparedStatement pst) throws SQLException {
-                pst.setString(1, contact.getIp());
-                pst.setString(2, contact.getCode());
-            }
-        };
-        helper.update(query, params);
-    }
-
     public void deleteByCode(String code) throws Exception {
         String query = "DELETE FROM contact WHERE code = ?";
         DaoHelper.QueryParameters params = pst -> pst.setString(1, code);
         helper.update(query, params);
-    }
-
-    public void update(String query, String conditionWhere) throws SQLException, ConnectException {
-        if (query.trim().endsWith("%s")) {
-            query = String.format(query, conditionWhere);
-        } else {
-            query = String.format("%s %s", query, conditionWhere);
-        }
-        helper.update(query, null);
     }
 
     public void deleteAll() throws Exception {

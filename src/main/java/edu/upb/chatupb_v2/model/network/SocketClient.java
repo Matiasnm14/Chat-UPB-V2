@@ -37,8 +37,13 @@ public class SocketClient extends Thread {
     private final String ip;
     private final DataOutputStream dout;
     private final BufferedReader br;
+    private final Object sendLock = new Object();
+    private final Object closeLock = new Object();
+    private boolean closedNotified = false;
     private final List<SocketListener> listeners = new ArrayList<>();
 
+    private static final String CODE_HELLO = "004";
+    private static final String CODE_ACCEPT_HELLO = "005";
 
 //    @Getter
 //    private final Map<String, SocketListener> listener = new HashMap<>();
@@ -52,7 +57,7 @@ public class SocketClient extends Thread {
         this.socket = socket;
         this.ip = socket.getInetAddress().getHostAddress();
         dout = new DataOutputStream(socket.getOutputStream());
-        br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+        br = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8));
         addListener(Mediator.getInstance());
     }
 
@@ -60,7 +65,7 @@ public class SocketClient extends Thread {
         this.socket = new Socket(ip, 1900);
         this.ip = ip;
         dout = new DataOutputStream(socket.getOutputStream());
-        br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+        br = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8));
         addListener(Mediator.getInstance());
     }
 
@@ -81,6 +86,7 @@ public class SocketClient extends Thread {
         default void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
         default void onThemeReceived(Theme theme) {}
         default void onGoodByeReceived(GoodBye goodBye) {}
+        default void onSocketClosed(SocketClient client) {}
     }
 
     public void addListener(SocketListener listener) {
@@ -137,6 +143,7 @@ public class SocketClient extends Thread {
                     }
                     case "004": {
                         Hello hel = Hello.parse(message);
+                        logReceiveHello(CODE_HELLO, hel.getIdUser());
                         for (SocketListener listener : listeners) {
                             listener.onHelloReceived(hel);
                         }
@@ -145,6 +152,7 @@ public class SocketClient extends Thread {
                     }
                     case "005": {
                         AcceptHello acpHel = AcceptHello.parse(message);
+                        logReceiveHello(CODE_ACCEPT_HELLO, acpHel.getIdUser());
                         for (SocketListener listener : listeners) {
                             listener.onAcceptHelloReceived(acpHel);
                         }
@@ -225,14 +233,37 @@ public class SocketClient extends Thread {
             System.out.println("Socket cerrado ");
         } catch (IOException e) {
             System.out.println(e.getMessage());
+        } finally {
+            notifyClosed();
         }
     }
 
+    private void notifyClosed() {
+        synchronized (closeLock) {
+            if (closedNotified) {
+                return;
+            }
+            closedNotified = true;
+        }
+        for (SocketListener listener : listeners) {
+            listener.onSocketClosed(this);
+        }
+    }
 
     public void send(String message) throws IOException {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        String payload = message;
+        if (!payload.endsWith("\n") && !payload.endsWith("\r\n")) {
+            payload += System.lineSeparator();
+        }
+        logSendHelloIfNeeded(payload);
         try {
-            dout.write(message.getBytes(StandardCharsets.UTF_8));
-            dout.flush();
+            synchronized (sendLock) {
+                dout.write(payload.getBytes(StandardCharsets.UTF_8));
+                dout.flush();
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -247,6 +278,55 @@ public class SocketClient extends Thread {
             System.out.println("Se ha cerrado el socket");
         } catch (Exception e) {
             System.out.println(getAllStackTraces());
+        } finally {
+            notifyClosed();
         }
+    }
+
+    private void logSendHelloIfNeeded(String payload) {
+        String trimmed = trimLineEndings(payload);
+        String[] parts = trimmed.split(Pattern.quote("|"));
+        if (parts.length == 0) {
+            return;
+        }
+        String code = parts[0];
+        if (!CODE_HELLO.equals(code) && !CODE_ACCEPT_HELLO.equals(code)) {
+            return;
+        }
+        String id = parts.length > 1 ? parts[1] : "";
+        logSendHello(code, id);
+    }
+
+    private void logSendHello(String code, String id) {
+        String label = CODE_HELLO.equals(code) ? "Hello" : "AcceptHello";
+        System.out.println("Enviando " + code + " (" + label + ") a id " + safeId(id));
+    }
+
+    private void logReceiveHello(String code, String id) {
+        String label = CODE_HELLO.equals(code) ? "Hello" : "AcceptHello";
+        System.out.println("Recibido " + code + " (" + label + ") de id " + safeId(id));
+    }
+
+    private String safeId(String id) {
+        if (id == null || id.isBlank()) {
+            return "(sin id)";
+        }
+        return id;
+    }
+
+    private String trimLineEndings(String text) {
+        if (text == null) {
+            return "";
+        }
+        int end = text.length();
+        while (end > 0) {
+            char c = text.charAt(end - 1);
+            if (c == '\n' || c == '\r') {
+                end--;
+            } else {
+                break;
+            }
+        }
+        return text.substring(0, end);
     }
 }

@@ -15,4 +15,8 @@ public interface IChatView {
     void addChatMessage(String message, boolean outgoing, String senderName);
     void unload(List<AcceptHello.User.Contact> contacts);
     void unloadMessages(List<MessageDAO.Message> messages);
+    void reloadContacts();
+    void refreshContactPresence();
+    void markMessageRead(String messageId);
 }
+//

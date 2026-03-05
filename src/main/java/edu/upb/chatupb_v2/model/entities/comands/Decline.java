@@ -5,7 +5,8 @@ import lombok.Setter;
 
 import java.util.regex.Pattern;
 
-@Getter@Setter
+@Getter
+@Setter
 public class Decline extends Command {
     private String idUser;
 

@@ -4,12 +4,10 @@
 package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.controller.ChatServer;
-import edu.upb.chatupb_v2.model.repository.ContactDao;
 
 public class ChatUPB_V2 {
 
    public static void main(String[] args) {
-        ContactDao contactDao = new ContactDao();
         try {
             ChatServer chatServer = new ChatServer();
             chatServer.start();
@@ -18,12 +16,4 @@ public class ChatUPB_V2 {
         }
         System.out.println("ChatServer started..");
     }
-/*
-        try {
-            SocketClient socketClient = new SocketClient("localhost");
-            socketClient.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }*/
 }

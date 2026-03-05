@@ -68,11 +68,6 @@ public class MessageDAO {
         return false;
     }
 
-    public List<Message> findAll() throws ConnectException, SQLException {
-        String query = "SELECT * FROM message ORDER BY id ASC";
-        return helper.executeQuery(query, resultReader);
-    }
-
     public List<Message> findByParticipants(String userCode, String contactCode) throws ConnectException, SQLException {
         String query = "SELECT * FROM message WHERE (sender_code = ? AND recipient_code = ?) OR (sender_code = ? AND recipient_code = ?) ORDER BY id ASC";
         DaoHelper.QueryParameters params = pst -> {
