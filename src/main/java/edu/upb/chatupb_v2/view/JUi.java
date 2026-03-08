@@ -69,7 +69,6 @@ public class JUi extends JFrame implements IChatView {
 
         jbConectar = new JButton("Conectar");
         jbEnviar = new JButton("Enviar");
-        jBforBuzzing = new JButton("Buzz");
 
         statusDot = new JLabel();
         statusIcon = new DotIcon(new Color(0xB0B6BB), 10);
@@ -126,7 +125,6 @@ public class JUi extends JFrame implements IChatView {
 
         styleButtonPrimary(jbConectar);
         styleButtonPrimary(jbEnviar);
-        styleButtonGhost(jBforBuzzing);
 
         jbConectar.addActionListener(evt -> {
             String senderName = jTextUserName.getText();
@@ -164,7 +162,6 @@ public class JUi extends JFrame implements IChatView {
             Mediator.getInstance().sendMessage(text, userId.toString(), messageId, selected.getCode(), selected.getIp());
             jTextMensaje.setText("");
         });
-        jBforBuzzing.addActionListener(evt -> Mediator.getInstance().sendBuzz(userId.toString()));
 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BG_APP);
@@ -238,8 +235,6 @@ public class JUi extends JFrame implements IChatView {
         gbc.weightx = 0;
         topBar.add(jbConectar, gbc);
 
-        gbc.gridx = 5;
-        topBar.add(jBforBuzzing, gbc);
 
         JPanel inputBar = new JPanel(new BorderLayout(8, 8));
         inputBar.setBackground(BG_PANEL);
@@ -298,7 +293,6 @@ public class JUi extends JFrame implements IChatView {
     private JScrollPane messagesScrollPane;
     private JButton jbConectar;
     private JButton jbEnviar;
-    private JButton jBforBuzzing;
     private JButton jbEliminar;
     private DotIcon statusIcon;
     private DefaultListModel<ContactListItem> contactListModel;
