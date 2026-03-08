@@ -4,6 +4,7 @@ import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
 import edu.upb.chatupb_v2.model.entities.comands.Chat;
+import edu.upb.chatupb_v2.model.payment.Cobro;
 
 import java.util.List;
 
@@ -19,4 +20,6 @@ public interface IChatView {
     void onLoadContacts(List<Contact> contacts);
     void onLoadMessages(List<Message> messages);
     String onLoadUser(List<User> users);
+
+    void cobrar(Cobro cobro);
 }

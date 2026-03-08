@@ -1,15 +1,13 @@
 package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.bl.ChatService;
-import edu.upb.chatupb_v2.controller.ContactController;
-import edu.upb.chatupb_v2.controller.Controller;
-import edu.upb.chatupb_v2.controller.MessageController;
-import edu.upb.chatupb_v2.controller.UserController;
+import edu.upb.chatupb_v2.controller.*;
 import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
 import edu.upb.chatupb_v2.model.entities.comands.*;
+import edu.upb.chatupb_v2.model.payment.Cobro;
 import edu.upb.chatupb_v2.model.repository.*;
 //import edu.upb.chatupb_v2.repository.*;
 import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
@@ -54,6 +52,8 @@ public class JUi extends JFrame implements IChatView {
     private MessageController messageController;
     @Setter
     private UserController userController = new UserController(this);
+    @Setter
+    private CobroController cobroController;
 
 
 
@@ -183,7 +183,7 @@ public class JUi extends JFrame implements IChatView {
         JButton btnSend = new JButton("Enviar");
 
         JButton btnBuzz = new JButton("Buzz");
-        JButton btnOffline = new JButton("Fuera de Línea");
+        JButton btnCobro = new JButton("Cobro");
         JButton btnNewConnection = new JButton("Nueva Conexión");
         JButton btnConectar = new JButton("Conectar a Contacto");
 
@@ -194,7 +194,7 @@ public class JUi extends JFrame implements IChatView {
         topPanel.add(btnConectar);
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
-        topPanel.add(btnOffline);
+        topPanel.add(btnCobro);
 
 
         // Bottom Panel (mensaje)
@@ -236,7 +236,9 @@ public class JUi extends JFrame implements IChatView {
         });
 
         btnBuzz.addActionListener(e -> Controller.getInstance().sendBuzz());
-        btnOffline.addActionListener(e -> Controller.getInstance().sendBye());
+        btnCobro.addActionListener(e ->
+                new CobroDialog(this, cobroController).setVisible(true)
+        );
 
         btnNewConnection.addActionListener(e ->
                 new ConnectionDialog(this).setVisible(true)
@@ -325,6 +327,15 @@ public class JUi extends JFrame implements IChatView {
         if (users.isEmpty()){
             return askForUsername();
         }else return users.getFirst().getName();
+    }
+
+    @Override
+    public void cobrar(Cobro cobro) {
+        String red = (cobro.getRed() != null? "Red: " + cobro.getRed() : "");
+        JOptionPane.showMessageDialog(this, "QR: " + cobro.getQr() + "\n"
+        + "Importe: " + cobro.getImporte() + "\n"
+        + red);
+
     }
 
     @Override
