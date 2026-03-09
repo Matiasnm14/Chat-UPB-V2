@@ -54,9 +54,9 @@ public class SocketClient extends Thread {
     private static final String CODE_ACCEPT_HELLO = "005";
     private static final String CODE_SECURITY_LIST = "014";
     private static final String CODE_SECURITY_SELECTED = "015";
-    private static final String ALG_AES128 = "AES128";
-    private static final String ALG_AES256 = "AES256";
-    private static final List<String> SUPPORTED_CIPHERS = List.of(ALG_AES256, ALG_AES128);
+    private static final String AES128 = "AES128";
+    private static final String AES256 = "AES256";
+    private static final List<String> SUPPORTED_CIPHERS = List.of(AES256, AES128);
     private static final SecureRandom RNG = new SecureRandom();
     private final boolean initiator;
     private volatile boolean securityReady = false;
@@ -498,7 +498,7 @@ public class SocketClient extends Thread {
     }
 
     private int keySizeFor(String algorithm) {
-        if (ALG_AES256.equals(algorithm)) {
+        if (AES256.equals(algorithm)) {
             return 32;
         }
         return 16;
