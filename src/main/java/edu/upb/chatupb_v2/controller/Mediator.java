@@ -306,6 +306,11 @@ public class Mediator implements SocketClient.SocketListener {
     }
 
     @Override
+    public void onContactShared(PasarContacto pasarContacto) {
+        handleContactShared(pasarContacto);
+    }
+
+    @Override
     public void onGoodByeReceived(GoodBye goodBye) {
         SwingUtilities.invokeLater(() -> onGoodByeReceived(goodBye, goodBye.getIdUser()));
     }
@@ -766,5 +771,83 @@ public class Mediator implements SocketClient.SocketListener {
     public void onPinMessageReceived(PinMessage pinMessage) {}
     public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
     public void onThemeReceived(Theme theme) {}
-}
+
 //validar la ip
+// Implemente la siguiente modificacion en nuestro proyecto. Respetando nuestro patron MVC modificando el proyecto para pasar  un contacto a un amigo. El comando debe ser 020|Id_usuario|Nombre|IP. No hagas con codigo ficil
+public void shareContact(String recipientCode, String recipientIp, String contactId, String contactName, String contactIp) {
+    if (contactId == null || contactId.isBlank()) {
+        IChatView view = this.view;
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.showMessage("El contacto a compartir no es válido."));
+        }
+        return;
+    }
+    SocketClient target = findClientByCodeOrIp(recipientCode, recipientIp);
+    IChatView view = this.view;
+    if (target == null) {
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.showMessage("El contacto seleccionado no está conectado."));
+        }
+        return;
+    }
+    PasarContacto pasarContacto = new PasarContacto(contactId, contactName, contactIp);
+    try {
+        target.send(pasarContacto.createFormat());
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.showMessage("Contacto compartido."));
+        }
+    } catch (IOException e) {
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.showError("No se pudo compartir el contacto: " + e.getMessage()));
+        }
+    }
+}
+    private void handleContactShared(PasarContacto pasarContacto) {
+        if (pasarContacto == null) {
+            return;
+        }
+        String contactId = pasarContacto.getIdUser();
+        if (contactId == null || contactId.isBlank()) {
+            return;
+        }
+        if (localUserId != null && localUserId.equals(contactId)) {
+            return;
+        }
+        saveSharedContact(contactId, pasarContacto.getUserName(), pasarContacto.getIp());
+        IChatView view = this.view;
+        if (view != null) {
+            String name = pasarContacto.getUserName() != null ? pasarContacto.getUserName() : "Desconocido";
+            SwingUtilities.invokeLater(() -> {
+                view.showMessage("Contacto recibido: " + name);
+                view.reloadContacts();
+            });
+        }
+    }
+    private void saveSharedContact(String userId, String userName, String ip) {
+        if (userId == null || userId.isBlank()) {
+            return;
+        }
+        String name = userName != null && !userName.isBlank() ? userName : "Desconocido";
+        String incomingIp = ip != null ? ip : "";
+        try {
+            if (contactDao.existByCode(userId)) {
+                AcceptHello.User.Contact existing = contactDao.findByCode(userId);
+                String finalIp = (!incomingIp.isBlank())
+                        ? incomingIp
+                        : (existing != null ? existing.getIp() : "");
+                String query = "UPDATE contact SET name='" + name + "', ip='" + finalIp + "' WHERE code='" + userId + "'";
+                contactDao.update(query);
+            } else {
+                AcceptHello.User.Contact contact = AcceptHello.User.Contact.builder()
+                        .code(userId)
+                        .name(name)
+                        .ip(incomingIp)
+                        .build();
+                contactDao.save(contact);
+            }
+        } catch (Exception e) {
+            System.out.println("No se pudo guardar contacto compartido: " + e.getMessage());
+        }
+    }
+
+}

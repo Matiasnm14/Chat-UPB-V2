@@ -33,3 +33,4 @@ public class Main {
 //HORA, NOMBRE,ICONO
 //La diferencia entre strategy y fachada es lo mismo pero depennde en que lo usas
 //en controller deberia de llamar un metodo
+//

@@ -15,6 +15,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -193,10 +194,17 @@ public class JUi extends JFrame implements IChatView {
         jbEliminar.setAlignmentX(Component.LEFT_ALIGNMENT);
         jbEliminar.addActionListener(evt -> deleteSelectedContact());
 
+        jbCompartir = new JButton("Compartir contacto");
+        styleButtonGhost(jbCompartir);
+        jbCompartir.setAlignmentX(Component.LEFT_ALIGNMENT);
+        jbCompartir.addActionListener(evt -> shareContact());
+
         leftHeader.add(contactsTitle);
         leftHeader.add(Box.createVerticalStrut(6));
         leftHeader.add(statusPanel);
         leftHeader.add(Box.createVerticalStrut(10));
+        leftHeader.add(jbCompartir);
+        leftHeader.add(Box.createVerticalStrut(8));
         leftHeader.add(jbEliminar);
 
         leftPanel.add(leftHeader, BorderLayout.NORTH);
@@ -294,6 +302,7 @@ public class JUi extends JFrame implements IChatView {
     private JButton jbConectar;
     private JButton jbEnviar;
     private JButton jbEliminar;
+    private JButton jbCompartir;
     private DotIcon statusIcon;
     private DefaultListModel<ContactListItem> contactListModel;
     private JList<ContactListItem> contactList;
@@ -737,6 +746,13 @@ public class JUi extends JFrame implements IChatView {
         public void setOnline(boolean online) {
             this.online = online;
         }
+
+        @Override
+        public String toString() {
+            String safeName = name != null ? name : "(Sin nombre)";
+            String safeCode = code != null ? code : "";
+            return safeCode.isBlank() ? safeName : safeName + " (" + safeCode + ")";
+        }
     }
 
     private static final class DotIcon implements Icon {
@@ -817,5 +833,53 @@ public class JUi extends JFrame implements IChatView {
             return this;
         }
     }
-}
+    private void shareContact() {
+
+        ContactListItem recipient = contactList.getSelectedValue();
+        if (recipient == null || recipient.getCode() == null || recipient.getCode().isBlank()) {
+            showMessage("Selecciona un contacto para compartir.");
+            return;
+        }
+        ContactListItem contactToShare = chooseContactToShare(recipient);
+        if (contactToShare == null) {
+            return;
+        }
+        String contactId = contactToShare.getCode();
+        String contactName = contactToShare.getName();
+        String contactIp = contactToShare.getIp();
+        Mediator.getInstance().shareContact(recipient.getCode(), recipient.getIp(), contactId, contactName, contactIp);
+    }
+
+    private ContactListItem chooseContactToShare(ContactListItem recipient) {
+        if (contactListModel.isEmpty()) {
+            showMessage("No hay contactos para compartir.");
+            return null;
+        }
+        List<ContactListItem> options = new ArrayList<>();
+        for (int i = 0; i < contactListModel.size(); i++) {
+            ContactListItem item = contactListModel.get(i);
+            if (item == null || item.getCode() == null || item.getCode().isBlank()) {
+                continue;
+            }
+            if (recipient != null && item.getCode().equals(recipient.getCode())) {
+                continue;
+            }
+            options.add(item);
+        }
+        if (options.isEmpty()) {
+            showMessage("No hay otro contacto para compartir.");
+            return null;
+        }
+        ContactListItem[] array = options.toArray(new ContactListItem[0]);
+        return (ContactListItem) JOptionPane.showInputDialog(
+                this,
+                "Selecciona el contacto a compartir:",
+                "Compartir contacto",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                array,
+                array[0]
+        );
+    }
+}//172.16.41.214
 
