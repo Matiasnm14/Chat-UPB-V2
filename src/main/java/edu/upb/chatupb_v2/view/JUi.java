@@ -1,10 +1,7 @@
 package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.bl.ChatService;
-import edu.upb.chatupb_v2.controller.ContactController;
-import edu.upb.chatupb_v2.controller.Controller;
-import edu.upb.chatupb_v2.controller.MessageController;
-import edu.upb.chatupb_v2.controller.UserController;
+import edu.upb.chatupb_v2.controller.*;
 import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
@@ -19,6 +16,8 @@ import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.net.ConnectException;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +51,8 @@ public class JUi extends JFrame implements IChatView {
     private ContactController contactController;
     @Setter
     private MessageController messageController;
+    @Setter
+    private TextController textController;
     @Setter
     private UserController userController = new UserController(this);
 
@@ -183,7 +184,7 @@ public class JUi extends JFrame implements IChatView {
         JButton btnSend = new JButton("Enviar");
 
         JButton btnBuzz = new JButton("Buzz");
-        JButton btnOffline = new JButton("Fuera de Línea");
+        JButton btnSendC = new JButton("Enviar Contacto");
         JButton btnNewConnection = new JButton("Nueva Conexión");
         JButton btnConectar = new JButton("Conectar a Contacto");
 
@@ -194,7 +195,7 @@ public class JUi extends JFrame implements IChatView {
         topPanel.add(btnConectar);
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
-        topPanel.add(btnOffline);
+        topPanel.add(btnSendC);
 
 
         // Bottom Panel (mensaje)
@@ -215,9 +216,11 @@ public class JUi extends JFrame implements IChatView {
 
         btnSend.addActionListener(e -> {
             String texto = jTextMensaje.getText().trim();
-
+            for (String c : texto.split(" "))
+                System.out.println(c);
+            texto = textController.analizarTexto(texto);
+            System.out.println(texto);
             if (!texto.isEmpty() && currentContact != null) {
-
                 Controller.getInstance().sendMessage(texto, currentContact.getId());
                 jTextMensaje.setText("");
             } else if (currentContact == null) {
@@ -236,15 +239,25 @@ public class JUi extends JFrame implements IChatView {
         });
 
         btnBuzz.addActionListener(e -> Controller.getInstance().sendBuzz());
-        btnOffline.addActionListener(e -> Controller.getInstance().sendBye());
+        btnSendC.addActionListener(e -> {
+            if (currentContact != null) {
+                Controller.getInstance().sendContact(currentContact ,currentContact);
+            }
+        });
 
         btnNewConnection.addActionListener(e ->
                 new ConnectionDialog(this).setVisible(true)
         );
     }
 
+
+
     public void init() {
         EventQueue.invokeLater(() -> setVisible(true));
+    }
+
+    public void updateContacts(){
+        contactController.onLoadContacts();
     }
 
     // ================= IChatView =================

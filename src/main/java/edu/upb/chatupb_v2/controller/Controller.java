@@ -227,6 +227,12 @@ public class Controller implements SocketClient.SocketListener {
 
 
             }
+            if (command instanceof SendContact) {
+                SendContact sendContact = (SendContact) command;
+                if (!ContactDao.getInstance().existByCode(sendContact.getIdUser()))
+                    ContactDao.getInstance().save(new Contact(sendContact.getIdUser(), sendContact.getNombre(), sendContact.getIp(), server.getUserId(), false));
+                uis.get(server.getUserId()).updateContacts();
+            }
         }
 
     }
@@ -300,6 +306,7 @@ public class Controller implements SocketClient.SocketListener {
         }
 
         try {
+            boolean analizado;
             Chat chat = new Chat(server.getUserId(), UUID.randomUUID().toString(), messageText);
 
             Message msgDb = new Message(
@@ -364,11 +371,11 @@ public class Controller implements SocketClient.SocketListener {
         }
     }
 
-    public void sendBye(){
+    public void sendContact(Contact contactToSend, Contact contact){
         for (SocketClient sc : Controller.getInstance().getClients().values()) {
-            Bye bye = new Bye(this.server.getUserId());
+            SendContact sendC = new SendContact(contactToSend.getId(), contactToSend.getName(), contactToSend.getIp());
             try {
-                sc.send(bye.createFormat());
+                sc.send(sendC.createFormat());
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }

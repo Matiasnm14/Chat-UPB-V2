@@ -4,6 +4,9 @@ import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
 import edu.upb.chatupb_v2.view.IChatView;
 
+import java.net.ConnectException;
+import java.sql.SQLException;
+
 public class ContactController {
     private ContactDao contactDao;
 
@@ -23,5 +26,10 @@ public class ContactController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean exist(String code) throws SQLException, ConnectException {
+        return contactDao.exist("SELECT * FROM Contacts WHERE name='" + code + "'");
+
     }
 }
