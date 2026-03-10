@@ -11,7 +11,6 @@ import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
 import edu.upb.chatupb_v2.model.entities.comands.*;
 import edu.upb.chatupb_v2.model.repository.*;
-//import edu.upb.chatupb_v2.repository.*;
 import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.repository.enums.TypeMessage;
 import lombok.Getter;
@@ -23,7 +22,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
-//import javax.swing.*;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -38,14 +36,16 @@ public class JUi extends JFrame implements IChatView {
     private String userId;
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
-    private JTextArea chatArea;
+    // --- MODIFICADO: Reemplazamos JTextArea por JList y su modelo ---
+    private DefaultListModel<Message> messageListModel;
+    private JList<Message> messageList;
+
     private JTextField jTextMensaje;
     private JLabel jOnline;
 
     private DefaultListModel<Contact> contactListModel;
     private JList<Contact> contactList;
 
-    // Añade esta variable para llevar el control del chat actual:
     @Getter
     private Contact currentContact;
     @Setter
@@ -54,8 +54,6 @@ public class JUi extends JFrame implements IChatView {
     private MessageController messageController;
     @Setter
     private UserController userController = new UserController(this);
-
-
 
     public JUi() {
         this.username = userController.onLoadUser();
@@ -79,20 +77,15 @@ public class JUi extends JFrame implements IChatView {
         System.out.println("Nombre: " + username);
         System.out.println("------------------------------------------------------------------");
         Controller.getInstance().addUi(this);
-
-
     }
-//    public void addModel(String contact){
-//        if(!chatListModel.contains(contact)){
-//            chatListModel.add(chatListModel.size(),contact);
-//        }
-//    }
+
+    public void updateContacts(){
+        contactController.onLoadContacts();
+    }
 
     private String askForUsername() {
-        //Campo de texto
         JTextField textField = new JTextField(20);
 
-        // Filtro
         ((AbstractDocument) textField.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -111,11 +104,9 @@ public class JUi extends JFrame implements IChatView {
             }
         });
 
-
         Object[] message = {
                 "Ingresa tu nombre de usuario (máx 60 caracteres):", textField
         };
-
 
         int option = JOptionPane.showConfirmDialog(
                 this,
@@ -125,15 +116,12 @@ public class JUi extends JFrame implements IChatView {
                 JOptionPane.QUESTION_MESSAGE
         );
 
-
         if (option == JOptionPane.OK_OPTION) {
             return textField.getText();
         }
 
         return null;
     }
-
-
 
     private void initComponents() {
         setTitle("ChatUPB");
@@ -142,15 +130,11 @@ public class JUi extends JFrame implements IChatView {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         // ================= LEFT PANEL =================
-
         contactListModel = new DefaultListModel<>();
         contactList = new JList<>(contactListModel);
         contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        contactList.setFixedCellHeight(40); // Ajusta la altura si lo ves muy separado
-
-        // ¡AQUÍ USAS TU RENDERER PERSONALIZADO!
+        contactList.setFixedCellHeight(40);
         contactList.setCellRenderer(new ContactRender());
-
 
         contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -168,16 +152,16 @@ public class JUi extends JFrame implements IChatView {
         JScrollPane leftScrollPane = new JScrollPane(contactList);
         leftScrollPane.setPreferredSize(new Dimension(250, 600));
 
-
-
         // ================= RIGHT PANEL =================
 
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        chatArea.setLineWrap(true);
-        chatArea.setWrapStyleWord(true);
+        // --- MODIFICADO: Inicialización de la lista de mensajes con ChatRender ---
+        messageListModel = new DefaultListModel<>();
+        messageList = new JList<>(messageListModel);
+        messageList.setCellRenderer(new ChatRender()); // Aplicamos tu renderizador visual
+        messageList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        messageList.setFocusable(false); // Evita que se resalte feo al hacer clic
 
-        JScrollPane chatScrollPane = new JScrollPane(chatArea);
+        JScrollPane chatScrollPane = new JScrollPane(messageList);
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
@@ -189,15 +173,12 @@ public class JUi extends JFrame implements IChatView {
 
         jOnline = new JLabel("Status: Offline");
 
-        // Top Panel (SOLO Buzz y Offline + Nueva Conexión)
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         topPanel.add(btnConectar);
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
         topPanel.add(btnOffline);
 
-
-        // Bottom Panel (mensaje)
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(jTextMensaje, BorderLayout.CENTER);
         bottomPanel.add(btnSend, BorderLayout.EAST);
@@ -212,12 +193,10 @@ public class JUi extends JFrame implements IChatView {
         add(rightPanel, BorderLayout.CENTER);
 
         // ================= ACTIONS =================
-
         btnSend.addActionListener(e -> {
             String texto = jTextMensaje.getText().trim();
 
             if (!texto.isEmpty() && currentContact != null) {
-
                 Controller.getInstance().sendMessage(texto, currentContact.getId());
                 jTextMensaje.setText("");
             } else if (currentContact == null) {
@@ -247,6 +226,16 @@ public class JUi extends JFrame implements IChatView {
         EventQueue.invokeLater(() -> setVisible(true));
     }
 
+    // --- MODIFICADO: Nuevo método de ayuda para bajar el scroll automáticamente ---
+    private void scrollToBottom() {
+        SwingUtilities.invokeLater(() -> {
+            int size = messageListModel.getSize();
+            if (size > 0) {
+                messageList.ensureIndexIsVisible(size - 1);
+            }
+        });
+    }
+
     // ================= IChatView =================
 
     @Override
@@ -256,7 +245,17 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showMessage(String message) {
-        chatArea.append(message + "\n");
+        // --- MODIFICADO: Convertimos el string a un Message visual temporal ---
+        Message sysMsg = new Message(
+                UUID.randomUUID().toString(),
+                "system",
+                "⚙️ " + message,
+                TypeMessage.TEXT,
+                StatusMessage.READ, // Lo marcamos como READ para que aparezca a la izquierda
+                LocalDate.now().toString()
+        );
+        messageListModel.addElement(sysMsg);
+        scrollToBottom();
     }
 
     @Override
@@ -285,8 +284,17 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showChat(Chat chat) {
-        String name = Controller.getInstance().getClients().get(chat.getIdUser()).getNombre();
-        chatArea.append(name + " | " + chat.getMessage() + "\n");
+        // --- MODIFICADO: Añadimos un Message al modelo en lugar de append a JTextArea ---
+        Message msg = new Message(
+                chat.getIdMessage(),
+                chat.getIdUser(),
+                chat.getMessage(),
+                TypeMessage.TEXT,
+                StatusMessage.READ,
+                LocalDate.now().toString()
+        );
+        messageListModel.addElement(msg);
+        scrollToBottom();
     }
 
     @Override
@@ -314,12 +322,20 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void onLoadContacts(List<Contact> contacts) {
         contactListModel.clear();
+
         if (contacts != null) {
             for (Contact c : contacts) {
+                if (Controller.getInstance().getClients().containsKey(c.getId()))
+                    c.setStateConnect(true);
                 contactListModel.addElement(c);
+
+
             }
         }
+//        contactList.setCellRenderer(new ContactRender());
+
     }
+
     @Override
     public String onLoadUser(List<User> users){
         if (users.isEmpty()){
@@ -329,66 +345,49 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void onLoadMessages(List<Message> messages) {
-        chatArea.setText("");
+        // --- MODIFICADO: Llenar el modelo de la lista en lugar de concatenar strings ---
+        messageListModel.clear();
         if (messages != null && currentContact != null) {
             for (Message msg : messages) {
-                String senderName;
-                if (msg.getStatusMessage().toString().equals("SENT")) {
-                    senderName = "Tú";
-                } else if (msg.getStatusMessage().toString().equals("RECEIVED")) {
-                    senderName = "Tú (Recibido)";
-                }else senderName = currentContact.getName();
-                chatArea.append(senderName + " | " + msg.getBody() + "\n");
+                messageListModel.addElement(msg);
             }
         }
-        chatArea.setCaretPosition(chatArea.getDocument().getLength());
-
+        scrollToBottom();
     }
-    
-    
-    
-    //=================LOGICA DE COMANDOS=============================
-    public boolean onInvitationReceived(Invitation invitation) {
 
+    //================= LOGICA DE COMANDOS =============================
+    public boolean onInvitationReceived(Invitation invitation) {
         boolean accepted = showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
         Controller.getInstance().getPendingClients().getFirst().setUid(invitation.getIdUser());
         Controller.getInstance().addClients(Controller.getInstance().getPendingClients().getFirst());
         Controller.getInstance().getPendingClients().removeFirst();
 
         if (accepted) {
-//            Controller.getInstance().addContact(invitation.getUserName());
-
             try {
                 Contact nuevoContacto = new Contact();
                 nuevoContacto.setId(invitation.getIdUser());
                 nuevoContacto.setName(invitation.getUserName());
                 nuevoContacto.setIp(Controller.getInstance().getClients().get(invitation.getIdUser()).getIp());
                 nuevoContacto.setUserId(this.userId);
-
                 nuevoContacto.setStateConnect(true);
 
                 ContactDao.getInstance().save(nuevoContacto);
 
                 SwingUtilities.invokeLater(() -> {
-
                     nuevoContacto.setId(invitation.getIdUser());
                     addModel(nuevoContacto);
-
+                    contactController.onLoadContacts();
                 });
                 return true;
-
 
             } catch (Exception e) {
                 System.out.println("Error procesando invitación aceptada: " + e.getMessage());
             }
             return true;
-
         } else {
             return false;
-
         }
     }
-
 
     public Contact onAcceptReceived(Accept accept, String ip) {
         updateStatus("Status: Online");
@@ -400,33 +399,25 @@ public class JUi extends JFrame implements IChatView {
         nuevoContacto.setUserId(this.userId);
         nuevoContacto.setStateConnect(true);
 
-
-
-
         nuevoContacto.setId(accept.getIdUser());
         addModel(nuevoContacto);
-
 
         updateStatus("Status: Online");
         showMessage("Conexión Aceptada con " + accept.getUserName());
         return nuevoContacto;
     }
 
-
     public void onDeclineReceived(Decline decline) {
         SwingUtilities.invokeLater(() -> {
             updateStatus("Status: Rejected");
             showMessage("Conexión Rechazada");
-            
         });
     }
-
 
     public AcceptHello onHelloReceived(Hello hello) {
         AcceptHello acceptHello = new AcceptHello(userId);
         return acceptHello;
     }
-
 
     public ConfirmRecived onChatReceived(Chat chat) {
         if (currentContact != null && currentContact.getId().equals(chat.getIdUser()))
@@ -448,81 +439,35 @@ public class JUi extends JFrame implements IChatView {
         return new ConfirmRecived(chat.getIdMessage());
     }
 
-
     public void onBuzzingReceived(String finalName) {
-
         SwingUtilities.invokeLater(() -> showBuzzNotification(finalName));
     }
 
     public void onByeReceived(){
-//        SwingUtilities.invokeLater(() -> showByeNotification());
     }
+
     public void onAcceptHelloReceived(AcceptHello acceptHello) {}
-    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
-//        String id_message = deleteMessage.getIdMessage();
-//        try {
-//            MessageDAO.getInstance().delete(id_message);
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-    }
+
+    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
+
     public void onDeclineHelloReceived(DeclineHello declineHello) {}
 
     public void onConfirmedReceived(ConfirmRecived confirmRecived) {
-
         System.out.println("Recibido");
         try {
             messageController.updateReceived(confirmRecived.getIdMessage());
-//            chatArea.setText("");
             messageController.onLoadMessages(messageController.obtainContact(confirmRecived.getIdMessage()));
-
         } catch (Exception e) {
             e.printStackTrace();
             throw new OperationException("Error al actualizar el estado del mensaje");
         }
-
     }
+
     public void onPinMessageReceived(PinMessage pinMessage) {}
+
     public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
         System.out.println("MENSAJE ÚNICO");
     }
+
     public void onThemeReceived(Theme theme) {}
-
-
-    // ================= DB LOADERS =================
-//    private void loadContacts() {
-//        try {
-//            chatListModel.clear();
-//            java.util.List<Contact> contacts = ContactDao.getInstance().findByOwner(this.userId);
-//            if (contacts != null) {
-//                for (Contact c : contacts) {
-//                    chatListModel.addElement(c);
-//                }
-//            }
-//        } catch (Exception e) {
-//            logger.severe("Error cargando contactos: " + e.getMessage());
-//        }
-//    }
-
-//    private void loadMessages(String contactId) {
-//        chatArea.setText("");
-//        try {
-//            java.util.List<Message> messages = MessageDAO.getInstance().findByContact(contactId);
-//
-//            if (messages != null) {
-//                for (Message msg : messages) {
-//                    String senderName;
-//                    if (msg.getStatusMessage().toString().equals("SENT")) {
-//                        senderName = this.username;
-//                    } else {
-//                        senderName = currentContact.getName();
-//                    }
-//                    chatArea.append(senderName + " | " + msg.getBody() + "\n");
-//                }
-//            }
-//        } catch (Exception e) {
-//            logger.severe("Error cargando mensajes: " + e.getMessage());
-//        }
-//    }
-
 }

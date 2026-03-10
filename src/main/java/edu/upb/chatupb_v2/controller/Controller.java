@@ -46,6 +46,7 @@ public class Controller implements SocketClient.SocketListener {
 
     public void delClients(String idUser) {
         clients.remove(idUser);
+        uis.get(server.getUserId()).updateContacts();
     }
 
     @Override
@@ -98,6 +99,7 @@ public class Controller implements SocketClient.SocketListener {
                         if (ContactDao.getInstance().existByCode(accept.getIdUser())){
                             ContactDao.getInstance().updateContact(accept.getIdUser(), sc.getIp());
                         }
+                        uis.get(server.getUserId()).updateContacts();
                     } catch (Exception e) {
                         System.out.println("Error guardando contacto al aceptar: " + e.getMessage());
                     }
@@ -127,6 +129,7 @@ public class Controller implements SocketClient.SocketListener {
                                 ContactDao.getInstance().updateContact(hello.getIdUser(), client.getIp());
                                 AcceptHello acceptHello = new AcceptHello(server.getUserId());
                                 client.send(acceptHello.createFormat());
+                                uis.get(server.getUserId()).updateContacts();
                             } else {
                                 pendingClients.remove(client);
                                 DeclineHello declineHello = new DeclineHello();
@@ -147,6 +150,7 @@ public class Controller implements SocketClient.SocketListener {
                 socketClient.setUid(acceptHello.getIdUser());
                     if (socketClient.getUID().equals(acceptHello.getIdUser())){
                         addClients(socketClient);
+                        uis.get(server.getUserId()).updateContacts();
                         break;
                     }
             }

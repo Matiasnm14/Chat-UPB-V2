@@ -185,6 +185,7 @@ public class SocketClient extends Thread {
     }
 
     public void close() {
+        Controller.getInstance().delClients(uid);
         try {
             this.socket.close();
             this.br.close();
