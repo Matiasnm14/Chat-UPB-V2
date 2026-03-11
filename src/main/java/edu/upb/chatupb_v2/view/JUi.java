@@ -162,7 +162,7 @@ public class JUi extends JFrame implements IChatView {
             }
         });
 
-        btnBuzz.addActionListener(e -> controller.sendBuzz());
+        btnBuzz.addActionListener(e -> controller.sendBuzz(currentContact.getId()));
         btnOffline.addActionListener(e -> controller.sendBye());
 
         btnNewConnection.addActionListener(e ->
@@ -254,11 +254,22 @@ public class JUi extends JFrame implements IChatView {
 
             private void showPopup(MouseEvent e) {
                 if (e.isPopupTrigger()) {
-                    // Seleccionar el ítem donde está el mouse
+                    // 1. Averiguar en qué fila (mensaje) hicimos clic
                     int row = messageList.locationToIndex(e.getPoint());
                     if (row >= 0) {
-                        messageList.setSelectedIndex(row);
-                        // Mostrar el menú
+                        messageList.setSelectedIndex(row); // Seleccionamos ese mensaje
+
+                        // 2. Obtener el mensaje exacto que
+                        //tocamos
+                        Message selectedMsg = messageList.getModel().getElementAt(row);
+
+                        // 3. Evaluar si el mensaje es mío o del contacto
+                        boolean isMe = !selectedMsg.getStatusMessage().toString().equals("RECEIVED");
+
+                        // 4. Ocultar o mostrar la opción "Eliminar para todos"
+                        deleteAllItem.setVisible(isMe); // Si no es mío, desaparece mágicamente
+
+                        // 5. Mostrar el menú en las coordenadas del mouse
                         popupMenu.show(e.getComponent(), e.getX(), e.getY());
                     }
                 }
@@ -323,13 +334,34 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void onLoadContacts(List<Contact> contacts) {
-        chatListModel.clear();
+        String selectedId = null;
+        if (currentContact != null) {
+            selectedId = currentContact.getId();
+        }
 
+        // 2. Limpiar y recargar la lista
+        chatListModel.clear();
         if (contacts != null) {
             for (Contact c : contacts) {
+                if(controller.getClients().containsKey(c.getId()))
+                    c.setStateConnect(true);
                 chatListModel.addElement(c);
             }
         }
+
+        // 3. Restaurar la selección si había alguien seleccionado
+        if (selectedId != null) {
+            for (int i = 0; i < chatListModel.getSize(); i++) {
+                Contact c = chatListModel.getElementAt(i);
+                if (c.getId().equals(selectedId)) {
+                    // Actualizamos la referencia interna por si el contacto cambió su estado
+                    currentContact = c;
+                    chatList.setSelectedIndex(i); // Lo volvemos a seleccionar visualmente
+                    break;
+                }
+            }
+        }
+
     }
 
     @Override

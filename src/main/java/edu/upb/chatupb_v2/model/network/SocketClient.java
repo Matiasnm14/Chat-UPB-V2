@@ -94,9 +94,11 @@ public class SocketClient extends Thread {
     public void run() {
         try {
             String message;
+
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
+                System.out.println("");
                 System.out.println(message);
                 switch (split[0]) {
                     case "001": {
@@ -197,6 +199,7 @@ public class SocketClient extends Thread {
     }
 
     public void close() {
+        Controller.getInstance().delClients(uid);
         try {
             this.socket.close();
             this.br.close();
