@@ -199,6 +199,7 @@ public class JUi extends JFrame implements IChatView {
             if (!texto.isEmpty() && currentContact != null) {
                 Controller.getInstance().sendMessage(texto, currentContact.getId());
                 jTextMensaje.setText("");
+                messageController.onLoadMessages(currentContact.getId());
             } else if (currentContact == null) {
                 showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
             }
@@ -214,7 +215,8 @@ public class JUi extends JFrame implements IChatView {
             }else showError("Seleccione un Contacto Primero");
         });
 
-        btnBuzz.addActionListener(e -> Controller.getInstance().sendBuzz());
+        btnBuzz.addActionListener(e -> {if (currentContact != null)
+                Controller.getInstance().sendBuzz(currentContact.getId());});
         btnOffline.addActionListener(e -> Controller.getInstance().sendBye());
 
         btnNewConnection.addActionListener(e ->
@@ -245,13 +247,13 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showMessage(String message) {
-        // --- MODIFICADO: Convertimos el string a un Message visual temporal ---
+
         Message sysMsg = new Message(
                 UUID.randomUUID().toString(),
                 "system",
                 "⚙️ " + message,
                 TypeMessage.TEXT,
-                StatusMessage.READ, // Lo marcamos como READ para que aparezca a la izquierda
+                StatusMessage.READ,
                 LocalDate.now().toString()
         );
         messageListModel.addElement(sysMsg);
@@ -321,6 +323,7 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void onLoadContacts(List<Contact> contacts) {
+        Contact previousContact = currentContact;
         contactListModel.clear();
 
         if (contacts != null) {
@@ -331,6 +334,7 @@ public class JUi extends JFrame implements IChatView {
 
 
             }
+            if (previousContact != null) currentContact = previousContact;
         }
 //        contactList.setCellRenderer(new ContactRender());
 

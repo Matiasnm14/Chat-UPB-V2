@@ -320,8 +320,8 @@ public class Controller implements SocketClient.SocketListener {
 
             if (sc != null) {
                 sc.send(chat.createFormat());
-                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(server.getUserId()).
-                        showMessage("Tú | " + messageText));
+//                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(server.getUserId()).
+//                        showMessage("Tú | " + messageText));
             } else {
                 SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(server.getUserId()).
                         showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
@@ -357,8 +357,9 @@ public class Controller implements SocketClient.SocketListener {
         }
     }
 
-    public void sendBuzz() {
-        for (SocketClient sc : Controller.getInstance().getClients().values()) {
+    public void sendBuzz(String clientId) {
+        SocketClient sc = clients.get(clientId);
+        if (sc != null) {
             Buzzing bz = new Buzzing(this.server.getUserId());
             try {
                 sc.send(bz.createFormat());
@@ -366,6 +367,7 @@ public class Controller implements SocketClient.SocketListener {
                 throw new OperationException("No se pudo enviar el zumbido");
             }
         }
+
     }
 
     public void sendBye(){

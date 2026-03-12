@@ -45,9 +45,11 @@ public class ConnectionDialog extends JDialog {
 
 
         JButton btnConnect = new JButton("Conectar");
+        JButton btnLocal = new JButton("Localhost");
 
         JPanel ipPanel = new JPanel(new GridLayout(1, 5, 10, 10));
         JPanel upPanel = new JPanel(new GridLayout(1, 5, 10, 10));
+        JPanel downPanel = new JPanel(new GridLayout(1, 2, 10, 10));
         ipPanel.add(lblIP);
         ipPanel.add(txtIP_1);
         ipPanel.add(txtIP_2);
@@ -59,7 +61,10 @@ public class ConnectionDialog extends JDialog {
         add(upPanel, BorderLayout.NORTH);
         add(ipPanel, BorderLayout.CENTER);
 
-        add(btnConnect, BorderLayout.SOUTH);
+        downPanel.add(btnConnect, BorderLayout.SOUTH);
+        downPanel.add(btnLocal, BorderLayout.SOUTH);
+
+        add(downPanel, BorderLayout.SOUTH);
 
         btnConnect.addActionListener(e -> {
 
@@ -69,6 +74,10 @@ public class ConnectionDialog extends JDialog {
                 Controller.getInstance().connect(ip);
                 dispose();
             }
+        });
+        btnLocal.addActionListener(e -> {
+            Controller.getInstance().connect("localhost");
+            dispose();
         });
     }
 }
