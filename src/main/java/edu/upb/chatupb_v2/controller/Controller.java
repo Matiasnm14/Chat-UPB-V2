@@ -231,6 +231,33 @@ public class Controller implements SocketClient.SocketListener {
 
 
             }
+            if (command instanceof ImageChat) {
+                ImageChat imageChat = (ImageChat) command;
+
+
+                ConfirmRecived confirmRecived = sl.onImageChatReceived(imageChat);
+
+
+                SocketClient client = Controller.getInstance().getClients().get(imageChat.getIdUser());
+
+                if (client != null) {
+                    try {
+                        if (sl.getCurrentContact() != null && sl.getCurrentContact().getId().equals(client.getUID())) {
+                            client.send(confirmRecived.createFormat());
+                            System.out.println("Confirmacion de imagen enviada a: " + client.getNombre());
+                        } else {
+                            if (confirms.containsKey(client.getUID())) {
+                                confirms.get(client.getUID()).add(confirmRecived);
+                            } else {
+                                confirms.put(client.getUID(), new ArrayList<>());
+                                confirms.get(client.getUID()).add(confirmRecived);
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException("Error al enviar confirmación de imagen", e);
+                    }
+                }
+            }
         }
 
     }
@@ -296,40 +323,8 @@ public class Controller implements SocketClient.SocketListener {
 
 
 
-    public void sendMessage(String messageText, String destinationId) {
-        if (destinationId == null || destinationId.trim().isEmpty()) {
-            SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(server.getUserId()).
-                    showError("Selecciona un contacto primero."));
-            return;
-        }
-
-        try {
-            Chat chat = new Chat(server.getUserId(), UUID.randomUUID().toString(), messageText);
-
-            Message msgDb = new Message(
-                    chat.getIdMessage(),
-                    destinationId,
-                    messageText,
-                    TypeMessage.TEXT,
-                    StatusMessage.SENT,
-                    LocalDate.now().toString()
-            );
-            MessageDAO.getInstance().save(msgDb);
-
-            SocketClient sc = Controller.getInstance().getClients().get(destinationId);
-
-            if (sc != null) {
-                sc.send(chat.createFormat());
-//                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(server.getUserId()).
-//                        showMessage("Tú | " + messageText));
-            } else {
-                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(server.getUserId()).
-                        showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
-            }
-
-        } catch (Exception e) {
-            throw new OperationException("Error al enviar el mensaje: " + e.getMessage());
-        }
+    public void sendMessage(Command command, String id_dst) {
+        command.execute(clients.get(id_dst));
     }
 
     public void sendHello(String ip, String username, String id){
@@ -357,9 +352,8 @@ public class Controller implements SocketClient.SocketListener {
         }
     }
 
-    public void sendBuzz(String clientId) {
-        SocketClient sc = clients.get(clientId);
-        if (sc != null) {
+    public void sendBuzz() {
+        for (SocketClient sc : Controller.getInstance().getClients().values()) {
             Buzzing bz = new Buzzing(this.server.getUserId());
             try {
                 sc.send(bz.createFormat());
@@ -367,7 +361,6 @@ public class Controller implements SocketClient.SocketListener {
                 throw new OperationException("No se pudo enviar el zumbido");
             }
         }
-
     }
 
     public void sendBye(){

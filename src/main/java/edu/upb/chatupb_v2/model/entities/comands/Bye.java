@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.model.entities.comands;
 
+import edu.upb.chatupb_v2.model.network.SocketClient;
 import lombok.Getter;
 
 import java.util.regex.Pattern;
@@ -12,6 +13,11 @@ public class Bye extends Command {
     @Override
     public String createFormat() {
         return getID() +"|" +idUser + System.lineSeparator();
+    }
+
+    @Override
+    public void execute(SocketClient client) {
+
     }
 
     public Bye(){

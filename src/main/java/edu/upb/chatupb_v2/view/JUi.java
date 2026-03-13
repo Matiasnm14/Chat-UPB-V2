@@ -18,7 +18,14 @@ import lombok.Setter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
+import java.io.File;
+import java.nio.file.Files;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -36,7 +43,6 @@ public class JUi extends JFrame implements IChatView {
     private String userId;
     private static final Logger logger = Logger.getLogger(JUi.class.getName());
 
-    // --- MODIFICADO: Reemplazamos JTextArea por JList y su modelo ---
     private DefaultListModel<Message> messageListModel;
     private JList<Message> messageList;
 
@@ -55,6 +61,11 @@ public class JUi extends JFrame implements IChatView {
     @Setter
     private UserController userController = new UserController(this);
 
+    // --- NUEVOS COMPONENTES PARA IMÁGENES ---
+    private JPanel imagePanel;
+    private JLabel imageDropLabel;
+    private String base64ImagePending = null;
+
     public JUi() {
         this.username = userController.onLoadUser();
         if (this.username == null || this.username.trim().isEmpty()) {
@@ -62,13 +73,13 @@ public class JUi extends JFrame implements IChatView {
         }
         initComponents();
         try {
-            if (UserDao.getInstance().exist("name='"+username+"'"))
+            if (UserDao.getInstance().exist("name='" + username + "'"))
                 userId = UserDao.getInstance().findByName(username).getId();
-            else{
+            else {
                 userId = UUID.randomUUID().toString();
-                UserDao.getInstance().save(new User(userId,username));
+                UserDao.getInstance().save(new User(userId, username));
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -79,7 +90,7 @@ public class JUi extends JFrame implements IChatView {
         Controller.getInstance().addUi(this);
     }
 
-    public void updateContacts(){
+    public void updateContacts() {
         contactController.onLoadContacts();
     }
 
@@ -142,7 +153,7 @@ public class JUi extends JFrame implements IChatView {
                 if (currentContact != null) {
                     System.out.println(currentContact.getId());
                     messageController.onLoadMessages(currentContact.getId());
-                    if (Controller.getInstance().getClients().containsKey(currentContact.getId())){
+                    if (Controller.getInstance().getClients().containsKey(currentContact.getId())) {
                         Controller.getInstance().sendConfirms(currentContact.getId());
                     }
                 }
@@ -154,17 +165,17 @@ public class JUi extends JFrame implements IChatView {
 
         // ================= RIGHT PANEL =================
 
-        // --- MODIFICADO: Inicialización de la lista de mensajes con ChatRender ---
         messageListModel = new DefaultListModel<>();
         messageList = new JList<>(messageListModel);
-        messageList.setCellRenderer(new ChatRender()); // Aplicamos tu renderizador visual
+        messageList.setCellRenderer(new ChatRender());
         messageList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        messageList.setFocusable(false); // Evita que se resalte feo al hacer clic
+        messageList.setFocusable(false);
 
         JScrollPane chatScrollPane = new JScrollPane(messageList);
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
+        JToggleButton btnToggleImage = new JToggleButton("📷"); // Botón para desplegar zona de imagen
 
         JButton btnBuzz = new JButton("Buzz");
         JButton btnOffline = new JButton("Fuera de Línea");
@@ -179,27 +190,123 @@ public class JUi extends JFrame implements IChatView {
         topPanel.add(btnBuzz);
         topPanel.add(btnOffline);
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.add(jTextMensaje, BorderLayout.CENTER);
-        bottomPanel.add(btnSend, BorderLayout.EAST);
+        // --- INICIO ZONA DE IMAGEN ---
+        imagePanel = new JPanel(new BorderLayout());
+        imagePanel.setVisible(false); // Oculto por defecto
+        imagePanel.setPreferredSize(new Dimension(0, 120));
+        imagePanel.setBorder(BorderFactory.createTitledBorder("Enviar Imagen"));
+
+        imageDropLabel = new JLabel("Arrastra y suelta una imagen aquí", SwingConstants.CENTER);
+        imageDropLabel.setBorder(BorderFactory.createDashedBorder(Color.GRAY, 2, 5, 2, false));
+
+        JButton btnSendImage = new JButton("Enviar Imagen");
+        btnSendImage.setEnabled(false); // Se habilita al cargar imagen
+
+        imagePanel.add(imageDropLabel, BorderLayout.CENTER);
+        imagePanel.add(btnSendImage, BorderLayout.EAST);
+
+        // Lógica de Drag and Drop
+        imageDropLabel.setDropTarget(new DropTarget() {
+            @Override
+            public synchronized void drop(DropTargetDropEvent evt) {
+                try {
+                    evt.acceptDrop(DnDConstants.ACTION_COPY);
+                    List<File> droppedFiles = (List<File>) evt.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+
+                    if (droppedFiles != null && !droppedFiles.isEmpty()) {
+                        File file = droppedFiles.get(0);
+
+                        // Validación básica de que sea imagen (por extensión)
+                        String name = file.getName().toLowerCase();
+                        if (name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".gif")) {
+                            // Convertir a Base 64
+                            byte[] fileContent = Files.readAllBytes(file.toPath());
+                            base64ImagePending = Base64.getEncoder().encodeToString(fileContent);
+
+                            // Mostrar preview escalado
+                            ImageIcon icon = new ImageIcon(file.getAbsolutePath());
+                            Image scaledImage = icon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
+                            imageDropLabel.setText("");
+                            imageDropLabel.setIcon(new ImageIcon(scaledImage));
+                            btnSendImage.setEnabled(true);
+                        } else {
+                            showError("Por favor, selecciona un archivo de imagen válido (.jpg, .png, .gif)");
+                        }
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    showError("Error al cargar la imagen");
+                }
+            }
+        });
+        // --- FIN ZONA DE IMAGEN ---
+
+        JPanel inputPanel = new JPanel(new BorderLayout());
+        inputPanel.add(btnToggleImage, BorderLayout.WEST);
+        inputPanel.add(jTextMensaje, BorderLayout.CENTER);
+        inputPanel.add(btnSend, BorderLayout.EAST);
+
+        // Contenedor sur que agrupa la zona de imagen y el input de texto
+        JPanel bottomContainer = new JPanel(new BorderLayout());
+        bottomContainer.add(imagePanel, BorderLayout.NORTH);
+        bottomContainer.add(inputPanel, BorderLayout.SOUTH);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.add(topPanel, BorderLayout.NORTH);
         rightPanel.add(chatScrollPane, BorderLayout.CENTER);
-        rightPanel.add(bottomPanel, BorderLayout.SOUTH);
+        rightPanel.add(bottomContainer, BorderLayout.SOUTH);
 
         setLayout(new BorderLayout());
         add(leftScrollPane, BorderLayout.WEST);
         add(rightPanel, BorderLayout.CENTER);
 
         // ================= ACTIONS =================
+
+        // Mostrar/Ocultar panel de imagen
+        btnToggleImage.addActionListener(e -> {
+            imagePanel.setVisible(btnToggleImage.isSelected());
+            revalidate();
+            repaint();
+        });
+
+        // Enviar Imagen
+        btnSendImage.addActionListener(e -> {
+            SwingUtilities.invokeLater(() -> {
+                if (base64ImagePending != null && currentContact != null) {
+                    String destinationId = currentContact.getId();
+
+                    // NOTA: Asegúrate de que tu clase ImageChat reciba estos parámetros en su constructor
+                    ImageChat imageChat = new ImageChat(userId, UUID.randomUUID().toString(), base64ImagePending);
+                    Controller.getInstance().sendMessage(imageChat, destinationId);
+
+                    // Limpiar después de enviar
+                    base64ImagePending = null;
+                    imageDropLabel.setIcon(null);
+                    imageDropLabel.setText("Arrastra y suelta una imagen aquí");
+                    btnSendImage.setEnabled(false);
+                    btnToggleImage.setSelected(false);
+                    imagePanel.setVisible(false);
+                    revalidate();
+                } else if (currentContact == null) {
+                    showError("Selecciona un contacto primero.");
+                }
+            });
+
+        });
+
         btnSend.addActionListener(e -> {
             String texto = jTextMensaje.getText().trim();
 
             if (!texto.isEmpty() && currentContact != null) {
-                Controller.getInstance().sendMessage(texto, currentContact.getId());
+                String destinationId = currentContact.getId();
+                if (destinationId == null || destinationId.trim().isEmpty()) {
+                    SwingUtilities.invokeLater(() ->
+                            showError("Selecciona un contacto primero."));
+                    return;
+                }
+                Chat chat = new Chat(userId, UUID.randomUUID().toString(), texto);
+                Controller.getInstance().sendMessage(chat, destinationId);
                 jTextMensaje.setText("");
-                messageController.onLoadMessages(currentContact.getId());
             } else if (currentContact == null) {
                 showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
             }
@@ -208,15 +315,14 @@ public class JUi extends JFrame implements IChatView {
         btnConectar.addActionListener(e -> {
             if (currentContact != null) {
                 if (!Controller.getInstance().getClients().containsKey(currentContact.getId())) {
-                    SwingUtilities.invokeLater(() ->{
+                    SwingUtilities.invokeLater(() -> {
                         Controller.getInstance().sendHello(currentContact.getIp(), currentContact.getName(), currentContact.getId());
                     });
                 }
-            }else showError("Seleccione un Contacto Primero");
+            } else showError("Seleccione un Contacto Primero");
         });
 
-        btnBuzz.addActionListener(e -> {if (currentContact != null)
-                Controller.getInstance().sendBuzz(currentContact.getId());});
+        btnBuzz.addActionListener(e -> Controller.getInstance().sendBuzz());
         btnOffline.addActionListener(e -> Controller.getInstance().sendBye());
 
         btnNewConnection.addActionListener(e ->
@@ -228,7 +334,6 @@ public class JUi extends JFrame implements IChatView {
         EventQueue.invokeLater(() -> setVisible(true));
     }
 
-    // --- MODIFICADO: Nuevo método de ayuda para bajar el scroll automáticamente ---
     private void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
             int size = messageListModel.getSize();
@@ -239,6 +344,7 @@ public class JUi extends JFrame implements IChatView {
     }
 
     // ================= IChatView =================
+    // (El resto de métodos sobreescritos de la interfaz se mantienen exactamente igual)
 
     @Override
     public void updateStatus(String status) {
@@ -247,7 +353,6 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showMessage(String message) {
-
         Message sysMsg = new Message(
                 UUID.randomUUID().toString(),
                 "system",
@@ -286,7 +391,6 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showChat(Chat chat) {
-        // --- MODIFICADO: Añadimos un Message al modelo en lugar de append a JTextArea ---
         Message msg = new Message(
                 chat.getIdMessage(),
                 chat.getIdUser(),
@@ -321,35 +425,63 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
+    // Añadir a JUi.java
+
+    public void showImageChat(ImageChat imageChat) {
+        Message msg = new Message(
+                imageChat.getIdMessage(),
+                imageChat.getIdUser(),
+                imageChat.getMessage(),
+                TypeMessage.IMAGE,
+                StatusMessage.READ,
+                LocalDate.now().toString()
+        );
+        messageListModel.addElement(msg);
+        scrollToBottom();
+    }
+
+    public ConfirmRecived onImageChatReceived(ImageChat imageChat) {
+        if (currentContact != null && currentContact.getId().equals(imageChat.getIdUser())) {
+            showImageChat(imageChat);
+        }
+        try {
+            Message msgDb = new Message(
+                    imageChat.getIdMessage(),
+                    imageChat.getIdUser(),
+                    imageChat.getMessage(),
+                    TypeMessage.IMAGE,
+                    StatusMessage.READ,
+                    LocalDate.now().toString()
+            );
+            messageController.save(msgDb);
+
+        } catch (Exception e) {
+            System.out.println("Error al guardar imagen recibida: " + e.getMessage());
+        }
+        return new ConfirmRecived(imageChat.getIdMessage());
+    }
+
     @Override
     public void onLoadContacts(List<Contact> contacts) {
-        Contact previousContact = currentContact;
         contactListModel.clear();
-
         if (contacts != null) {
             for (Contact c : contacts) {
                 if (Controller.getInstance().getClients().containsKey(c.getId()))
                     c.setStateConnect(true);
                 contactListModel.addElement(c);
-
-
             }
-            if (previousContact != null) currentContact = previousContact;
         }
-//        contactList.setCellRenderer(new ContactRender());
-
     }
 
     @Override
-    public String onLoadUser(List<User> users){
-        if (users.isEmpty()){
+    public String onLoadUser(List<User> users) {
+        if (users.isEmpty()) {
             return askForUsername();
-        }else return users.getFirst().getName();
+        } else return users.getFirst().getName();
     }
 
     @Override
     public void onLoadMessages(List<Message> messages) {
-        // --- MODIFICADO: Llenar el modelo de la lista en lugar de concatenar strings ---
         messageListModel.clear();
         if (messages != null && currentContact != null) {
             for (Message msg : messages) {
@@ -419,8 +551,7 @@ public class JUi extends JFrame implements IChatView {
     }
 
     public AcceptHello onHelloReceived(Hello hello) {
-        AcceptHello acceptHello = new AcceptHello(userId);
-        return acceptHello;
+        return new AcceptHello(userId);
     }
 
     public ConfirmRecived onChatReceived(Chat chat) {
@@ -447,8 +578,7 @@ public class JUi extends JFrame implements IChatView {
         SwingUtilities.invokeLater(() -> showBuzzNotification(finalName));
     }
 
-    public void onByeReceived(){
-    }
+    public void onByeReceived() {}
 
     public void onAcceptHelloReceived(AcceptHello acceptHello) {}
 

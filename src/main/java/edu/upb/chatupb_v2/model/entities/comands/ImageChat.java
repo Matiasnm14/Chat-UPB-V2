@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 
 @Getter
 @Setter
-public class Chat extends Command{
+public class ImageChat extends Command{
     private String idUser;
     private String idMessage;
     private String message;
@@ -34,7 +34,7 @@ public class Chat extends Command{
                     idMessage,
                     client.getUID(),
                     message,
-                    TypeMessage.TEXT,
+                    TypeMessage.IMAGE,
                     StatusMessage.SENT,
                     LocalDate.now().toString()
             );
@@ -56,20 +56,20 @@ public class Chat extends Command{
         }
     }
 
-    public Chat() {
-        super("007");
+    public ImageChat() {
+        super("021");
     }
-    public Chat(String idUser,String idMessage,String message){
-        super("007");
+    public ImageChat(String idUser, String idMessage, String message){
+        super("021");
         this.idUser = idUser;
         this.idMessage = idMessage;
         this.message = message;
     }
-    public static Chat parse(String command){
+    public static ImageChat parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 4){
             throw new IllegalArgumentException("Formato de trama erroneo");
         }
-        return new Chat(parses[1],parses[2],parses[3]);
+        return new ImageChat(parses[1],parses[2],parses[3]);
     }
 }
