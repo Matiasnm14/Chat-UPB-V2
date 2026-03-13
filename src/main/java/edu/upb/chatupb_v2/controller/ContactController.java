@@ -1,17 +1,18 @@
 package edu.upb.chatupb_v2.controller;
 
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
-import edu.upb.chatupb_v2.model.repository.ContactDao;
+import edu.upb.chatupb_v2.model.repository.CacheContactDAO;
+import edu.upb.chatupb_v2.model.repository.IContactDAO;
 import edu.upb.chatupb_v2.view.IChatView;
 
 import java.util.List;
 
 public class ContactController {
-    private final ContactDao contactDao;
+    private final IContactDAO contactDao;
     private final IChatView iChatView;
 
     public ContactController(IChatView iChatView) {
-        this.contactDao = new ContactDao();
+        this.contactDao = new CacheContactDAO();
         this.iChatView = iChatView;
     }
 

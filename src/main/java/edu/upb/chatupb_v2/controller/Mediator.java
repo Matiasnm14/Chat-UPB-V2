@@ -3,7 +3,8 @@ package edu.upb.chatupb_v2.controller;
 import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.comands.*;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
-import edu.upb.chatupb_v2.model.repository.ContactDao;
+import edu.upb.chatupb_v2.model.repository.CacheContactDAO;
+import edu.upb.chatupb_v2.model.repository.IContactDAO;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import edu.upb.chatupb_v2.model.network.SocketClient;
 import edu.upb.chatupb_v2.view.IChatView;
@@ -26,7 +27,7 @@ public class Mediator implements SocketClient.SocketListener {
     @Getter
     private IChatView view;
     private final Deque<SocketClient> pendingClients = new ArrayDeque<>();
-    private final ContactDao contactDao = new ContactDao();
+    private final IContactDAO contactDao = new CacheContactDAO();
     private final Set<String> blacklistedUsers = new HashSet<>();
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Mediator instance;

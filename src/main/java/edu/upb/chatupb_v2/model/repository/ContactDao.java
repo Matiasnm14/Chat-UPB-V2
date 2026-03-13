@@ -10,7 +10,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 @Slf4j
-public class ContactDao {
+public class ContactDao implements IContactDAO {
 
 
     private DaoHelper<AcceptHello.User.Contact> helper;
@@ -108,7 +108,7 @@ public class ContactDao {
     }
 
     public void deleteAll() throws Exception {
-        String query = "CONTACTO ELIMINADO";
+        String query = "DELETE FROM contact";
         helper.update(query, null);
     }
 }
