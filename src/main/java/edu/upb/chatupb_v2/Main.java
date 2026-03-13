@@ -1,7 +1,6 @@
 package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.controller.ChatServer;
-import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.model.repository.UserProfileDao;
 import edu.upb.chatupb_v2.view.JUi;
@@ -25,8 +24,6 @@ public class Main {
         mediator.setView(jUi);
         mediator.setLocalUser(userId, jUi.getUsername());
         new ChatServer();
-        ContactController contact = new ContactController(jUi);
-        contact.unload();
         jUi.init();
     }
 }

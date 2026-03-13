@@ -1,12 +1,12 @@
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.model.repository.ContactDao;
+import edu.upb.chatupb_v2.controller.ContactController;
 
 public class ClearContacts {
     public static void main(String[] args) {
-        ContactDao dao = new ContactDao();
+        ContactController controller = new ContactController(null);
         try {
-            dao.deleteAll();
+            controller.deleteAll();
             System.out.println("Contactos eliminados.");
         } catch (Exception e) {
             System.out.println("Error eliminando contactos: " + e.getMessage());

@@ -26,4 +26,12 @@ public class ContactController {
             iChatView.showError("No se pudieron cargar los contactos: " + e.getMessage());
         }
     }
+
+    public void deleteByCode(String code) throws Exception {
+        contactDao.deleteByCode(code);
+    }
+
+    public void deleteAll() throws Exception {
+        contactDao.deleteAll();
+    }
 }

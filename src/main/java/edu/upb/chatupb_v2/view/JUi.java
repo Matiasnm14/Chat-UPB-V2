@@ -4,10 +4,10 @@
  */
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.controller.Mediator;
+import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.MessageController;
+import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
-import edu.upb.chatupb_v2.model.repository.ContactDao;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import lombok.Getter;
 
@@ -15,7 +15,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -27,9 +26,10 @@ import java.util.UUID;
 @Getter
 public class JUi extends JFrame implements IChatView {
     //YA NO HAY CHAT SERVER!
-    private MessageController messageController;
     private final String username;
     private final UUID userId;
+    private final ContactController contactController;
+    private final MessageController messageController;
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(JUi.class.getName());
     private static final Color BG_APP = new Color(0xF0F2F5);
     private static final Color BG_PANEL = new Color(0xFFFFFF);
@@ -55,8 +55,9 @@ public class JUi extends JFrame implements IChatView {
     public JUi(String username) {
         this.username = sanitizeUsername(username);
         this.userId = edu.upb.chatupb_v2.UserIdentity.loadOrCreateUserId();
-        initComponents();
+        this.contactController = new ContactController(this);
         this.messageController = new MessageController(this);
+        initComponents();
     }
 
     private void initComponents() {
@@ -194,17 +195,10 @@ public class JUi extends JFrame implements IChatView {
         jbEliminar.setAlignmentX(Component.LEFT_ALIGNMENT);
         jbEliminar.addActionListener(evt -> deleteSelectedContact());
 
-        jbCompartir = new JButton("Compartir contacto");
-        styleButtonGhost(jbCompartir);
-        jbCompartir.setAlignmentX(Component.LEFT_ALIGNMENT);
-        jbCompartir.addActionListener(evt -> shareContact());
-
         leftHeader.add(contactsTitle);
         leftHeader.add(Box.createVerticalStrut(6));
         leftHeader.add(statusPanel);
         leftHeader.add(Box.createVerticalStrut(10));
-        leftHeader.add(jbCompartir);
-        leftHeader.add(Box.createVerticalStrut(8));
         leftHeader.add(jbEliminar);
 
         leftPanel.add(leftHeader, BorderLayout.NORTH);
@@ -289,6 +283,7 @@ public class JUi extends JFrame implements IChatView {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
 
+        contactController.unload();
         java.awt.EventQueue.invokeLater(() -> this.setVisible(true));
     }
 
@@ -302,7 +297,6 @@ public class JUi extends JFrame implements IChatView {
     private JButton jbConectar;
     private JButton jbEnviar;
     private JButton jbEliminar;
-    private JButton jbCompartir;
     private DotIcon statusIcon;
     private DefaultListModel<ContactListItem> contactListModel;
     private JList<ContactListItem> contactList;
@@ -311,20 +305,7 @@ public class JUi extends JFrame implements IChatView {
     private boolean autoHelloSent = false;
 
     private void loadContacts() {
-        contactListModel.clear();
-        ContactDao contactDao = new ContactDao();
-        try {
-            for (AcceptHello.User.Contact contact : contactDao.findAll()) {
-                String name = contact.getName() != null ? contact.getName() : "(Sin nombre)";
-                String ip = contact.getIp() != null ? contact.getIp() : "";
-                ContactListItem item = new ContactListItem(name, ip, contact.getCode(), false);
-                contactListModel.addElement(item);
-            }
-            refreshContactPresence();
-            selectFirstContact();
-        } catch (Exception e) {
-            showError("No se pudieron cargar los contactos: " + e.getMessage());
-        }
+        contactController.unload();
     }
     // contact controller y devolverme una lista de contactos
 
@@ -411,13 +392,6 @@ public class JUi extends JFrame implements IChatView {
         button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
 
-    private void styleButtonGhost(JButton button) {
-        button.setBackground(BG_PANEL);
-        button.setForeground(TEXT_PRIMARY);
-        button.setFocusPainted(false);
-        button.setBorder(BorderFactory.createLineBorder(BORDER));
-    }
-
     private void styleButtonDanger(JButton button) {
         button.setBackground(BG_PANEL);
         button.setForeground(new Color(0xE74C3C));
@@ -477,7 +451,11 @@ public class JUi extends JFrame implements IChatView {
 
     private void addChatMessageWithTime(String message, boolean outgoing, String senderName, String time, String messageId, boolean read) {
         Runnable task = () -> {
-            MessageRow row = new MessageRow(message, outgoing, senderName, time, messageId, read);
+            boolean resolvedRead = read;
+            if (outgoing && messageId != null && !messageId.isBlank() && !read) {
+                resolvedRead = Mediator.getInstance().isMessageRead(messageId);
+            }
+            MessageRow row = new MessageRow(message, outgoing, senderName, time, messageId, resolvedRead);
             messagesPanel.add(row);
             messagesPanel.add(Box.createVerticalStrut(8));
             messagesPanel.revalidate();
@@ -581,7 +559,7 @@ public class JUi extends JFrame implements IChatView {
             return;
         }
         try {
-            new ContactDao().deleteByCode(selected.getCode());
+            contactController.deleteByCode(selected.getCode());
             selectedContactCode = null;
             messagesPanel.removeAll();
             messagesPanel.revalidate();
@@ -832,54 +810,6 @@ public class JUi extends JFrame implements IChatView {
             setBackground(isSelected ? new Color(0xEAF5EF) : BG_PANEL);
             return this;
         }
-    }
-    private void shareContact() {
-
-        ContactListItem recipient = contactList.getSelectedValue();
-        if (recipient == null || recipient.getCode() == null || recipient.getCode().isBlank()) {
-            showMessage("Selecciona un contacto para compartir.");
-            return;
-        }
-        ContactListItem contactToShare = chooseContactToShare(recipient);
-        if (contactToShare == null) {
-            return;
-        }
-        String contactId = contactToShare.getCode();
-        String contactName = contactToShare.getName();
-        String contactIp = contactToShare.getIp();
-        Mediator.getInstance().shareContact(recipient.getCode(), recipient.getIp(), contactId, contactName, contactIp);
-    }
-
-    private ContactListItem chooseContactToShare(ContactListItem recipient) {
-        if (contactListModel.isEmpty()) {
-            showMessage("No hay contactos para compartir.");
-            return null;
-        }
-        List<ContactListItem> options = new ArrayList<>();
-        for (int i = 0; i < contactListModel.size(); i++) {
-            ContactListItem item = contactListModel.get(i);
-            if (item == null || item.getCode() == null || item.getCode().isBlank()) {
-                continue;
-            }
-            if (recipient != null && item.getCode().equals(recipient.getCode())) {
-                continue;
-            }
-            options.add(item);
-        }
-        if (options.isEmpty()) {
-            showMessage("No hay otro contacto para compartir.");
-            return null;
-        }
-        ContactListItem[] array = options.toArray(new ContactListItem[0]);
-        return (ContactListItem) JOptionPane.showInputDialog(
-                this,
-                "Selecciona el contacto a compartir:",
-                "Compartir contacto",
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                array,
-                array[0]
-        );
     }
 }//172.16.41.214
 

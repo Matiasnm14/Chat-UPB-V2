@@ -85,7 +85,6 @@ public class SocketClient extends Thread {
         default void onPinMessageReceived(PinMessage pinMessage) {}
         default void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
         default void onThemeReceived(Theme theme) {}
-        default void onContactShared(PasarContacto pasarContacto) {}
         default void onGoodByeReceived(GoodBye goodBye) {}
         default void onSocketClosed(SocketClient client) {}
     }
@@ -221,13 +220,6 @@ public class SocketClient extends Thread {
                         Theme thm = Theme.parse(message);
                         for (SocketListener listener : listeners) {
                             listener.onThemeReceived(thm);
-                        }
-                        break;
-                    }
-                    case "020": {
-                        PasarContacto pasarContacto = PasarContacto.parse(message);
-                        for (SocketListener listener : listeners) {
-                            listener.onContactShared(pasarContacto);
                         }
                         break;
                     }
