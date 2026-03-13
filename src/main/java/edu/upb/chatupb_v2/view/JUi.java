@@ -53,7 +53,9 @@ public class JUi extends JFrame implements IChatView {
     private JList<Contact> contactList;
 
     @Getter
+    @Setter
     private Contact currentContact;
+    @Getter
     @Setter
     private ContactController contactController;
     @Setter
@@ -172,6 +174,85 @@ public class JUi extends JFrame implements IChatView {
         messageList.setFocusable(false);
 
         JScrollPane chatScrollPane = new JScrollPane(messageList);
+
+        // 1. Crear el menú contextual (Click derecho)
+        JPopupMenu popupMenu = new JPopupMenu();
+
+        JMenuItem itemEliminarParaMi = new JMenuItem("Eliminar para mí");
+        JMenuItem itemEliminarParaTodos = new JMenuItem("Eliminar para todos");
+        JMenuItem itemFijarMensaje = new JMenuItem("Fijar Mensaje");
+        JMenuItem itemCambiarTema = new JMenuItem("Cambiar tema de contacto");
+
+        // Añadir las opciones al menú
+        popupMenu.add(itemEliminarParaMi);
+        popupMenu.add(itemEliminarParaTodos);
+        popupMenu.addSeparator(); // Una pequeña línea divisoria visual
+        popupMenu.add(itemFijarMensaje);
+        popupMenu.addSeparator();
+        popupMenu.add(itemCambiarTema);
+
+        // 2. Agregar el listener a tu JList de mensajes
+        messageList.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                showPopup(e);
+            }
+
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                showPopup(e);
+            }
+
+            private void showPopup(java.awt.event.MouseEvent e) {
+                // Verificar si es un click derecho (PopupTrigger)
+                if (e.isPopupTrigger()) {
+                    // Obtener en qué índice de la lista se hizo click
+                    int index = messageList.locationToIndex(e.getPoint());
+
+                    // Validar que el click fue realmente sobre la burbuja de un mensaje
+                    if (index != -1 && messageList.getCellBounds(index, index).contains(e.getPoint())) {
+
+                        // Seleccionamos el mensaje visualmente en la lista
+                        messageList.setSelectedIndex(index);
+                        Message selectedMessage = messageList.getModel().getElementAt(index);
+
+                        // LÓGICA DE INTERFAZ: Verificar si el mensaje es mío
+                        // Usamos la misma lógica de tu ChatRender
+                        boolean isMine = selectedMessage.getStatusMessage() != StatusMessage.READ;
+
+                        // Ocultar o mostrar el botón "Eliminar para todos"
+                        itemEliminarParaTodos.setVisible(isMine);
+
+                        // Mostrar el menú exactamente donde está el ratón
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    }
+                }
+            }
+        });
+
+        // 3. Dejar listos los eventos (Solo Interfaz, sin lógica de negocio por ahora)
+        itemEliminarParaMi.addActionListener(e -> {
+            Message msg = messageList.getSelectedValue();
+            System.out.println("UI: Clic en Eliminar para mí. ID Mensaje: " + msg.getId());
+            // Aquí irá tu lógica futura...
+        });
+
+        itemEliminarParaTodos.addActionListener(e -> {
+            Message msg = messageList.getSelectedValue();
+            System.out.println("UI: Clic en Eliminar para todos. ID Mensaje: " + msg.getId());
+            // Aquí irá tu lógica futura...
+        });
+
+        itemFijarMensaje.addActionListener(e -> {
+            Message msg = messageList.getSelectedValue();
+            System.out.println("UI: Clic en Fijar Mensaje. ID Mensaje: " + msg.getId());
+            // Aquí irá tu lógica futura...
+        });
+
+        itemCambiarTema.addActionListener(e -> {
+            System.out.println("UI: Clic en Cambiar tema de contacto.");
+            // Aquí irá tu lógica futura (abrir un JColorChooser, etc.)...
+        });
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
@@ -361,7 +442,8 @@ public class JUi extends JFrame implements IChatView {
                 StatusMessage.READ,
                 LocalDate.now().toString()
         );
-        messageListModel.addElement(sysMsg);
+//        messageListModel.addElement(sysMsg);
+        messageController.onLoadMessages(currentContact.getId());
         scrollToBottom();
     }
 
@@ -507,7 +589,7 @@ public class JUi extends JFrame implements IChatView {
                 nuevoContacto.setUserId(this.userId);
                 nuevoContacto.setStateConnect(true);
 
-                ContactDao.getInstance().save(nuevoContacto);
+                contactController.save(nuevoContacto);
 
                 SwingUtilities.invokeLater(() -> {
                     nuevoContacto.setId(invitation.getIdUser());

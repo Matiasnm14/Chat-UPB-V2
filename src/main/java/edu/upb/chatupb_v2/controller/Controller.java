@@ -33,6 +33,8 @@ public class Controller implements SocketClient.SocketListener {
     private ChatServer server;
 
     private Map<String, List<ConfirmRecived>> confirms = new HashMap<>();
+    
+    private ContactController contactController;
 
 
     public static Controller getInstance() {
@@ -62,9 +64,10 @@ public class Controller implements SocketClient.SocketListener {
                         Accept acp = new Accept(server.getUserId(), server.getUsername());
                         sc.send(acp.createFormat());
                     }
-                    if (ContactDao.getInstance().existByCode(invitation.getIdUser())){
-                        ContactDao.getInstance().updateContact(invitation.getIdUser(), sc.getIp());
+                    if (uis.get(server.getUserId()).getContactController().existByCode(invitation.getIdUser())){
+                        uis.get(server.getUserId()).getContactController().updateContact(invitation.getIdUser(), sc.getIp());
                     }
+                    
                 }else {
                     Decline dec = new Decline();
                     try {
@@ -90,14 +93,15 @@ public class Controller implements SocketClient.SocketListener {
                     try {
                         SocketClient sc = Controller.getInstance().getClients().get(accept.getIdUser());
                         if (sc != null) {
-                            if (!ContactDao.getInstance().existByCode(accept.getIdUser())) {
+                            if (!uis.get(server.getUserId()).getContactController().existByCode(accept.getIdUser())) {
                                 Contact contact = sl.onAcceptReceived(accept, sc.getIp());
-                                ContactDao.getInstance().save(contact);
+                                uis.get(server.getUserId()).getContactController().save(contact);
                                 contact.setId(accept.getIdUser());
                             }
                         }
-                        if (ContactDao.getInstance().existByCode(accept.getIdUser())){
-                            ContactDao.getInstance().updateContact(accept.getIdUser(), sc.getIp());
+                        
+                        if (uis.get(server.getUserId()).getContactController().existByCode(accept.getIdUser())){
+                            uis.get(server.getUserId()).getContactController().updateContact(accept.getIdUser(), sc.getIp());
                         }
                         uis.get(server.getUserId()).updateContacts();
                     } catch (Exception e) {
@@ -122,11 +126,11 @@ public class Controller implements SocketClient.SocketListener {
                     client.setUid(hello.getIdUser());
                     if (client != null) {
                         try {
-                            if (ContactDao.getInstance().existByCode(hello.getIdUser())) {
+                            if (uis.get(server.getUserId()).getContactController().existByCode(hello.getIdUser())) {
                                 pendingClients.remove(client);
-                                client.setUserName(ContactDao.getInstance().findById(hello.getIdUser()).getName());
+                                client.setUserName(uis.get(server.getUserId()).getContactController().findById(hello.getIdUser()).getName());
                                 addClients(client);
-                                ContactDao.getInstance().updateContact(hello.getIdUser(), client.getIp());
+                                uis.get(server.getUserId()).getContactController().updateContact(hello.getIdUser(), client.getIp());
                                 AcceptHello acceptHello = new AcceptHello(server.getUserId());
                                 client.send(acceptHello.createFormat());
                                 uis.get(server.getUserId()).updateContacts();
@@ -150,7 +154,9 @@ public class Controller implements SocketClient.SocketListener {
                 socketClient.setUid(acceptHello.getIdUser());
                     if (socketClient.getUID().equals(acceptHello.getIdUser())){
                         addClients(socketClient);
+                        Contact currentContact = uis.get(server.getUserId()).getCurrentContact();
                         uis.get(server.getUserId()).updateContacts();
+                        uis.get(server.getUserId()).setCurrentContact(currentContact);
                         break;
                     }
             }

@@ -10,15 +10,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class ContactDao {
+public class ContactDao implements IContactDao{
     private DaoHelper<Contact> helper;
-    private static final ContactDao uDao = new ContactDao();
+//    private static final IContactDao uDao = new ContactDao();
 
-    public static ContactDao getInstance() {
-        return uDao;
-    }
+//    public static IContactDao getInstance() {
+//        return new ;
+//    }
 
-    private ContactDao() {
+    public ContactDao() {
         helper = new DaoHelper<>();
     }
 
@@ -39,6 +39,8 @@ public class ContactDao {
         return contact;
     };
 
+
+
     public static boolean existColumn(ResultSet result, String columnName) {
         try {
             result.findColumn(columnName);
@@ -48,22 +50,22 @@ public class ContactDao {
         }
         return false;
     }
-
+    @Override
     public List<Contact> findAll() throws ConnectException, SQLException {
         String query = "SELECT * FROM Contacts";
         return helper.executeQuery(query, resultReader);
     }
-
+    @Override
     public boolean exist(String argument) throws ConnectException, SQLException {
         String query = "SELECT count(*) FROM Contacts WHERE " + argument;
         return helper.executeQueryCount(query, null) == 1;
     }
-
+    @Override
     public boolean existByCode(String code) throws ConnectException, SQLException {
         String query = "SELECT count(*) FROM Contacts WHERE id='" + code + "'";
         return helper.executeQueryCount(query, null) == 1;
     }
-
+    @Override
     public Contact findById(String id) throws ConnectException, SQLException {
         String query = "SELECT * FROM Contacts WHERE id ='" + id + "'";
         System.out.println(query);
@@ -73,11 +75,12 @@ public class ContactDao {
         }
         return list.get(0);
     }
+    @Override
     public List<Contact> findByOwner(String ownerId) throws ConnectException, SQLException {
         String query = "SELECT * FROM Contacts WHERE Users_id = '" + ownerId + "'";
         return helper.executeQuery(query, resultReader);
     }
-
+    @Override
     public Contact findByName(String name) throws ConnectException, SQLException {
         String query = "SELECT * FROM Contacts WHERE name ='" + name + "'";
         System.out.println(query);
@@ -87,11 +90,11 @@ public class ContactDao {
         }
         return list.get(0);
     }
-
+    @Override
     public void update(String query) throws Exception {
         helper.update(query, null);
     }
-
+    @Override
     public void save(Contact contact) throws Exception {
         if (!exist("id='" + contact.getId() + "'")) {
             String query = "INSERT INTO Contacts(id, name, ip, Users_id) values (?,?,?,?)";
@@ -105,7 +108,7 @@ public class ContactDao {
             helper.insert(query, params, contact);
         }
     }
-
+    @Override
     public void updateContact(String id_contact, String ip_contact) throws Exception {
         String query = "UPDATE Contacts SET ip=? WHERE id =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
@@ -128,7 +131,7 @@ public class ContactDao {
 //        };
 //        helper.update(query, params);
 //    }
-
+    @Override
     public void update(String query, String conditionWhere) throws SQLException, ConnectException {
         if (query.trim().endsWith("%s")) {
             query = String.format(query, conditionWhere);
