@@ -157,6 +157,10 @@ public class SocketClient extends Thread {
                         Controller.getInstance().notificarUI(bye, uid);
                         break;
                     }
+                    case "021": {
+                        ImageChat imageChat = ImageChat.parse(message);
+                        Controller.getInstance().notificarUI(imageChat, uid);
+                    }
                 }
             }
         } catch (SocketException socketException){
