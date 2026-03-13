@@ -85,6 +85,7 @@ public class SocketClient extends Thread {
         default void onPinMessageReceived(PinMessage pinMessage) {}
         default void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
         default void onThemeReceived(Theme theme) {}
+        default void onImageReceived(ImageMessage imageMessage) {}
         default void onGoodByeReceived(GoodBye goodBye) {}
         default void onSocketClosed(SocketClient client) {}
     }
@@ -220,6 +221,13 @@ public class SocketClient extends Thread {
                         Theme thm = Theme.parse(message);
                         for (SocketListener listener : listeners) {
                             listener.onThemeReceived(thm);
+                        }
+                        break;
+                    }
+                    case "021": {
+                        ImageMessage imageMessage = ImageMessage.parse(message);
+                        for (SocketListener listener : listeners) {
+                            listener.onImageReceived(imageMessage);
                         }
                         break;
                     }

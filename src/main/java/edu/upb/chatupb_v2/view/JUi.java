@@ -8,16 +8,20 @@ import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
+import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.nio.file.Files;
 
 /**
  *
@@ -71,6 +75,7 @@ public class JUi extends JFrame implements IChatView {
 
         jbConectar = new JButton("Conectar");
         jbEnviar = new JButton("Enviar");
+        jbImagen = new JButton("Imagen");
 
         statusDot = new JLabel();
         statusIcon = new DotIcon(new Color(0xB0B6BB), 10);
@@ -127,6 +132,7 @@ public class JUi extends JFrame implements IChatView {
 
         styleButtonPrimary(jbConectar);
         styleButtonPrimary(jbEnviar);
+        styleButtonGhost(jbImagen);
 
         jbConectar.addActionListener(evt -> {
             String senderName = jTextUserName.getText();
@@ -164,6 +170,7 @@ public class JUi extends JFrame implements IChatView {
             Mediator.getInstance().sendMessage(text, userId.toString(), messageId, selected.getCode(), selected.getIp());
             jTextMensaje.setText("");
         });
+        jbImagen.addActionListener(evt -> sendImage());
 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BG_APP);
@@ -242,7 +249,11 @@ public class JUi extends JFrame implements IChatView {
         inputBar.setBackground(BG_PANEL);
         inputBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
         inputBar.add(jTextMensaje, BorderLayout.CENTER);
-        inputBar.add(jbEnviar, BorderLayout.EAST);
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        actionPanel.setOpaque(false);
+        actionPanel.add(jbImagen);
+        actionPanel.add(jbEnviar);
+        inputBar.add(actionPanel, BorderLayout.EAST);
 
         rightPanel.add(topBar, BorderLayout.NORTH);
         rightPanel.add(messagesScrollPane, BorderLayout.CENTER);
@@ -296,6 +307,7 @@ public class JUi extends JFrame implements IChatView {
     private JScrollPane messagesScrollPane;
     private JButton jbConectar;
     private JButton jbEnviar;
+    private JButton jbImagen;
     private JButton jbEliminar;
     private DotIcon statusIcon;
     private DefaultListModel<ContactListItem> contactListModel;
@@ -391,6 +403,13 @@ public class JUi extends JFrame implements IChatView {
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
+// Stilo de mi interfase
+    private void styleButtonGhost(JButton button) {
+        button.setBackground(BG_PANEL);
+        button.setForeground(TEXT_PRIMARY);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(BORDER));
+    }
 
     private void styleButtonDanger(JButton button) {
         button.setBackground(BG_PANEL);
@@ -409,6 +428,11 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public void addChatMessage(String message, boolean outgoing, String senderName) {
         addChatMessageWithTime(message, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), null, false);
+    }
+
+    @Override
+    public void addImageMessage(String imageBase64, boolean outgoing, String senderName) {
+        addImageMessageWithTime(imageBase64, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), null, false);
     }
 
     @Override
@@ -442,7 +466,11 @@ public class JUi extends JFrame implements IChatView {
                 boolean outgoing = userId.toString().equals(message.getSenderCode());
                 String senderName = outgoing ? username : "Desconocido";
                 String time = extractTime(message.getCreatedDate());
-                addChatMessageWithTime(message.getMessage(), outgoing, senderName, time, message.getCodMessage(), false);
+                if (message.getType() == TypeMessage.IMAGE) {
+                    addImageMessageWithTime(message.getMessage(), outgoing, senderName, time, message.getCodMessage(), false);
+                } else {
+                    addChatMessageWithTime(message.getMessage(), outgoing, senderName, time, message.getCodMessage(), false);
+                }
             }
         }
         messagesPanel.revalidate();
@@ -455,7 +483,30 @@ public class JUi extends JFrame implements IChatView {
             if (outgoing && messageId != null && !messageId.isBlank() && !read) {
                 resolvedRead = Mediator.getInstance().isMessageRead(messageId);
             }
-            MessageRow row = new MessageRow(message, outgoing, senderName, time, messageId, resolvedRead);
+            MessageRow row = new MessageRow(message, null, outgoing, senderName, time, messageId, resolvedRead);
+            messagesPanel.add(row);
+            messagesPanel.add(Box.createVerticalStrut(8));
+            messagesPanel.revalidate();
+            messagesPanel.repaint();
+            JScrollBar bar = messagesScrollPane.getVerticalScrollBar();
+            bar.setValue(bar.getMaximum());
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
+        }
+    }
+
+    private void addImageMessageWithTime(String imageBase64, boolean outgoing, String senderName, String time, String messageId, boolean read) {
+        Runnable task = () -> {
+            boolean resolvedRead = read;
+            if (outgoing && messageId != null && !messageId.isBlank() && !read) {
+                resolvedRead = Mediator.getInstance().isMessageRead(messageId);
+            }
+            ImageIcon icon = decodeImage(imageBase64);
+            String fallback = icon == null ? "Imagen no disponible" : null;
+            MessageRow row = new MessageRow(fallback, icon, outgoing, senderName, time, messageId, resolvedRead);
             messagesPanel.add(row);
             messagesPanel.add(Box.createVerticalStrut(8));
             messagesPanel.revalidate();
@@ -570,14 +621,41 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
+    private void sendImage() {
+        ContactListItem selected = contactList.getSelectedValue();
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Imagenes", "png", "jpg", "jpeg", "gif", "bmp"));
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File file = chooser.getSelectedFile();
+        if (file == null) {
+            return;
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            String base64 = Base64.getEncoder().encodeToString(bytes);
+            String senderName = jTextUserName.getText();
+            if (senderName == null || senderName.isBlank()) {
+                senderName = username;
+            }
+            String messageId = UUID.randomUUID().toString();
+            addImageMessageWithTime(base64, true, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
+            Mediator.getInstance().sendImage(base64, userId.toString(), messageId, selected.getCode(), selected.getIp());
+        } catch (Exception e) {
+            showError("No se pudo enviar la imagen: " + e.getMessage());
+        }
+    }
+
     private final class MessageRow extends JPanel {
-        private MessageRow(String message, boolean outgoing, String senderName, String time, String messageId, boolean read) {
+        private MessageRow(String message, ImageIcon image, boolean outgoing, String senderName, String time, String messageId, boolean read) {
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
 
             AvatarView avatar = new AvatarView(senderName, outgoing);
-            BubblePanel bubble = new BubblePanel(message, outgoing, time, read);
+            BubblePanel bubble = new BubblePanel(message, image, outgoing, time, read);
             bubble.setAlignmentY(Component.TOP_ALIGNMENT);
             avatar.setAlignmentY(Component.TOP_ALIGNMENT);
             if (outgoing && messageId != null) {
@@ -605,24 +683,31 @@ public class JUi extends JFrame implements IChatView {
         private final Color bubbleColor;
         private JLabel statusLabel;
 
-        private BubblePanel(String message, boolean outgoing, String time, boolean read) {
+        private BubblePanel(String message, ImageIcon image, boolean outgoing, String time, boolean read) {
             this.bubbleColor = outgoing ? BUBBLE_OUT : BUBBLE_IN;
             setOpaque(false);
             setLayout(new BorderLayout());
             setBorder(BorderFactory.createEmptyBorder(8, 10, 6, 10));
             setMaximumSize(new Dimension(MESSAGE_MAX_WIDTH, Integer.MAX_VALUE));
 
-            JTextArea messageArea = new JTextArea(message == null ? "" : message);
-            messageArea.setLineWrap(true);
-            messageArea.setWrapStyleWord(true);
-            messageArea.setEditable(false);
-            messageArea.setOpaque(false);
-            messageArea.setBorder(BorderFactory.createEmptyBorder());
-            messageArea.setMargin(new Insets(0, 0, 0, 0));
-            messageArea.setFocusable(false);
-            messageArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            messageArea.setForeground(TEXT_PRIMARY);
-            messageArea.setColumns(24);
+            if (image != null) {
+                JLabel imageLabel = new JLabel(image);
+                imageLabel.setOpaque(false);
+                add(imageLabel, BorderLayout.CENTER);
+            } else {
+                JTextArea messageArea = new JTextArea(message == null ? "" : message);
+                messageArea.setLineWrap(true);
+                messageArea.setWrapStyleWord(true);
+                messageArea.setEditable(false);
+                messageArea.setOpaque(false);
+                messageArea.setBorder(BorderFactory.createEmptyBorder());
+                messageArea.setMargin(new Insets(0, 0, 0, 0));
+                messageArea.setFocusable(false);
+                messageArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                messageArea.setForeground(TEXT_PRIMARY);
+                messageArea.setColumns(24);
+                add(messageArea, BorderLayout.CENTER);
+            }
 
             JLabel timeLabel = new JLabel(time == null || time.isBlank() ? LocalTime.now().format(TIME_FORMAT) : time);
             timeLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
@@ -637,7 +722,6 @@ public class JUi extends JFrame implements IChatView {
                 timePanel.add(statusLabel);
             }
 
-            add(messageArea, BorderLayout.CENTER);
             add(timePanel, BorderLayout.SOUTH);
         }
 
@@ -690,6 +774,38 @@ public class JUi extends JFrame implements IChatView {
         int[] palette = new int[]{0x1ABC9C, 0x3498DB, 0x9B59B6, 0xE67E22, 0xE74C3C, 0x2ECC71};
         int index = Math.abs((seed == null ? 0 : seed.hashCode())) % palette.length;
         return new Color(palette[index]);
+    }
+
+    private ImageIcon decodeImage(String base64) {
+        if (base64 == null || base64.isBlank()) {
+            return null;
+        }
+        try {
+            byte[] bytes = Base64.getDecoder().decode(base64);
+            ImageIcon icon = new ImageIcon(bytes);
+            if (icon.getIconWidth() <= 0 || icon.getIconHeight() <= 0) {
+                return null;
+            }
+            return scaleIcon(icon, 240, 240);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private ImageIcon scaleIcon(ImageIcon icon, int maxWidth, int maxHeight) {
+        int width = icon.getIconWidth();
+        int height = icon.getIconHeight();
+        if (width <= 0 || height <= 0) {
+            return icon;
+        }
+        if (width <= maxWidth && height <= maxHeight) {
+            return icon;
+        }
+        double ratio = Math.min((double) maxWidth / width, (double) maxHeight / height);
+        int newWidth = (int) Math.round(width * ratio);
+        int newHeight = (int) Math.round(height * ratio);
+        Image scaled = icon.getImage().getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
+        return new ImageIcon(scaled);
     }
 
     private static final class ContactListItem {

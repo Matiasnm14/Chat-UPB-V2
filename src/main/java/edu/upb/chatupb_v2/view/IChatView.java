@@ -13,6 +13,7 @@ public interface IChatView {
     void showBuzzNotification(String senderName);
     void showClientOffline(String senderName);
     void addChatMessage(String message, boolean outgoing, String senderName);
+    void addImageMessage(String imageBase64, boolean outgoing, String senderName);
     void unload(List<AcceptHello.User.Contact> contacts);
     void unloadMessages(List<MessageDAO.Message> messages);
     void reloadContacts();
