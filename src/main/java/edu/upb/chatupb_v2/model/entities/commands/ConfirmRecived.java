@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.model.entities.commands;
 
+import edu.upb.chatupb_v2.model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +15,12 @@ public class ConfirmRecived extends Command{
     public String createFormat() {
         return getID()+"|"+getIdMessage()+System.lineSeparator();
     }
+
+    @Override
+    public void executed(SocketClient sc) {
+
+    }
+
 
     public ConfirmRecived() {
         super("008");

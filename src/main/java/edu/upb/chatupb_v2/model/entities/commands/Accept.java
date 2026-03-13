@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.model.entities.commands;
 
+import edu.upb.chatupb_v2.model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,8 +15,15 @@ public class Accept extends Command{
 
     @Override
     public String createFormat() {
+
         return getID() + "|" + this.idUser + "|" + this.userName +System.lineSeparator();
     }
+
+    @Override
+    public void executed(SocketClient sc) {
+
+    }
+
 
     public static Accept parse(String command){
         String[] parses = command.split(Pattern.quote("|"));

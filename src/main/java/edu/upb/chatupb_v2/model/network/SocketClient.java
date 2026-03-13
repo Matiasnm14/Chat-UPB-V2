@@ -66,6 +66,7 @@ public class SocketClient extends Thread {
         void onUniqueMessageReceived(UniqueMessage uniqueMessage);
         void onThemeReceived(Theme theme);
         void onByeReceived(Bye bye);
+        void onImageReceived(ImageMesagge imageMesagge);
     }
 
     public void setListener(String name, String key, SocketListener listener) {
@@ -165,6 +166,10 @@ public class SocketClient extends Thread {
                     case "013": {
                         Theme thm = Theme.parse(message);
                         break;
+                    }
+                    case "021":{
+                        ImageMesagge imageMesagge = ImageMesagge.parse(message);
+                        Controller.getInstance().notificarUI(imageMesagge);
                     }
 //                    case "0018": {
 //                        Bye bye = Bye.parse(message);

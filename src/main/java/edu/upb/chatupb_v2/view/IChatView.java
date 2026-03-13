@@ -19,4 +19,5 @@ public interface IChatView {
     void onAddModel(Contact contact);
     void refreshChatView();
     Contact getCurrentContact();
+    void showImageMessage(edu.upb.chatupb_v2.model.entities.commands.ImageMesagge imageMessage);
 }

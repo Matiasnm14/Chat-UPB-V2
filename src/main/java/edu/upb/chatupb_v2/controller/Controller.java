@@ -32,7 +32,7 @@ public class Controller implements SocketClient.SocketListener{
 
     private  IChatView view;
     private  String username;
-
+    @Getter
     private  String userId;
     private SocketClient socketClient;
     private ServerSocket serverSocket;
@@ -135,6 +135,9 @@ public class Controller implements SocketClient.SocketListener{
                 }
             }
         }
+        if (command instanceof ImageMesagge){
+            onImageReceived((ImageMesagge) command);
+        }
     }
     public void initController(String username, String userId, JUi ui){
         this.userId = userId;
@@ -179,45 +182,22 @@ public class Controller implements SocketClient.SocketListener{
         }).start();
     }
 
-    public void sendMessage(String messageText, String destinationId) {
+    public void sendMessage(Command chat, String destinationId) {
         if (destinationId == null || destinationId.trim().isEmpty()) {
             SwingUtilities.invokeLater(() -> view.showError("Selecciona un contacto primero."));
             return;
         }
-
-        Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
-
-        Message msgDb = new Message(
-                chat.getIdMessage(),
-                destinationId,
-                messageText,
-                TypeMessage.TEXT,
-                StatusMessage.SENT,
-                LocalDate.now().toString()
-        );
-
-
-        try {
-            MessageDAO.getInstance().save(msgDb);
-            view.onLoadMessages(MessageDAO.getInstance().findByContact(destinationId));
-
-        } catch (Exception e) {
-            throw new OperationException("Error en guardar el Mensaje en la base de datos");
-        }
-
-
         SocketClient sc = Controller.getInstance().getClients().get(destinationId);
-
-        try{
-            if (sc != null) {
-                sc.send(chat.createFormat());
-//                SwingUtilities.invokeLater(() -> view.showMessage("Tú | " + messageText + " |Enviado"));
-            } else {
-                SwingUtilities.invokeLater(() -> view.showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
-            }
-        }catch (Exception e){
-            throw new OperationException("Error en enviar el chat a SocketClient");
+        chat.executed(sc);
+    }
+    public void sendImage(Command chat, String destinationId){
+        if (destinationId == null || destinationId.trim().isEmpty()) {
+            SwingUtilities.invokeLater(() -> view.showError("Selecciona un contacto primero."));
+            return;
         }
+        SocketClient sc = Controller.getInstance().getClients().get(destinationId);
+        chat.executed(sc);
+
     }
 
     public void sendBuzz(String idDestination) {
@@ -610,5 +590,49 @@ public class Controller implements SocketClient.SocketListener{
             sc.close();
         }
         SwingUtilities.invokeLater(() -> view.showByeNotification(id));
+    }
+
+    @Override
+    public void onImageReceived(ImageMesagge imageMesagge) {
+        try {
+            // 1. Le agregamos el prefijo para que el Render sepa que esto es una imagen
+            String payload = imageMesagge.getImage().toString();
+
+            // 2. Guardamos en la base de datos como un mensaje normal
+            Message msgDb = new Message(
+                    imageMesagge.getIdMessage(),
+                    imageMesagge.getIdUser(),
+                    payload,
+                    TypeMessage.IMAGE, // O TypeMessage.IMAGE si lo agregaste a tu Enum
+                    StatusMessage.RECEIVED,
+                    LocalDate.now().toString()
+            );
+            MessageDAO.getInstance().save(msgDb);
+
+            // 3. Avisamos a la UI que muestre la imagen (en el hilo de Swing)
+            SwingUtilities.invokeLater(() -> {
+                view.showImageMessage(imageMesagge);
+            });
+
+        } catch (Exception e) {
+            System.out.println("Error al guardar la imagen recibida: " + e.getMessage());
+        }
+
+        // 4. Enviar confirmación de recibido al otro cliente
+        ConfirmRecived confirmRecived = new ConfirmRecived(imageMesagge.getIdMessage());
+        SocketClient client = Controller.getInstance().getClients().get(imageMesagge.getIdUser());
+
+        try {
+            if(view.getCurrentContact() != null && view.getCurrentContact().getId().equals(imageMesagge.getIdUser())){
+                client.send(confirmRecived.createFormat());
+            } else {
+                if(!listOfConfirms.containsKey(imageMesagge.getIdUser())){
+                    listOfConfirms.put(imageMesagge.getIdUser(), new ArrayList<>());
+                }
+                listOfConfirms.get(imageMesagge.getIdUser()).add(confirmRecived);
+            }
+        } catch (Exception e) {
+            System.out.println("Error al confirmar recepción de imagen: " + e.getMessage());
+        }
     }
 }

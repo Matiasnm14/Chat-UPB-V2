@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.model.entities.commands;
 
+import edu.upb.chatupb_v2.model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,6 +16,12 @@ public class Invitation extends Command{
     public String createFormat() {
         return getID() +"|" +idUser +"|" +  userName + System.lineSeparator();
     }
+
+    @Override
+    public void executed(SocketClient sc) {
+
+    }
+
 
     public Invitation(){
         super("001");

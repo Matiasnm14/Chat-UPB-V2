@@ -7,6 +7,7 @@ import edu.upb.chatupb_v2.controller.UserController;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
+import edu.upb.chatupb_v2.model.entities.commands.ImageMesagge;
 import edu.upb.chatupb_v2.model.entities.enums.Sound;
 import edu.upb.chatupb_v2.model.repository.UserDao;
 import edu.upb.chatupb_v2.model.entities.commands.Chat;
@@ -118,7 +119,7 @@ public class JUi extends JFrame implements IChatView {
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
-
+        JButton btnImage = new JButton("📷");
         JButton btnBuzz = new JButton("Buzz");
         JButton btnOffline = new JButton("Fuera de Línea");
         JButton btnNewConnection = new JButton("Nueva Conexión");
@@ -135,7 +136,10 @@ public class JUi extends JFrame implements IChatView {
         topPanel.add(btnOffline);
 
         // Bottom Panel (mensaje)
+        JPanel leftActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftActionPanel.add(btnImage);
         JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(leftActionPanel, BorderLayout.WEST);
         bottomPanel.add(jTextMensaje, BorderLayout.CENTER);
         bottomPanel.add(btnSend, BorderLayout.EAST);
 
@@ -155,8 +159,13 @@ public class JUi extends JFrame implements IChatView {
 
             if (!texto.isEmpty() && currentContact != null) {
 
-                controller.sendMessage(texto, currentContact.getId());
+
+                Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), texto);
+                controller.sendMessage(chat, currentContact.getId());
                 jTextMensaje.setText("");
+
+
+
             } else if (currentContact == null) {
                 showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
             }
@@ -178,6 +187,15 @@ public class JUi extends JFrame implements IChatView {
             }
         }
                 );
+
+        btnImage.addActionListener(e -> {
+            if (currentContact == null) {
+                showError("Por favor, selecciona un contacto primero.");
+                return;
+            }
+            // Abrimos el diálogo para arrastrar la imagen
+            new ImageDialog(this, currentContact.getId(), controller).setVisible(true);
+        });
     }
 
     public void init() {
@@ -404,6 +422,16 @@ public class JUi extends JFrame implements IChatView {
     @Override
     public Contact getCurrentContact() {
         return currentContact;
+    }
+
+    @Override
+    public void showImageMessage(ImageMesagge imageMessage) {
+        if (currentContact != null && currentContact.getId().equals(imageMessage.getIdUser())) {
+            refreshChatView();
+        } else {
+            // Si estamos en otro chat, podemos mostrar una notificación o reproducir un sonido
+            System.out.println("Recibiste una imagen en segundo plano de: " + imageMessage.getIdUser());
+        }
     }
 
     public void setContactController(ContactController contactController){

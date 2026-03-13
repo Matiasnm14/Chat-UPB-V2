@@ -1,44 +1,44 @@
 package edu.upb.chatupb_v2.model.entities.commands;
 
-import edu.upb.chatupb_v2.controller.Controller;
 import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.model.network.SocketClient;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
-import edu.upb.chatupb_v2.view.IChatView;
 import lombok.Getter;
-import lombok.Setter;
 
-import javax.swing.*;
 import java.time.LocalDate;
-import java.util.UUID;
 import java.util.regex.Pattern;
-
 @Getter
-@Setter
-public class Chat extends Command{
+public class ImageMesagge extends Command {
 
     private String idUser;
     private String idMessage;
-    private String message;
+    private String image;
+
+    public ImageMesagge(String idUser, String idMessage, String image) {
+        super("021");
+        this.idMessage = idMessage;
+        this.idUser = idUser;
+        this.image = image;
+    }
+
+
     @Override
     public String createFormat() {
-        return getID() + "|" + idUser + "|" + idMessage + "|" + message + System.lineSeparator();
+        return getID() + "|" + idUser + "|" + idMessage + "|" + image + System.lineSeparator();
+
     }
 
     @Override
     public void executed(SocketClient sc) {
 
-
-
-
         Message msgDb = new Message(
                 this.idMessage,
                 sc.getUID(),
-                this.message,
-                TypeMessage.TEXT,
+                this.image.toString(),
+                TypeMessage.IMAGE,
                 StatusMessage.SENT,
                 LocalDate.now().toString()
         );
@@ -66,22 +66,11 @@ public class Chat extends Command{
             throw new OperationException("Error en enviar el chat a SocketClient");
         }
     }
-
-
-    public Chat() {
-        super("007");
-    }
-    public Chat(String idUser,String idMessage,String message){
-        super("007");
-        this.idUser = idUser;
-        this.idMessage = idMessage;
-        this.message = message;
-    }
-    public static Chat parse(String command){
+    public static ImageMesagge parse(String command){
         String[] parses = command.split(Pattern.quote("|"));
         if(parses.length != 4){
             throw new IllegalArgumentException("Formato de trama erroneo");
         }
-        return new Chat(parses[1],parses[2],parses[3]);
+        return new ImageMesagge(parses[1],parses[2],parses[3]);
     }
 }
