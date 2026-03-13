@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class ContactDao {
+public class ContactDao implements IContactDao{
     private DaoHelper<Contact> helper;
     private static final ContactDao uDao = new ContactDao();
 
@@ -38,6 +38,7 @@ public class ContactDao {
         }
         return contact;
     };
+
 
     public static boolean existColumn(ResultSet result, String columnName) {
         try {
@@ -92,7 +93,7 @@ public class ContactDao {
         helper.update(query, null);
     }
 
-    public void save(Contact contact) throws Exception {
+    public void save(Contact contact) throws ConnectException, SQLException  {
         if (!exist("id='" + contact.getId() + "'")) {
             String query = "INSERT INTO Contacts(id, name, ip, Users_id) values (?,?,?,?)";
 
@@ -102,7 +103,11 @@ public class ContactDao {
                 pst.setString(3, contact.getIp());     // Nueva columna
                 pst.setString(4, contact.getUserId()); // Nueva columna
             };
-            helper.insert(query, params, contact);
+            try {
+                helper.insert(query, params, contact);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -125,7 +130,7 @@ public class ContactDao {
         }
         helper.update(query, null);
     }
-    public void updateIp(String idContacto, String nuevaIp) throws Exception{
+    public void updateIp(String idContacto, String nuevaIp) throws ConnectException, SQLException {
         String sql = "UPDATE Contacts SET ip = ? WHERE id = ?";
 
         DaoHelper.QueryParameters params = pstmt -> {

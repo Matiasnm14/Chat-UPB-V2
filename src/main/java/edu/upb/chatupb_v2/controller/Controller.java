@@ -8,7 +8,9 @@ import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.model.network.ChatServer;
 import edu.upb.chatupb_v2.model.network.SocketClient;
+import edu.upb.chatupb_v2.model.repository.CacheContactDao;
 import edu.upb.chatupb_v2.model.repository.ContactDao;
+import edu.upb.chatupb_v2.model.repository.IContactDao;
 import edu.upb.chatupb_v2.view.IChatView;
 import edu.upb.chatupb_v2.view.JUi;
 import edu.upb.chatupb_v2.model.repository.MessageDAO;
@@ -40,6 +42,7 @@ public class Controller implements SocketClient.SocketListener{
     private boolean isRunning = true;
     @Getter
     private List<SocketClient> pendingClients = new ArrayList<>();
+    private IContactDao contactDao;
 
     private HashMap<String, List<ConfirmRecived>> listOfConfirms = new HashMap<>();
     public static Controller getInstance(){
@@ -52,7 +55,7 @@ public class Controller implements SocketClient.SocketListener{
     public  void delClients(String idUser){
         clients.remove(idUser);
         try{
-            view.onLoadContacts(ContactDao.getInstance().findAll());
+            view.onLoadContacts(contactDao.findAll());
         }catch (Exception e){
 
         }
@@ -143,6 +146,7 @@ public class Controller implements SocketClient.SocketListener{
         this.userId = userId;
         this.username = username;
         this.view = ui;
+        this.contactDao = new CacheContactDao(ContactDao.getInstance());
         try {
             if (chatServer == null) {
                 chatServer = new ChatServer(username, userId);
@@ -311,18 +315,18 @@ public class Controller implements SocketClient.SocketListener{
                 System.out.println("Contacto 1:" + nuevoContacto.getId());
 
                 System.out.println("IP: "+nuevoContacto.getIp());;
-                if(ContactDao.getInstance().existByCode(nuevoContacto.getId())){
+                if(contactDao.existByCode(nuevoContacto.getId())){
                     System.out.println("Se actualizo la IP");
-                    ContactDao.getInstance().updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
-                    ContactDao.getInstance().findById(nuevoContacto.getId()).setStateConnect(true);
+                    contactDao.updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
+                    contactDao.findById(nuevoContacto.getId()).setStateConnect(true);
                 }else {
-                    ContactDao.getInstance().save(nuevoContacto);
+                    contactDao.save(nuevoContacto);
                     SwingUtilities.invokeLater(() -> {
                         nuevoContacto.setId(invitation.getIdUser());
                         view.onAddModel(nuevoContacto);
                     });
                 }
-                view.onLoadContacts(ContactDao.getInstance().findAll());
+                view.onLoadContacts(contactDao.findAll());
 
 
                 SocketClient sc = Controller.getInstance().getClients().get(invitation.getIdUser());
@@ -368,17 +372,17 @@ public class Controller implements SocketClient.SocketListener{
                     nuevoContacto.setStateConnect(true);
 
 
-                    if(ContactDao.getInstance().existByCode(nuevoContacto.getId())){
+                    if(contactDao.existByCode(nuevoContacto.getId())){
                         System.out.println("Se actualizo la IP");
-                        ContactDao.getInstance().updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
-                        ContactDao.getInstance().findById(nuevoContacto.getId()).setStateConnect(true);
+                        contactDao.updateIp(nuevoContacto.getId(),nuevoContacto.getIp());
+                        contactDao.findById(nuevoContacto.getId()).setStateConnect(true);
                     }else{
-                        ContactDao.getInstance().save(nuevoContacto);
+                        contactDao.save(nuevoContacto);
                         nuevoContacto.setId(accept.getIdUser());
                         view.onAddModel(nuevoContacto);
                     }
 
-                    view.onLoadContacts(ContactDao.getInstance().findAll());
+                    view.onLoadContacts(contactDao.findAll());
 
                     view.updateStatus("Status: Online");
                     view.showMessage("Conexión Aceptada con " + accept.getUserName());
@@ -420,19 +424,19 @@ public class Controller implements SocketClient.SocketListener{
 
 
         try {
-            if (ContactDao.getInstance().existByCode(senderId)) {
-                incomingSocket.setName(ContactDao.getInstance().findById(hello.getIdUser()).getName());
+            if (contactDao.existByCode(senderId)) {
+                incomingSocket.setName(contactDao.findById(hello.getIdUser()).getName());
                 System.out.println("onHelloReceived: Contacto reconocido!");
 
-                ContactDao.getInstance().findById(hello.getIdUser()).setStateConnect(true);
-                ContactDao.getInstance().updateIp(hello.getIdUser(),incomingSocket.getIp());
+                contactDao.findById(hello.getIdUser()).setStateConnect(true);
+                contactDao.updateIp(hello.getIdUser(),incomingSocket.getIp());
 
                 System.out.println("IP ACTUALIZADA EN HELLO: "+ incomingSocket.getIp());
 
 
                 pendingClients.remove(incomingSocket);
                 addClients(incomingSocket);
-                view.onLoadContacts(ContactDao.getInstance().findAll());
+                view.onLoadContacts(contactDao.findAll());
 
                 AcceptHello accept = new AcceptHello(this.userId);
                 incomingSocket.send(accept.createFormat());
@@ -453,7 +457,7 @@ public class Controller implements SocketClient.SocketListener{
         String responderId = acceptHello.getIdUser();
 
         try {
-//            ContactDao.getInstance().updateStatus(responderId);
+//            contactDao.updateStatus(responderId);
 
 
             SocketClient outgoingSocket = null;
@@ -469,7 +473,7 @@ public class Controller implements SocketClient.SocketListener{
                 addClients(outgoingSocket);
                 System.out.println("Conexión reestablecida con éxito.");
             }
-            view.onLoadContacts(ContactDao.getInstance().findAll());
+            view.onLoadContacts(contactDao.findAll());
         } catch (Exception e) {
             System.out.println("Error en onAcceptHelloReceived: " + e.getMessage());
         }
