@@ -19,4 +19,6 @@ public interface SocketListener {
     void onThemeReceived(Theme theme);
     void onByeReceived(Bye bye);
     void onNewConnectionEstablished(String userName);
+    void onNewFriendReceived(NewFriend newFriend);
+    void onImageReceived(Image image);
 }

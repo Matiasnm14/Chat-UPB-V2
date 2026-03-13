@@ -139,6 +139,16 @@ public class SocketClient extends Thread {
                         socketListener.onByeReceived(bye);
                         break;
                     }
+                    case "020": {
+                        NewFriend nf = NewFriend.parse(message);
+                        socketListener.onNewFriendReceived(nf);
+                        break;
+                    }
+                    case "021": {
+                        Image img = Image.parse(message);
+                        socketListener.onImageReceived(img);
+                        break;
+                    }
                 }
             }
         } catch (SocketException socketException){

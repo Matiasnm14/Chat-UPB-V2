@@ -1,6 +1,7 @@
 package edu.upb.chatupb_v2.Model.repository;
 
 import edu.upb.chatupb_v2.Model.entities.Message;
+import edu.upb.chatupb_v2.Model.entities.comands.Image;
 import edu.upb.chatupb_v2.Model.entities.enums.StatusMessage;
 import edu.upb.chatupb_v2.Model.entities.enums.TypeMessage;
 
@@ -89,7 +90,7 @@ public class MessageDAO {
             throws ConnectException, SQLException {
 
         String query = """
-        SELECT id_message, sender_id, receiver_id, body, date FROM Messages
+        SELECT id_message, sender_id, receiver_id, body, type_message, date FROM Messages
         WHERE ((sender_id = ?) AND (receiver_id = ?))
            OR ((sender_id = ?) AND (receiver_id = ?))
         ORDER BY date ASC

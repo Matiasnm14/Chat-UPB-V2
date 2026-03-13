@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.Model.entities.comands;
 
+import edu.upb.chatupb_v2.Model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,6 +17,11 @@ public class UniqueMessage extends Command{
     @Override
     public String createFormat() {
         return null;
+    }
+
+    @Override
+    public void execute(SocketClient sc) {
+
     }
 
     public UniqueMessage() {

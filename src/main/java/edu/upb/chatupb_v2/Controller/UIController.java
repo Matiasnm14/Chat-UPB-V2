@@ -1,18 +1,22 @@
 package edu.upb.chatupb_v2.Controller;
 
-import edu.upb.chatupb_v2.Model.entities.User;
+import edu.upb.chatupb_v2.Model.entities.*;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
-import edu.upb.chatupb_v2.Model.entities.enums.StatusMessage;
-import edu.upb.chatupb_v2.Model.entities.enums.TypeMessage;
-import edu.upb.chatupb_v2.Model.factory.SocketListener;
-import edu.upb.chatupb_v2.Model.network.SocketClient;
-import edu.upb.chatupb_v2.Model.entities.Message;
+import edu.upb.chatupb_v2.Model.entities.enums.*;
+import edu.upb.chatupb_v2.Model.factory.*;
+import edu.upb.chatupb_v2.Model.network.*;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
+import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import edu.upb.chatupb_v2.VIews.IChatView;
 
 import javax.swing.*;
+import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
+import java.nio.file.Files;
+import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.UUID;
 
 public class UIController implements SocketListener {
@@ -53,8 +57,20 @@ public class UIController implements SocketListener {
         }).start();
     }
 
+    public void deleteUser(User user){
+        try {
+            UserDAO.getInstance().deleteUser(user.getId());
+        } catch (ConnectException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    TextAnalizeController textAnalizeController = new TextAnalizeController();
     public void sendMessage(String messageText, User target) {
         try {
+            messageText = textAnalizeController.analizarTexto(messageText);
             Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
             MessageDAO.getInstance().save(new Message(
                     chat.getIdMessage(),
@@ -65,10 +81,34 @@ public class UIController implements SocketListener {
                     StatusMessage.SENT,
                     LocalDate.now().toString()
             ));
-            ClientController.getInstance().sendToClient(target.getId(), target.getIp(), chat.createFormat(), this);
+            ClientController.getInstance().sendToClient(target.getId(), target.getIp(), chat, this);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    public void sendImage(File file, User target) {
+        try {
+            byte[] imageBytes = Files.readAllBytes(file.toPath());
+            String messageBase = Base64.getEncoder().encodeToString(imageBytes);
+            Image image = new Image(this.userId, UUID.randomUUID().toString(), messageBase);
+            MessageDAO.getInstance().save(new Message(
+                    image.getIdMessage(),
+                    this.userId,
+                    target.getId(),
+                    messageBase,
+                    TypeMessage.IMAGE,
+                    StatusMessage.SENT,
+                    LocalDate.now().toString()
+            ));
+            ClientController.getInstance().sendToClient(target.getId(), target.getIp(), image, this);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public void sendContact(User user) throws IOException {
+        ClientController.getInstance().senda(user);
     }
 
     public void sendBuzz() {
@@ -111,11 +151,9 @@ public class UIController implements SocketListener {
                 throw new RuntimeException(e);
             }
 
-            SwingUtilities.invokeLater(() -> {
-                view.renderContacts();
-                view.updateStatus("Status: Online");
-                view.showMessage("Conexión Establecida con " + invitation.getUserName());
-            });
+            SwingUtilities.invokeLater(() ->
+                    view.onNewConnectionEstablished(invitation.getUserName(), invitation.getIdUser())
+            );
 
         } else {
             Decline dec = new Decline();
@@ -132,12 +170,11 @@ public class UIController implements SocketListener {
     @Override
     public void onAcceptReceived(Accept accept, SocketClient client) {
         ClientController.getInstance().registerClient(client);
-        SwingUtilities.invokeLater(() -> {
-            view.renderContacts();
-            view.updateStatus("Status: Online");
-            view.showMessage("Conexión Aceptada");
-        });
+        SwingUtilities.invokeLater(() ->
+                view.onNewConnectionEstablished(accept.getUserName(), client.getUID())
+        );
     }
+
 
     @Override
     public void onDeclineReceived(Decline decline) {
@@ -232,10 +269,9 @@ public class UIController implements SocketListener {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        SwingUtilities.invokeLater(() -> {
-            view.renderContacts();
-            view.updateStatus("Status: Online");
-        });
+        SwingUtilities.invokeLater(() ->
+                view.onNewConnectionEstablished(client.getNombre(), client.getUID())
+        );
     }
 
     @Override
@@ -260,6 +296,25 @@ public class UIController implements SocketListener {
     }
 
     @Override
+    public void onNewFriendReceived(NewFriend newFriend) {
+        try {
+            UserDAO.getInstance().save(new User("0000001",newFriend.getName_user(), newFriend.getIp_user(), userId));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void onImageReceived(Image image) {
+        view.showImage(image);
+        try {
+            MessageDAO.getInstance().save(new Message(image.getIdMessage(),image.getSendUser(),userId, image.getMessage(), TypeMessage.IMAGE, StatusMessage.READ, LocalDate.now().toString()));
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
+
+    @Override
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
 //        String id_message = deleteMessage.getIdMessage();
 //        try {
@@ -271,6 +326,8 @@ public class UIController implements SocketListener {
 
     @Override
     public void onPinMessageReceived(PinMessage pinMessage) {
+        String pin = "PIN";
+        System.out.println(pin);
     }
 
     @Override
@@ -280,5 +337,6 @@ public class UIController implements SocketListener {
 
     @Override
     public void onThemeReceived(Theme theme) {
+
     }
 }

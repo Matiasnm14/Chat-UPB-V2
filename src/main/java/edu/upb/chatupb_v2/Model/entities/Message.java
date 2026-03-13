@@ -25,7 +25,7 @@ public class Message implements Serializable, Model {
         public static final String SENDER_ID = "sender_id";
         public static final String RECEIVER_ID = "receiver_id";
         public static final String BODY ="body";
-        public static final String TYPEMESSAGE ="type";
+        public static final String TYPEMESSAGE ="type_message";
         public static final String STATUSMESSAGE = "Status";
         public static final String DATE = "date";
     }

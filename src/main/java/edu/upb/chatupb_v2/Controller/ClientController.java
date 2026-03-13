@@ -29,19 +29,52 @@ public class ClientController {
     private final Map<String, Queue<String>> pendingMessages = new HashMap<>();
     private final Map<SocketClient, String> socketToTargetId = new HashMap<>();
 
-    public void sendToClient(String targetId, String targetIp, String message, SocketListener listener) throws IOException {
+    public void sendToClient(String targetId, String targetIp, Chat chat, SocketListener listener) throws IOException {
         SocketClient sc = clients.get(targetId);
         if (sc == null) {
-            pendingMessages.computeIfAbsent(targetId, k -> new LinkedList<>()).add(message);
+            pendingMessages.computeIfAbsent(targetId, k -> new LinkedList<>()).add(chat.createFormat());
             SocketClient newSc = new SocketClient(targetIp);
             newSc.setSocketListener(listener);
+            scw = newSc;
             newSc.start();
             socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
-            Hello hel = new Hello(((UIController) listener).getUserId());
-            newSc.send(hel.createFormat());
+            try {
+                new Hello(((UIController) listener).getUserId()).execute(newSc);
+            } catch (Exception e){
+                System.out.println(e);
+            }
         } else {
-            sc.send(message);
+            chat.execute(sc);
         }
+    }
+
+    public void sendToClient(String targetId, String targetIp, Command command, SocketListener listener) throws IOException {
+        SocketClient sc = clients.get(targetId);
+        if (sc == null) {
+            pendingMessages.computeIfAbsent(targetId, k -> new LinkedList<>()).add(command instanceof Chat ? ((Chat)command).createFormat() : ((Image)command).createFormat());
+            SocketClient newSc = new SocketClient(targetIp);
+            newSc.setSocketListener(listener);
+            scw = newSc;
+            newSc.start();
+            socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
+            try {
+                new Hello(((UIController) listener).getUserId()).execute(newSc);
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        } else {
+            if (command instanceof Chat) {
+                ((Chat) command).execute(sc);
+            } else {
+                ((Image) command).execute(sc);
+            }
+        }
+    }
+
+    public void senda(User user) throws IOException {
+        System.out.println(user);
+        NewFriend newFriend = new NewFriend(user.getId(), user.getName(), user.getIp());
+        scw.send(newFriend.createFormat());
     }
 
     public void flushPending(SocketClient sc) throws IOException {
@@ -112,11 +145,13 @@ public class ClientController {
         sc.send(inv.createFormat());
     }
 
+    SocketClient scw;
     public void connectToPrevious(String ip, String userId, SocketListener listener) throws IOException {
         if (my_uid == null){
             my_uid = userId;
         }
         SocketClient sc = new SocketClient(ip);
+        scw = sc;
         sc.setSocketListener(listener);
         sc.start();
         Hello hel = new Hello(userId);

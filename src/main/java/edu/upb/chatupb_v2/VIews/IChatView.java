@@ -2,6 +2,8 @@ package edu.upb.chatupb_v2.VIews;
 
 import edu.upb.chatupb_v2.Model.entities.Message;
 import edu.upb.chatupb_v2.Model.entities.comands.Chat;
+import edu.upb.chatupb_v2.Model.entities.comands.Image;
+import edu.upb.chatupb_v2.Model.entities.comands.Theme;
 
 import java.util.List;
 
@@ -16,4 +18,7 @@ public interface IChatView {
     void renderContacts();
     void renderMessages(List<Message> list);
     void showByeNotification(String id);
+    void onNewConnectionEstablished(String userName, String userId); // agrega userId
+    void changeThemeSelected(Theme theme);
+    void showImage(Image image);
 }

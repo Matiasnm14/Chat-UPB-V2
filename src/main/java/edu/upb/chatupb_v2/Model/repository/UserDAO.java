@@ -65,7 +65,7 @@ public class UserDAO {
     }
 
     public List<User> findAllContactsForUser(String id) throws ConnectException, SQLException {
-        String query = "SELECT * FROM Users WHERE saved_by_id = '" + id +"'"  ;
+        String query = "SELECT * FROM Users" ;
         List <User> res = helper.executeQuery(query, resultReader);
         return helper.executeQuery(query, resultReader);
     }
@@ -88,6 +88,12 @@ public class UserDAO {
             return null;
         }
         return list.get(0);
+    }
+
+    public void deleteUser(String id) throws ConnectException, SQLException {
+        String query = "DELETE FROM Users WHERE id ='" + id + "'";
+        System.out.println(query);
+        helper.executeQuery(query, resultReader);
     }
 
     public void update(String query) throws Exception {

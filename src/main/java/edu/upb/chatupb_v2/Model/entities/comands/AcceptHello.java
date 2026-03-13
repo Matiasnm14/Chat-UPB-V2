@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.Model.entities.comands;
 
+import edu.upb.chatupb_v2.Model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,6 +13,11 @@ public class AcceptHello extends Command{
     @Override
     public String createFormat() {
         return getID() + "|" + getIdUser() + System.lineSeparator();
+    }
+
+    @Override
+    public void execute(SocketClient sc) {
+
     }
 
     public AcceptHello() {
