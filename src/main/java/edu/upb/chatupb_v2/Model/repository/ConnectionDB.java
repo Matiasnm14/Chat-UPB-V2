@@ -31,7 +31,6 @@ public class ConnectionDB {
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection("jdbc:sqlite:chat_upb_v2.sqlite");
             if (conn != null) {
-                System.out.println("Conexión exitosa.");
             } else {
                 System.out.println("Conexión fallida");
             }

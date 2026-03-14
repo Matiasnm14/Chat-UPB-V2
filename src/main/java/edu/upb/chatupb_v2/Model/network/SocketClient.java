@@ -124,14 +124,17 @@ public class SocketClient extends Thread {
                     }
                     case "011": {
                         PinMessage pinMes = PinMessage.parse(message);
+                        socketListener.onPinMessageReceived(pinMes);
                         break;
                     }
                     case "012": {
                         UniqueMessage uniMes = UniqueMessage.parse(message);
+                        socketListener.onUniqueMessageReceived(uniMes);
                         break;
                     }
                     case "013": {
                         Theme thm = Theme.parse(message);
+                        socketListener.onThemeReceived(thm);
                         break;
                     }
                     case "0018": {

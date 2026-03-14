@@ -14,7 +14,7 @@ public class TextAnalizeWord implements ITextAnalizer{
         vulgaridades.add("puta");
         vulgaridades.add("carajo");
         vulgaridades.add("marica");
-        vulgaridades.add("cabron");;
+        vulgaridades.add("cabron");
     }
     @Override
     public TextAnalize revisarTexto(String message) {

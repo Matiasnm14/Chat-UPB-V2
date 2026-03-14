@@ -87,6 +87,16 @@ public class UIController implements SocketListener {
         }
     }
 
+    public void sendMessageUnique(String messageText, User target) {
+        try {
+            messageText = textAnalizeController.analizarTexto(messageText);
+            UniqueMessage uniqueMessage = new UniqueMessage(this.userId, UUID.randomUUID().toString(), messageText);
+            ClientController.getInstance().sendToClientUnique(target.getId(), target.getIp(), uniqueMessage, this);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
     public void sendImage(File file, User target) {
         try {
             byte[] imageBytes = Files.readAllBytes(file.toPath());
@@ -216,7 +226,6 @@ public class UIController implements SocketListener {
     @Override
     public void onChatReceived(Chat chat) {
         view.showChat(chat);
-        System.out.println(chat.getMessage());
         try {
             MessageDAO.getInstance().save(new Message(
                     chat.getIdMessage(),
@@ -324,19 +333,59 @@ public class UIController implements SocketListener {
 //        }
     }
 
-    @Override
-    public void onPinMessageReceived(PinMessage pinMessage) {
-        String pin = "PIN";
-        System.out.println(pin);
+    public void sendPinMessage(String messageId, User target) {
+        PinMessage pin = new PinMessage(messageId);
+        SocketClient sc = ClientController.getInstance().getClients().get(target.getId());
+        if (sc == null) {
+            SwingUtilities.invokeLater(() -> view.showError("No hay conexión activa con " + target.getName()));
+            return;
+        }
+        try {
+            sc.send(pin.createFormat());
+        } catch (java.io.IOException e) {
+            SwingUtilities.invokeLater(() -> view.showError("Error al fijar mensaje: " + e.getMessage()));
+        }
     }
 
     @Override
+    public void onPinMessageReceived(PinMessage pinMessage) {
+        SwingUtilities.invokeLater(() -> view.showPinnedMessage(pinMessage.getIdMessage()));
+    }
+
+
+    @Override
     public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
-        System.out.println("MENSAJE ÚNICO");
+        try {
+            MessageDAO.getInstance().save(new Message(
+                    uniqueMessage.getIdMessage(),
+                    uniqueMessage.getSendUser(),
+                    userId,
+                    "Mensaje Único",
+                    TypeMessage.TEXT,
+                    StatusMessage.READ,
+                    LocalDate.now().toString()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        SwingUtilities.invokeLater(() -> view.showUniqueMessage(uniqueMessage));
+    }
+
+    public void sendTheme(String themeId, User target) {
+        Theme theme = new Theme(this.userId, themeId);
+        SocketClient sc = ClientController.getInstance().getClients().get(target.getId());
+        if (sc == null) {
+            SwingUtilities.invokeLater(() -> view.showError("No hay conexión activa con " + target.getName()));
+            return;
+        }
+        try {
+            sc.send(theme.createFormat());
+        } catch (java.io.IOException e) {
+            SwingUtilities.invokeLater(() -> view.showError("Error al enviar tema: " + e.getMessage()));
+        }
     }
 
     @Override
     public void onThemeReceived(Theme theme) {
-
+        SwingUtilities.invokeLater(() -> view.changeThemeSelected(theme));
     }
 }

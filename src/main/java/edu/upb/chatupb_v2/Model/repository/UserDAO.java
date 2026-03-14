@@ -9,7 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class UserDAO {
+public class UserDAO implements IUserDao{
     private DaoHelper<User> helper;
     private static final UserDAO uDao = new UserDAO();
 
@@ -66,7 +66,6 @@ public class UserDAO {
 
     public List<User> findAllContactsForUser(String id) throws ConnectException, SQLException {
         String query = "SELECT * FROM Users" ;
-        List <User> res = helper.executeQuery(query, resultReader);
         return helper.executeQuery(query, resultReader);
     }
 
@@ -82,7 +81,6 @@ public class UserDAO {
 
     public User findById(String id) throws ConnectException, SQLException {
         String query = "SELECT * FROM Users WHERE id ='" + id + "'";
-        System.out.println(query);
         List<User> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
             return null;

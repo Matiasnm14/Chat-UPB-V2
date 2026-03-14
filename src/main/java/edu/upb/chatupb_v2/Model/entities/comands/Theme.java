@@ -14,12 +14,16 @@ public class Theme extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + idUser + "|" + idTheme + System.lineSeparator();
     }
 
     @Override
     public void execute(SocketClient sc) {
-
+        try {
+            sc.send(createFormat());
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public Theme() {

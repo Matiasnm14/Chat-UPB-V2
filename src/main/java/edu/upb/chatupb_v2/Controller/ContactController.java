@@ -4,6 +4,7 @@ import edu.upb.chatupb_v2.Controller.exceptions.ConnectionException;
 import edu.upb.chatupb_v2.Controller.exceptions.DatabaseException;
 import edu.upb.chatupb_v2.Model.entities.Message;
 import edu.upb.chatupb_v2.Model.entities.User;
+import edu.upb.chatupb_v2.Model.repository.CacheUserDAO;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
 import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import edu.upb.chatupb_v2.VIews.IChatView;
@@ -13,11 +14,10 @@ import java.sql.SQLException;
 import java.util.List;
 
 public class ContactController {
-    private UserDAO daoInstance = UserDAO.getInstance();
+    private CacheUserDAO daoInstance = new CacheUserDAO(UserDAO.getInstance());
     private IChatView iChatView;
 
     public ContactController(IChatView iChatView){
-        UserDAO us = UserDAO.getInstance();
         this.iChatView = iChatView;
     }
     public List<User> returnContacts(String id) throws SQLException, ConnectException {

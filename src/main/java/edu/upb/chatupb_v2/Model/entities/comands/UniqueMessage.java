@@ -4,24 +4,29 @@ import edu.upb.chatupb_v2.Model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.IOException;
 import java.util.regex.Pattern;
 
 @Getter
 @Setter
 public class UniqueMessage extends Command{
-    private String idUser;
     private String idMessage;
+    private String sendUser;
+    private String receiveUser;
     private String message;
-
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + sendUser + "|" + idMessage + "|" + message + System.lineSeparator();
     }
 
     @Override
     public void execute(SocketClient sc) {
-
+        try {
+            sc.send(createFormat());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public UniqueMessage() {
@@ -29,8 +34,8 @@ public class UniqueMessage extends Command{
     }
     public UniqueMessage(String idUser,String idMessage, String message){
         super("012");
+        this.sendUser = idUser;
         this.idMessage = idMessage;
-        this.idUser = idUser;
         this.message = message;
     }
     public static UniqueMessage parse(String command){

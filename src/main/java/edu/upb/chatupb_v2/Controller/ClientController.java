@@ -65,9 +65,28 @@ public class ClientController {
         } else {
             if (command instanceof Chat) {
                 ((Chat) command).execute(sc);
-            } else {
+            } else if (command instanceof Image) {
                 ((Image) command).execute(sc);
             }
+        }
+    }
+
+    public void sendToClientUnique(String targetId, String targetIp, Command command, SocketListener listener) throws IOException {
+        SocketClient sc = clients.get(targetId);
+        if (sc == null) {
+            pendingMessages.computeIfAbsent(targetId, k -> new LinkedList<>()).add(((UniqueMessage)command).createFormat());
+            SocketClient newSc = new SocketClient(targetIp);
+            newSc.setSocketListener(listener);
+            scw = newSc;
+            newSc.start();
+            socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
+            try {
+                new Hello(((UIController) listener).getUserId()).execute(newSc);
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        } else {
+            ((UniqueMessage)command).execute(sc);
         }
     }
 
