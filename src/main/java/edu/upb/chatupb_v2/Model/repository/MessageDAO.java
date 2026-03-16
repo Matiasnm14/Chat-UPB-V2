@@ -106,6 +106,26 @@ public class MessageDAO {
         return helper.executeQuery(query, params, resultReader);
     }
 
+    public void deleteConversation(String user1Id, String user2Id)
+            throws ConnectException, SQLException {
+
+        String query = """
+        DELETE FROM Messages
+        WHERE ((sender_id = ?) AND (receiver_id = ?))
+           OR ((sender_id = ?) AND (receiver_id = ?))
+    """;
+
+        DaoHelper.QueryParameters params = pst -> {
+            pst.setString(1, user1Id);
+            pst.setString(2, user2Id);
+            pst.setString(3, user2Id);
+            pst.setString(4, user1Id);
+        };
+
+        helper.executeQuery(query, params, resultReader);
+
+    }
+
     public boolean exist(String argument) throws ConnectException, SQLException {
         String query = "SELECT count(*) FROM Messages WHERE " + argument;
         return helper.executeQueryCount(query, null) == 1;

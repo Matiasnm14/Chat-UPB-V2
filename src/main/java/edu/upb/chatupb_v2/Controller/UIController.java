@@ -8,6 +8,7 @@ import edu.upb.chatupb_v2.Model.network.*;
 import edu.upb.chatupb_v2.Model.repository.MessageDAO;
 import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import edu.upb.chatupb_v2.VIews.IChatView;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.io.File;
@@ -21,8 +22,8 @@ import java.util.UUID;
 
 public class UIController implements SocketListener {
     private final IChatView view;
-    private SocketClient active;
     private final String username;
+    @Getter
     private String userId;
     private SocketClient socketClient;
 
@@ -31,8 +32,6 @@ public class UIController implements SocketListener {
         this.username = username;
         this.userId = userId;
     }
-
-    public String getUserId() { return userId; }
 
     // UIController - solo orquesta, no toca sockets directamente
     public void connect(String ip) {
@@ -60,9 +59,8 @@ public class UIController implements SocketListener {
     public void deleteUser(User user){
         try {
             UserDAO.getInstance().deleteUser(user.getId());
-        } catch (ConnectException e) {
-            throw new RuntimeException(e);
-        } catch (SQLException e) {
+            MessageDAO.getInstance().deleteConversation(userId, user.getId());
+        } catch (ConnectException | SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -91,6 +89,15 @@ public class UIController implements SocketListener {
         try {
             messageText = textAnalizeController.analizarTexto(messageText);
             UniqueMessage uniqueMessage = new UniqueMessage(this.userId, UUID.randomUUID().toString(), messageText);
+            MessageDAO.getInstance().save(new Message(
+                    uniqueMessage.getIdMessage(),
+                    this.userId,
+                    target.getId(),
+                    "Mensaje Único",
+                    TypeMessage.TEXT,
+                    StatusMessage.SENT,
+                    LocalDate.now().toString()
+            ));
             ClientController.getInstance().sendToClientUnique(target.getId(), target.getIp(), uniqueMessage, this);
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -206,7 +213,7 @@ public class UIController implements SocketListener {
                 System.out.println("HELLO ACCEPTED (known user)!");
                 response = new AcceptHello(userId);
                 client.send(response.createFormat());
-                SwingUtilities.invokeLater(() -> view.renderContacts());
+                SwingUtilities.invokeLater(view::renderContacts);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -325,12 +332,12 @@ public class UIController implements SocketListener {
 
     @Override
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
-//        String id_message = deleteMessage.getIdMessage();
-//        try {
-//            MessageDAO.getInstance().delete(id_message);
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
+        String id_message = deleteMessage.getIdMessage();
+        try {
+            MessageDAO.getInstance().delete(id_message);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void sendPinMessage(String messageId, User target) {

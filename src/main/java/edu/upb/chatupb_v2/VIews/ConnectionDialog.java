@@ -25,7 +25,6 @@ public class ConnectionDialog extends JDialog {
     private static final Color BORDER_COLOR   = new Color(0xDDDDE8);
 
     // ── Fonts (matches JUi) ───────────────────────────────────
-    private static final Font FONT_TITLE = new Font("SF Pro Display", Font.BOLD,  15);
     private static final Font FONT_BODY  = new Font("SF Pro Text",    Font.PLAIN, 13);
     private static final Font FONT_SMALL = new Font("SF Pro Text",    Font.PLAIN, 11);
 
@@ -84,23 +83,7 @@ public class ConnectionDialog extends JDialog {
         titleStack.add(subtitle);
 
         // Logo circle
-        JLabel logo = new JLabel("C") {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(ACCENT);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), getWidth(), getHeight());
-                g2.setFont(new Font("SF Pro Display", Font.BOLD, 18));
-                g2.setColor(Color.WHITE);
-                FontMetrics fm = g2.getFontMetrics();
-                g2.drawString("C",
-                        (getWidth()  - fm.stringWidth("C")) / 2,
-                        (getHeight() - fm.getHeight()) / 2 + fm.getAscent());
-                g2.dispose();
-            }
-        };
-        logo.setPreferredSize(new Dimension(40, 40));
-        logo.setOpaque(false);
+        JLabel logo = getJLabel();
 
         header.add(logo,       BorderLayout.WEST);
         header.add(Box.createHorizontalStrut(12), BorderLayout.CENTER);
@@ -195,7 +178,7 @@ public class ConnectionDialog extends JDialog {
         footer.setBackground(BG_DARK);
         footer.setBorder(new EmptyBorder(14, 24, 20, 24));
 
-        JButton btnOk = makeAccentButton("Entrar →");
+        JButton btnOk = makeAccentButton();
         footer.add(btnOk);
         add(footer, BorderLayout.SOUTH);
 
@@ -238,6 +221,27 @@ public class ConnectionDialog extends JDialog {
         getRootPane().setDefaultButton(btnOk);
     }
 
+    private static JLabel getJLabel() {
+        JLabel logo = new JLabel("C") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(ACCENT);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), getWidth(), getHeight());
+                g2.setFont(new Font("SF Pro Display", Font.BOLD, 18));
+                g2.setColor(Color.WHITE);
+                FontMetrics fm = g2.getFontMetrics();
+                g2.drawString("C",
+                        (getWidth()  - fm.stringWidth("C")) / 2,
+                        (getHeight() - fm.getHeight()) / 2 + fm.getAscent());
+                g2.dispose();
+            }
+        };
+        logo.setPreferredSize(new Dimension(40, 40));
+        logo.setOpaque(false);
+        return logo;
+    }
+
     // ── Helpers ───────────────────────────────────────────────
 
     private JTextField makeStyledTextField() {
@@ -267,8 +271,8 @@ public class ConnectionDialog extends JDialog {
         return f;
     }
 
-    private JButton makeAccentButton(String text) {
-        JButton btn = new JButton(text) {
+    private JButton makeAccentButton() {
+        JButton btn = new JButton("Entrar →") {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

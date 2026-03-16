@@ -4,7 +4,6 @@ import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
-import edu.upb.chatupb_v2.Model.repository.MessageDAO;
 import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import lombok.Getter;
 
@@ -37,11 +36,11 @@ public class ClientController {
             newSc.setSocketListener(listener);
             scw = newSc;
             newSc.start();
-            socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
+            socketToTargetId.put(newSc, targetId);
             try {
                 new Hello(((UIController) listener).getUserId()).execute(newSc);
             } catch (Exception e){
-                System.out.println(e);
+                System.out.println();
             }
         } else {
             chat.execute(sc);
@@ -56,11 +55,11 @@ public class ClientController {
             newSc.setSocketListener(listener);
             scw = newSc;
             newSc.start();
-            socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
+            socketToTargetId.put(newSc, targetId);
             try {
                 new Hello(((UIController) listener).getUserId()).execute(newSc);
             } catch (Exception e){
-                System.out.println(e);
+                System.out.println();
             }
         } else {
             if (command instanceof Chat) {
@@ -82,9 +81,7 @@ public class ClientController {
             socketToTargetId.put(newSc, targetId); // recordar a quién va dirigido
             try {
                 new Hello(((UIController) listener).getUserId()).execute(newSc);
-            } catch (Exception e){
-                System.out.println(e);
-            }
+            } catch (Exception ignored){}
         } else {
             ((UniqueMessage)command).execute(sc);
         }
@@ -139,18 +136,13 @@ public class ClientController {
     }
 
     public boolean userInDB(String id){
-        User user = null;
+        User user;
         try {
             user = UserDAO.getInstance().findById(id);
-        } catch (ConnectException e) {
-            throw new RuntimeException(e);
-        } catch (SQLException e) {
+        } catch (ConnectException | SQLException e) {
             throw new RuntimeException(e);
         }
-        if (user != null){
-            return true;
-        }
-        return false;
+        return user != null;
     }
 
     public void connectTo(String ip, String userId, String username, SocketListener listener) throws IOException {

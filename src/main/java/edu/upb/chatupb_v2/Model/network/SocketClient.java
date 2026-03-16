@@ -1,11 +1,8 @@
 package edu.upb.chatupb_v2.Model.network;
 
-import edu.upb.chatupb_v2.Controller.ClientController;
 import edu.upb.chatupb_v2.Controller.exceptions.ChatException;
-import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
-import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import lombok.Getter;
 import lombok.Setter;
 

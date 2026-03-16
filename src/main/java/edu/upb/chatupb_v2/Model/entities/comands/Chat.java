@@ -28,9 +28,6 @@ public class Chat extends Command{
         }
     }
 
-    public Chat() {
-        super("007");
-    }
     public Chat(String idUser,String idMessage,String message){
         super("007");
         this.sendUser = idUser;

@@ -28,10 +28,6 @@ public class UniqueMessage extends Command{
             throw new RuntimeException(e);
         }
     }
-
-    public UniqueMessage() {
-        super("012");
-    }
     public UniqueMessage(String idUser,String idMessage, String message){
         super("012");
         this.sendUser = idUser;
