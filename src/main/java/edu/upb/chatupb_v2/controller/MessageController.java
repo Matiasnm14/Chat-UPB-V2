@@ -51,4 +51,10 @@ public class MessageController {
             throw new OperationException("Error al borrar el mensaje");
         }
     }
+
+    public void updateUniqueMessage(String id_message) throws Exception{
+        messageDAO.updateUniqueMessage(id_message);
+    }
+
+
 }

@@ -130,6 +130,25 @@ public class MessageDAO {
         helper.update(query, params);
     }
 
+    public void updateUniqueMessage(String id_message) throws Exception {
+        String query = "UPDATE Messages SET message='Mensaje Abierto' WHERE id =?";
+        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, id_message);
+            }
+        };
+        helper.update(query, params);
+        query = "UPDATE Messages SET type='TEXT' WHERE id =?";
+        params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, id_message);
+            }
+        };
+        helper.update(query, params);
+    }
+
     public void delete(String id_message) throws Exception {
         String query = "DELETE FROM Messages WHERE id =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {

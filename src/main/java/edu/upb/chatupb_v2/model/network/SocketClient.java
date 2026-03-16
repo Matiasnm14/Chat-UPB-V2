@@ -179,6 +179,7 @@ public class SocketClient extends Thread {
             throw new RuntimeException(e);
 
         }
+        this.close();
     }
 
 

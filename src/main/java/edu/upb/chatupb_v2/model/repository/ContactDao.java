@@ -2,7 +2,6 @@ package edu.upb.chatupb_v2.model.repository;
 
 
 import edu.upb.chatupb_v2.model.entities.Contact;
-import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
 
 import java.net.ConnectException;
 import java.sql.PreparedStatement;
@@ -36,8 +35,8 @@ public class ContactDao {
         if (existColumn(result, Contact.Column.USER_ID)) {
             contact.setUserId(result.getString(Contact.Column.USER_ID));
         }
-        if (existColumn(result, Contact.Column.PIN_ID)) {
-            contact.setUserId(result.getString(Contact.Column.PIN_ID));
+        if (existColumn(result, Contact.Column.ID_PIN)) {
+            contact.setId_pin(result.getString(Contact.Column.ID_PIN));
         }
         if (existColumn(result, Contact.Column.THEME)){
             contact.setTheme(result.getString(Contact.Column.THEME));
@@ -107,7 +106,7 @@ public class ContactDao {
                 pst.setString(2, contact.getName());
                 pst.setString(3, contact.getIp());
                 pst.setString(4, contact.getUserId());
-                pst.setString(5, contact.getPinId());
+                pst.setString(5, contact.getId_pin());
                 pst.setString(6, contact.getTheme());
             };
             helper.insert(query, params, contact);
@@ -127,7 +126,7 @@ public class ContactDao {
     }
 
     public void updatePin(String id_contact, String id_pin) throws Exception {
-        String query = "UPDATE Contacts SET pin_id=? WHERE id =?";
+        String query = "UPDATE Contacts SET id_pin=? WHERE id =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {

@@ -264,6 +264,9 @@ public class Controller implements SocketClient.SocketListener {
             if (command instanceof UniqueMessage){
                 uis.get(server.getUserId()).onUniqueMessageReceived((UniqueMessage) command);
             }
+            if (command instanceof Theme){
+                uis.get(server.getUserId()).onThemeReceived((Theme) command);
+            }
         }
 
     }

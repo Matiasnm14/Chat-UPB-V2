@@ -22,6 +22,8 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetDropEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.nio.file.Files;
 import java.time.LocalDate;
@@ -61,12 +63,12 @@ public class JUi extends JFrame implements IChatView {
     @Setter
     private UserController userController = new UserController(this);
 
-    // --- COMPONENTES PARA IMÁGENES ---
+
     private JPanel imagePanel;
     private JLabel imageDropLabel;
     private String base64ImagePending = null;
 
-    // --- VARIABLES PARA MENSAJE FIJADO ---
+
     private JPanel pinnedMessagePanel;
     private JLabel pinnedMessageLabel;
     private String currentPinnedMessageId = null;
@@ -109,6 +111,7 @@ public class JUi extends JFrame implements IChatView {
                 if (c.getId().equals(selectedContactId)) {
                     contactList.setSelectedIndex(i);
                     currentContact = c;
+                    messageController.onLoadMessages(currentContact.getId());
                     break;
                 }
             }
@@ -192,17 +195,32 @@ public class JUi extends JFrame implements IChatView {
         // ================= RIGHT PANEL =================
 
         messageListModel = new DefaultListModel<>();
-        messageList = new JList<Message>(messageListModel) {
+        messageList = new JList<>(messageListModel);
+        messageList.setOpaque(false);
+
+        // 2. Creamos el ScrollPane base
+        JScrollPane chatScrollPane = new JScrollPane();
+        chatScrollPane.setOpaque(false);
+
+        // 3. ¡La magia! Creamos un Viewport (el cristal) personalizado
+        JViewport viewport = new JViewport() {
             @Override
             protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
 
+                // Pintamos la imagen en el cristal. Como el cristal no se mueve al scrollear,
+                // la imagen siempre estará visible.
                 if (chatBackgroundImage != null) {
                     g.drawImage(chatBackgroundImage, 0, 0, getWidth(), getHeight(), this);
                 }
-
-                super.paintComponent(g);
             }
         };
+
+        viewport.setOpaque(false);
+        viewport.setView(messageList);
+
+
+        chatScrollPane.setViewport(viewport);
 
 
         messageList.setOpaque(false);
@@ -211,9 +229,7 @@ public class JUi extends JFrame implements IChatView {
         messageList.setFocusable(false);
         messageList.setOpaque(false);
 
-        JScrollPane chatScrollPane = new JScrollPane(messageList);
-        chatScrollPane.setOpaque(false);
-        chatScrollPane.getViewport().setOpaque(false);
+
 
         JPopupMenu popupMenu = new JPopupMenu();
 
@@ -250,9 +266,12 @@ public class JUi extends JFrame implements IChatView {
                                     JOptionPane.INFORMATION_MESSAGE
                             );
 
-
-                            messageController.delete(selectedMessage.getIdMessage());
-                            messageListModel.remove(index);
+                            try {
+                                messageController.updateUniqueMessage(selectedMessage.getIdMessage());
+                                messageController.onLoadMessages(selectedMessage.getContactId());
+                            } catch (Exception ex) {
+                                throw new RuntimeException(ex);
+                            }
                         }
                     }
                 }
@@ -346,7 +365,7 @@ public class JUi extends JFrame implements IChatView {
         JToggleButton btnToggleImage = new JToggleButton("📷");
 
         JButton btnBuzz = new JButton("Buzz");
-        JButton btnOffline = new JButton("Fuera de Línea");
+        JButton btnTema = new JButton("Cambiar Tema");
         JButton btnNewConnection = new JButton("Nueva Conexión");
         JButton btnConectar = new JButton("Conectar a Contacto");
 
@@ -356,7 +375,7 @@ public class JUi extends JFrame implements IChatView {
         topPanel.add(btnConectar);
         topPanel.add(btnNewConnection);
         topPanel.add(btnBuzz);
-        topPanel.add(btnOffline);
+        topPanel.add(btnTema);
 
         // --- ZONA DE MENSAJE FIJADO ---
         pinnedMessagePanel = new JPanel(new BorderLayout());
@@ -372,9 +391,9 @@ public class JUi extends JFrame implements IChatView {
         pinnedMessageLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         pinnedMessagePanel.add(pinnedMessageLabel, BorderLayout.CENTER);
 
-        pinnedMessagePanel.addMouseListener(new java.awt.event.MouseAdapter() {
+        pinnedMessagePanel.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
+            public void mouseClicked(MouseEvent e) {
                 if (currentPinnedMessageId != null) {
                     for (int i = 0; i < messageListModel.getSize(); i++) {
                         if (messageListModel.getElementAt(i).getIdMessage().equals(currentPinnedMessageId)) {
@@ -539,7 +558,41 @@ public class JUi extends JFrame implements IChatView {
         });
 
         btnBuzz.addActionListener(e -> Controller.getInstance().sendBuzz());
-        btnOffline.addActionListener(e -> Controller.getInstance().sendBye());
+
+
+
+
+        btnTema.addActionListener(e -> {
+            if (currentContact == null) {
+                showError("Selecciona un contacto primero.");
+                return;
+            }else if (!currentContact.isStateConnect()){
+                showError("Contacto fuera de linea.");
+                return;
+            }
+
+            String[] options = {"Tema 1", "Tema 2", "Tema 3", "Tema 4", "Tema 5"};
+            int selection = JOptionPane.showOptionDialog(this,
+                    "Elige un tema de fondo para " + currentContact.getName(),
+                    "Cambiar Tema",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+
+            if (selection >= 0) {
+                String themeId = (selection == 5) ? "0" : String.valueOf(selection + 1);
+
+                try {
+                    ContactDao.getInstance().updateTheme(currentContact.getId(), themeId);
+                    currentContact.setTheme(themeId);
+                    applyThemeToChat(themeId);
+
+                    Theme themeCmd = new Theme(userId, themeId);
+                    Controller.getInstance().sendMessage(themeCmd, currentContact.getId());
+
+                } catch (Exception ex) {
+                    showError("Error al guardar el tema: " + ex.getMessage());
+                }
+            }
+        });
 
         btnNewConnection.addActionListener(e ->
                 new ConnectionDialog(this).setVisible(true)
@@ -682,8 +735,7 @@ public class JUi extends JFrame implements IChatView {
         contactListModel.clear();
         if (contacts != null) {
             for (Contact c : contacts) {
-                if (Controller.getInstance().getClients().containsKey(c.getId()))
-                    c.setStateConnect(true);
+                c.setStateConnect(Controller.getInstance().getClients().containsKey(c.getId()));
                 contactListModel.addElement(c);
             }
         }
@@ -707,7 +759,9 @@ public class JUi extends JFrame implements IChatView {
         scrollToBottom();
 
         if (currentContact != null) {
-            String pinId = currentContact.getPinId();
+            String pinId = currentContact.getId_pin();
+
+//            showError(pinId);
 
             if (pinId != null && !pinId.equals("none")) {
                 Message pinnedMsg = null;
@@ -744,6 +798,8 @@ public class JUi extends JFrame implements IChatView {
                 nuevoContacto.setIp(Controller.getInstance().getClients().get(invitation.getIdUser()).getIp());
                 nuevoContacto.setUserId(this.userId);
                 nuevoContacto.setStateConnect(true);
+                nuevoContacto.setId_pin("none");
+                nuevoContacto.setTheme("1");
 
                 ContactDao.getInstance().save(nuevoContacto);
 
@@ -772,6 +828,8 @@ public class JUi extends JFrame implements IChatView {
         nuevoContacto.setIp(ip);
         nuevoContacto.setUserId(this.userId);
         nuevoContacto.setStateConnect(true);
+        nuevoContacto.setId_pin("none");
+        nuevoContacto.setTheme("1");
 
         nuevoContacto.setId(accept.getIdUser());
         addModel(nuevoContacto);
@@ -821,7 +879,7 @@ public class JUi extends JFrame implements IChatView {
         lastBuzzTime = currentTime;
 
         SwingUtilities.invokeLater(() -> {
-            // JUi ya es un JFrame, así que "this" es la ventana que queremos mover.
+
             shakeWindow(this);
             markContactConBuzz(finalName);
         });
@@ -830,7 +888,7 @@ public class JUi extends JFrame implements IChatView {
     private void shakeWindow(Window window) {
         final int originalX = window.getLocation().x;
         final int originalY = window.getLocation().y;
-        final int distance = 15; // 15 píxeles es perfecto para un zumbido estilo MSN Messenger
+        final int distance = 15;
 
         new Thread(() -> {
             try {
@@ -839,7 +897,7 @@ public class JUi extends JFrame implements IChatView {
                     final int offset = (i % 2 == 0) ? distance : -distance;
                     SwingUtilities.invokeLater(() -> window.setLocation(originalX + offset, originalY));
                 }
-                // Nos aseguramos de que vuelva exactamente a su posición original al terminar
+
                 SwingUtilities.invokeLater(() -> window.setLocation(originalX, originalY));
             } catch (InterruptedException err) {
                 System.out.println("Error en la vibración: " + err.getMessage());
@@ -890,13 +948,15 @@ public class JUi extends JFrame implements IChatView {
             for (int i = 0; i < contactListModel.getSize(); i++) {
                 Contact c = contactListModel.getElementAt(i);
                 if (c.getId().equals(contactId)) {
-                    c.setPinId(msgId);
+                    c.setId_pin(msgId);
+                    contactController.updatePin(c.getId(), msgId);
                     break;
                 }
             }
 
             if (currentContact != null && currentContact.getId().equals(contactId)) {
-                currentContact.setPinId(msgId);
+                currentContact.setId_pin(msgId);
+                contactController.updatePin(currentContact.getId(), msgId);
 
                 Message pinnedMsg = null;
                 for (int i = 0; i < messageListModel.getSize(); i++) {
@@ -919,7 +979,7 @@ public class JUi extends JFrame implements IChatView {
         SwingUtilities.invokeLater(() -> {
             currentPinnedMessageId = msg.getIdMessage();
 
-            // Si es imagen (por si acaso), ponemos un texto genérico, si es texto normal o unique, el body
+
             String textToShow = msg.getTypeMessage() == TypeMessage.IMAGE ?
                     "📷 Imagen" : msg.getBody();
 

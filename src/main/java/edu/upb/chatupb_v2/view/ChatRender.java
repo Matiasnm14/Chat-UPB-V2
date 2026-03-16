@@ -19,7 +19,7 @@ public class ChatRender implements ListCellRenderer<Message> { // ¡Cambio impor
         // Contenedor principal de la fila (debe ser transparente)
         panel = new JPanel();
         panel.setBorder(new EmptyBorder(5, 10, 5, 10));
-        panel.setOpaque(false); // VITAL: Mantiene la fila transparente
+        panel.setOpaque(false);
 
         // Contenedor que simula la burbuja de chat (debe ser sólido)
         bubblePanel = new JPanel();
