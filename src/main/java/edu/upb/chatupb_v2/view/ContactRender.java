@@ -17,11 +17,12 @@ public class ContactRender extends JLabel implements ListCellRenderer<Contact> {
     protected static final Font NORMAL_FONT = new Font("Segoe UI", Font.PLAIN, 14);
 
     public ContactRender() {
-        setOpaque(true); // ¡MUY IMPORTANTE! Si es false, el background no se pinta
+        setOpaque(true);
     }
 
     @Override
     public Component getListCellRendererComponent(JList<? extends Contact> list, Contact contact, int index, boolean isSelected, boolean cellHasFocus) {
+
 
         ImageIcon imageIcon;
         try {
@@ -37,14 +38,27 @@ public class ContactRender extends JLabel implements ListCellRenderer<Contact> {
             setIcon(null);
         }
 
-        setText("<html><p style='margin-left: 5px;'>" + contact.getName() + "</p></html>");
+
+        String textoMostrar = contact.getName();
+        if (contact.isBuzz()) {
+
+            textoMostrar += " <span style='color: red;'>🔔</span>";
+        }
+
+        setText("<html><p style='margin-left: 5px;'>" + textoMostrar + "</p></html>");
+
 
         if (isSelected) {
             setBackground(new Color(180, 215, 255));
             setForeground(Color.BLACK);
             setFont(SELECTED_FONT);
         } else {
-            setBackground(list.getBackground());
+
+            if (contact.isBuzz()) {
+                setBackground(new Color(255, 240, 240));
+            } else {
+                setBackground(list.getBackground());
+            }
             setForeground(list.getForeground());
             setFont(NORMAL_FONT);
         }

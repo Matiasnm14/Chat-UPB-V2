@@ -2,115 +2,113 @@ package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
-import edu.upb.chatupb_v2.model.repository.enums.TypeMessage; // Asegúrate de importar tu enum
+import edu.upb.chatupb_v2.model.repository.enums.TypeMessage;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.Base64;
-import javax.swing.border.EmptyBorder;
 
-public class ChatRender extends JPanel implements ListCellRenderer<Message> {
-
-    private JLabel messageLabel;
-    private JLabel imageLabel;
-    private JPanel container;
-
+public class ChatRender implements ListCellRenderer<Message> { // ¡Cambio importante aquí!
+    private JPanel panel;
     private JPanel bubblePanel;
+    private JLabel messageLabel;
     private JLabel metaLabel;
 
     public ChatRender() {
-        setLayout(new BorderLayout());
-        setOpaque(false); // Transparente para no tapar el fondo de la lista
+        // Contenedor principal de la fila (debe ser transparente)
+        panel = new JPanel();
+        panel.setBorder(new EmptyBorder(5, 10, 5, 10));
+        panel.setOpaque(false); // VITAL: Mantiene la fila transparente
 
-        // Configuramos la etiqueta para texto
-        messageLabel = new JLabel();
-        messageLabel.setOpaque(false);
-        messageLabel.setBorder(new EmptyBorder(8, 12, 8, 12));
-        messageLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-
-        // Configuramos la etiqueta para imágenes
-        imageLabel = new JLabel();
-        imageLabel.setOpaque(false);
-        imageLabel.setBorder(new EmptyBorder(8, 12, 8, 12));
-
-        metaLabel = new JLabel();
-        metaLabel.setFont(new Font("Arial", Font.ITALIC, 10)); // Letra más pequeña
-        metaLabel.setForeground(Color.GRAY); // Color sutil
-
+        // Contenedor que simula la burbuja de chat (debe ser sólido)
         bubblePanel = new JPanel();
-        bubblePanel.setLayout(new BorderLayout());
-        bubblePanel.setOpaque(true); // Ahora el color de fondo irá aquí
-        bubblePanel.setBorder(new EmptyBorder(10, 15, 10, 15));
+        bubblePanel.setLayout(new BorderLayout(5, 5));
+        bubblePanel.setBorder(new EmptyBorder(8, 12, 5, 12));
+        bubblePanel.setOpaque(true); // VITAL: Para que se lea el texto
 
-        container = new JPanel(new FlowLayout());
-        container.setOpaque(false);
-        container.add(bubblePanel);
+        // Etiqueta para el contenido principal
+        messageLabel = new JLabel();
 
-        add(container, BorderLayout.CENTER);
+        // Etiqueta para la metadata (hora, estado)
+        metaLabel = new JLabel();
+        metaLabel.setFont(new Font("Segoe UI", Font.ITALIC, 10));
+        metaLabel.setForeground(Color.GRAY);
+        metaLabel.setHorizontalAlignment(SwingConstants.RIGHT);
     }
 
     @Override
     public Component getListCellRendererComponent(JList<? extends Message> list, Message msg, int index, boolean isSelected, boolean cellHasFocus) {
 
-
+        // Limpieza de paneles
+        panel.removeAll();
         bubblePanel.removeAll();
+        messageLabel.setIcon(null);
+        messageLabel.setText("");
 
-
-        if (msg.getTypeMessage() == TypeMessage.IMAGE) {
-            try {
-
-                byte[] imageBytes = Base64.getDecoder().decode(msg.getBody());
-                ImageIcon icon = new ImageIcon(imageBytes);
-                Image img = icon.getImage();
-
-
-                int maxWidth = 250;
-                int maxHeight = 250;
-                int width = img.getWidth(null);
-                int height = img.getHeight(null);
-
-                if (width > maxWidth || height > maxHeight) {
-                    float ratio = Math.min((float) maxWidth / width, (float) maxHeight / height);
-                    width = Math.round(width * ratio);
-                    height = Math.round(height * ratio);
-                    img = img.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                    icon = new ImageIcon(img);
-                }
-
-                imageLabel.setIcon(icon);
-                bubblePanel.add(imageLabel, BorderLayout.CENTER);
-            } catch (Exception e) {
-
-                messageLabel.setText("<html><p style='width: 250px;'><i>[Imagen no disponible]</i></p></html>");
-                bubblePanel.add(messageLabel, BorderLayout.CENTER);
-            }
-        } else {
-
-            messageLabel.setText("<html><p style='width: 250px;'>" + msg.getBody() + "</p></html>");
-            bubblePanel.add(messageLabel, BorderLayout.CENTER);
-        }
-
-
+        // Lógica para saber si es mío
         boolean isMine = msg.getStatusMessage() != StatusMessage.READ;
 
-        if (isMine) {
+        // Color base de la burbuja
+        Color bubbleColor = isMine ? new Color(220, 248, 198) : Color.WHITE;
 
-            ((FlowLayout) container.getLayout()).setAlignment(FlowLayout.RIGHT);
-            bubblePanel.setBackground(new Color(220, 248, 198));
-            String state = msg.getStatusMessage() == StatusMessage.RECEIVED ? "Leido" : "Enviado";
-            metaLabel.setText(msg.getDate() + " " + state);
+        // Si seleccionamos el mensaje, oscurecemos un poco la burbuja (pero NO el fondo de la fila)
+        if (isSelected) {
+            bubblePanel.setBackground(new Color(200, 220, 240));
         } else {
-
-            ((FlowLayout) container.getLayout()).setAlignment(FlowLayout.LEFT);
-            bubblePanel.setBackground(new Color(240, 240, 240));
-            metaLabel.setText(msg.getDate());
+            bubblePanel.setBackground(bubbleColor);
         }
 
-        metaLabel.setAlignmentX(Component.RIGHT_ALIGNMENT);
+        // Lógica de tipos de mensaje
+        if (msg.getTypeMessage() == TypeMessage.UNIQUE) {
+            messageLabel.setText("🔒 Ver mensaje oculto");
+            bubblePanel.setBackground(new Color(255, 230, 230));
+            messageLabel.setForeground(new Color(180, 0, 0));
+            messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            bubblePanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
+        } else if (msg.getTypeMessage() == TypeMessage.IMAGE) {
+            try {
+                byte[] imageBytes = Base64.getDecoder().decode(msg.getBody());
+                ImageIcon imageIcon = new ImageIcon(imageBytes);
+                Image image = imageIcon.getImage().getScaledInstance(150, 150, Image.SCALE_SMOOTH);
+                messageLabel.setIcon(new ImageIcon(image));
+            } catch (Exception e) {
+                messageLabel.setText(" [ Error al cargar imagen ] ");
+                messageLabel.setForeground(Color.RED);
+            }
+        } else {
+            messageLabel.setText(msg.getBody());
+            messageLabel.setForeground(Color.BLACK);
+            messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        }
 
+        // Metadata
+        String metaText = msg.getDate() != null ? msg.getDate() : "";
+
+        if (isMine && msg.getStatusMessage() != null) {
+            String statusMark = "";
+            switch (msg.getStatusMessage()) {
+                case SENT: statusMark = "  Enviado"; break;
+                case RECEIVED: statusMark = "  Leido"; break;
+                default: break;
+            }
+            metaText += statusMark;
+        }
+        metaLabel.setText(metaText);
+
+        // Ensamblado
+        bubblePanel.add(messageLabel, BorderLayout.CENTER);
         bubblePanel.add(metaLabel, BorderLayout.SOUTH);
 
-        return this;
+        if (isMine) {
+            panel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        } else {
+            panel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        }
+
+        panel.add(bubblePanel);
+
+        return panel;
     }
 }

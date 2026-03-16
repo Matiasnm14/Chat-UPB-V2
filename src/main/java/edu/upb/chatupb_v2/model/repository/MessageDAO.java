@@ -131,7 +131,7 @@ public class MessageDAO {
     }
 
     public void delete(String id_message) throws Exception {
-        String query = "DELETE FROM Messages WHERE id_message =?";
+        String query = "DELETE FROM Messages WHERE id =?";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {

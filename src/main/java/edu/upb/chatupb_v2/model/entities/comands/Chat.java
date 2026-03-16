@@ -45,7 +45,7 @@ public class Chat extends Command{
             if (client != null) {
                 client.send(createFormat());
                 SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(idUser).
-                        showMessage("Tú | " + message));
+                        updateMessages());
             } else {
                 SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(idUser).
                         showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));

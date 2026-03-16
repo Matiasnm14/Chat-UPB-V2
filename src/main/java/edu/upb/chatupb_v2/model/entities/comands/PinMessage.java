@@ -4,6 +4,7 @@ import edu.upb.chatupb_v2.model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.IOException;
 import java.util.regex.Pattern;
 
 @Getter
@@ -13,12 +14,16 @@ public class PinMessage extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + idMessage + System.lineSeparator();
     }
 
     @Override
     public void execute(SocketClient client) {
-
+        try {
+            client.send(createFormat());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public PinMessage() {

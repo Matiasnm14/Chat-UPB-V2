@@ -59,6 +59,8 @@ public class ConnectionDB {
                     + " Users_id TEXT,\n"
                     + " name TEXT NOT NULL,\n"
                     + " ip TEXT NOT NULL,\n"
+                    + " id_pin TEXT NOT NULL,\n"
+                    + " theme INT,\n"
                     + " FOREIGN KEY (Users_id) REFERENCES Users(id) ON DELETE CASCADE\n"
                     + ");";
 

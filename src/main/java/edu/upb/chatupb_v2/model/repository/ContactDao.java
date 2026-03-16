@@ -36,6 +36,12 @@ public class ContactDao {
         if (existColumn(result, Contact.Column.USER_ID)) {
             contact.setUserId(result.getString(Contact.Column.USER_ID));
         }
+        if (existColumn(result, Contact.Column.PIN_ID)) {
+            contact.setUserId(result.getString(Contact.Column.PIN_ID));
+        }
+        if (existColumn(result, Contact.Column.THEME)){
+            contact.setTheme(result.getString(Contact.Column.THEME));
+        }
         return contact;
     };
 
@@ -94,13 +100,15 @@ public class ContactDao {
 
     public void save(Contact contact) throws Exception {
         if (!exist("id='" + contact.getId() + "'")) {
-            String query = "INSERT INTO Contacts(id, name, ip, Users_id) values (?,?,?,?)";
+            String query = "INSERT INTO Contacts(id, name, ip, Users_id, id_pin, theme) values (?,?,?,?,?,?)";
 
             DaoHelper.QueryParameters params = pst -> {
                 pst.setString(1, contact.getId());
                 pst.setString(2, contact.getName());
-                pst.setString(3, contact.getIp());     // Nueva columna
-                pst.setString(4, contact.getUserId()); // Nueva columna
+                pst.setString(3, contact.getIp());
+                pst.setString(4, contact.getUserId());
+                pst.setString(5, contact.getPinId());
+                pst.setString(6, contact.getTheme());
             };
             helper.insert(query, params, contact);
         }
@@ -112,6 +120,30 @@ public class ContactDao {
             @Override
             public void setParameters(PreparedStatement pst) throws SQLException {
                 pst.setString(1, ip_contact);
+                pst.setString(2, id_contact);
+            }
+        };
+        helper.update(query, params);
+    }
+
+    public void updatePin(String id_contact, String id_pin) throws Exception {
+        String query = "UPDATE Contacts SET pin_id=? WHERE id =?";
+        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, id_pin);
+                pst.setString(2, id_contact);
+            }
+        };
+        helper.update(query, params);
+    }
+
+    public void updateTheme(String id_contact, String theme) throws Exception{
+        String query = "UPDATE Contacts SET theme=? WHERE id =?";
+        DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
+            @Override
+            public void setParameters(PreparedStatement pst) throws SQLException {
+                pst.setString(1, theme);
                 pst.setString(2, id_contact);
             }
         };

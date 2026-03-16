@@ -1,9 +1,17 @@
 package edu.upb.chatupb_v2.model.entities.comands;
 
+import edu.upb.chatupb_v2.controller.Controller;
+import edu.upb.chatupb_v2.controller.exception.OperationException;
+import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.network.SocketClient;
+import edu.upb.chatupb_v2.model.repository.MessageDAO;
+import edu.upb.chatupb_v2.model.repository.enums.StatusMessage;
+import edu.upb.chatupb_v2.model.repository.enums.TypeMessage;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.swing.*;
+import java.time.LocalDate;
 import java.util.regex.Pattern;
 
 @Getter
@@ -16,12 +24,38 @@ public class UniqueMessage extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + idUser + "|" + idMessage + "|" + message + System.lineSeparator();
     }
 
     @Override
     public void execute(SocketClient client) {
+        try {
 
+
+            Message msgDb = new Message(
+                    idMessage,
+                    client.getUID(),
+                    message,
+                    TypeMessage.UNIQUE,
+                    StatusMessage.SENT,
+                    LocalDate.now().toString()
+            );
+            MessageDAO.getInstance().save(msgDb);
+
+
+
+            if (client != null) {
+                client.send(createFormat());
+                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(idUser).
+                        updateMessages());
+            } else {
+                SwingUtilities.invokeLater(() -> Controller.getInstance().getUis().get(idUser).
+                        showError("El contacto no está en línea en este momento, pero el mensaje se guardó."));
+            }
+
+        } catch (Exception e) {
+            throw new OperationException("Error al enviar el mensaje: " + e.getMessage());
+        }
     }
 
     public UniqueMessage() {

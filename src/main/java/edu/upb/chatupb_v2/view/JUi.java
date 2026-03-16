@@ -61,10 +61,19 @@ public class JUi extends JFrame implements IChatView {
     @Setter
     private UserController userController = new UserController(this);
 
-    // --- NUEVOS COMPONENTES PARA IMÁGENES ---
+    // --- COMPONENTES PARA IMÁGENES ---
     private JPanel imagePanel;
     private JLabel imageDropLabel;
     private String base64ImagePending = null;
+
+    // --- VARIABLES PARA MENSAJE FIJADO ---
+    private JPanel pinnedMessagePanel;
+    private JLabel pinnedMessageLabel;
+    private String currentPinnedMessageId = null;
+
+    private long lastBuzzTime = 0;
+    private static final long BUZZ_COOLDOWN_MS = 3000;
+    private Image chatBackgroundImage = null;
 
     public JUi() {
         this.username = userController.onLoadUser();
@@ -91,7 +100,19 @@ public class JUi extends JFrame implements IChatView {
     }
 
     public void updateContacts() {
+        String selectedContactId = (currentContact != null) ? currentContact.getId() : null;
         contactController.onLoadContacts();
+
+        if (selectedContactId != null) {
+            for (int i = 0; i < contactListModel.getSize(); i++) {
+                Contact c = contactListModel.getElementAt(i);
+                if (c.getId().equals(selectedContactId)) {
+                    contactList.setSelectedIndex(i);
+                    currentContact = c;
+                    break;
+                }
+            }
+        }
     }
 
     private String askForUsername() {
@@ -151,10 +172,15 @@ public class JUi extends JFrame implements IChatView {
             if (!e.getValueIsAdjusting()) {
                 currentContact = contactList.getSelectedValue();
                 if (currentContact != null) {
-                    System.out.println(currentContact.getId());
+                    currentContact.setBuzz(false);
+                    applyThemeToChat(currentContact.getTheme());
                     messageController.onLoadMessages(currentContact.getId());
                     if (Controller.getInstance().getClients().containsKey(currentContact.getId())) {
                         Controller.getInstance().sendConfirms(currentContact.getId());
+                    }
+                    if (currentContact.isBuzz()) {
+                        currentContact.setBuzz(false);
+                        updateContacts();
                     }
                 }
             }
@@ -166,16 +192,158 @@ public class JUi extends JFrame implements IChatView {
         // ================= RIGHT PANEL =================
 
         messageListModel = new DefaultListModel<>();
-        messageList = new JList<>(messageListModel);
+        messageList = new JList<Message>(messageListModel) {
+            @Override
+            protected void paintComponent(Graphics g) {
+
+                if (chatBackgroundImage != null) {
+                    g.drawImage(chatBackgroundImage, 0, 0, getWidth(), getHeight(), this);
+                }
+
+                super.paintComponent(g);
+            }
+        };
+
+
+        messageList.setOpaque(false);
         messageList.setCellRenderer(new ChatRender());
         messageList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         messageList.setFocusable(false);
+        messageList.setOpaque(false);
 
         JScrollPane chatScrollPane = new JScrollPane(messageList);
+        chatScrollPane.setOpaque(false);
+        chatScrollPane.getViewport().setOpaque(false);
+
+        JPopupMenu popupMenu = new JPopupMenu();
+
+        JMenuItem itemEliminarParaMi = new JMenuItem("Eliminar para mí");
+        JMenuItem itemEliminarParaTodos = new JMenuItem("Eliminar para todos");
+        JMenuItem itemFijarMensaje = new JMenuItem("Fijar Mensaje");
+        JMenuItem itemCambiarTema = new JMenuItem("Cambiar tema de contacto");
+
+        popupMenu.add(itemEliminarParaMi);
+        popupMenu.add(itemEliminarParaTodos);
+        popupMenu.addSeparator();
+        popupMenu.add(itemFijarMensaje);
+        popupMenu.addSeparator();
+        popupMenu.add(itemCambiarTema);
+
+        // --- LISTENER DE MENSAJES (CLICK IZQUIERDO PARA UNIQUE, DERECHO PARA MENÚ) ---
+        messageList.addMouseListener(new java.awt.event.MouseAdapter() {
+
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                // Click Izquierdo (BUTTON1)
+                if (e.getButton() == java.awt.event.MouseEvent.BUTTON1) {
+                    int index = messageList.locationToIndex(e.getPoint());
+                    if (index != -1 && messageList.getCellBounds(index, index).contains(e.getPoint())) {
+                        Message selectedMessage = messageListModel.getElementAt(index);
+
+
+                        if (selectedMessage.getTypeMessage() == TypeMessage.UNIQUE) {
+
+                            JOptionPane.showMessageDialog(
+                                    JUi.this,
+                                    selectedMessage.getBody(),
+                                    "Mensaje de una sola vista",
+                                    JOptionPane.INFORMATION_MESSAGE
+                            );
+
+
+                            messageController.delete(selectedMessage.getIdMessage());
+                            messageListModel.remove(index);
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                showPopup(e);
+            }
+
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                showPopup(e);
+            }
+
+            private void showPopup(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    int index = messageList.locationToIndex(e.getPoint());
+                    if (index != -1 && messageList.getCellBounds(index, index).contains(e.getPoint())) {
+                        messageList.setSelectedIndex(index);
+                        Message selectedMessage = messageList.getModel().getElementAt(index);
+
+                        boolean isMine = selectedMessage.getStatusMessage() != StatusMessage.READ;
+                        itemEliminarParaTodos.setVisible(isMine);
+
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    }
+                }
+            }
+        });
+
+        itemEliminarParaMi.addActionListener(e -> {
+            Message msg = messageList.getSelectedValue();
+            messageController.delete(msg.getIdMessage());
+            if (currentContact != null) messageController.onLoadMessages(currentContact.getId());
+        });
+
+        itemEliminarParaTodos.addActionListener(e -> {
+            Message msg = messageList.getSelectedValue();
+            if (currentContact != null){
+                DeleteMessage deleteMessage = new DeleteMessage(msg.getIdMessage());
+                messageController.delete(msg.getIdMessage());
+                Controller.getInstance().sendMessage(deleteMessage, currentContact.getId());
+                messageController.onLoadMessages(currentContact.getId());
+            }
+        });
+
+        itemFijarMensaje.addActionListener(e -> {
+            Message msg = messageList.getSelectedValue();
+            if (currentContact != null){
+                PinMessage pinMessage = new PinMessage(msg.getIdMessage());
+                Controller.getInstance().sendMessage(pinMessage, currentContact.getId());
+                onPinMessageReceived(pinMessage);
+                messageController.onLoadMessages(currentContact.getId());
+            }
+
+        });
+
+        itemCambiarTema.addActionListener(e -> {
+            if (currentContact == null) {
+                showError("Selecciona un contacto primero.");
+                return;
+            }
+
+            String[] options = {"Tema 1", "Tema 2", "Tema 3", "Tema 4", "Tema 5"};
+            int selection = JOptionPane.showOptionDialog(this,
+                    "Elige un tema de fondo para " + currentContact.getName(),
+                    "Cambiar Tema",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+
+            if (selection >= 0) {
+                String themeId = (selection == 5) ? "0" : String.valueOf(selection + 1);
+
+                try {
+                    ContactDao.getInstance().updateTheme(currentContact.getId(), themeId);
+                    currentContact.setTheme(themeId);
+                    applyThemeToChat(themeId);
+
+                    Theme themeCmd = new Theme(userId, themeId);
+                    Controller.getInstance().sendMessage(themeCmd, currentContact.getId());
+
+                } catch (Exception ex) {
+                    showError("Error al guardar el tema: " + ex.getMessage());
+                }
+            }
+        });
 
         jTextMensaje = new JTextField();
         JButton btnSend = new JButton("Enviar");
-        JToggleButton btnToggleImage = new JToggleButton("📷"); // Botón para desplegar zona de imagen
+        JButton btnSendUnique = new JButton("Enviar Único 🔒");
+        JToggleButton btnToggleImage = new JToggleButton("📷");
 
         JButton btnBuzz = new JButton("Buzz");
         JButton btnOffline = new JButton("Fuera de Línea");
@@ -190,9 +358,42 @@ public class JUi extends JFrame implements IChatView {
         topPanel.add(btnBuzz);
         topPanel.add(btnOffline);
 
-        // --- INICIO ZONA DE IMAGEN ---
+        // --- ZONA DE MENSAJE FIJADO ---
+        pinnedMessagePanel = new JPanel(new BorderLayout());
+        pinnedMessagePanel.setBackground(new Color(230, 240, 255));
+        pinnedMessagePanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY),
+                BorderFactory.createEmptyBorder(8, 15, 8, 15)
+        ));
+        pinnedMessagePanel.setVisible(false);
+        pinnedMessagePanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        pinnedMessageLabel = new JLabel("📌 Mensaje Fijado");
+        pinnedMessageLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        pinnedMessagePanel.add(pinnedMessageLabel, BorderLayout.CENTER);
+
+        pinnedMessagePanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (currentPinnedMessageId != null) {
+                    for (int i = 0; i < messageListModel.getSize(); i++) {
+                        if (messageListModel.getElementAt(i).getIdMessage().equals(currentPinnedMessageId)) {
+                            messageList.ensureIndexIsVisible(i);
+                            messageList.setSelectedIndex(i);
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        JPanel topContainer = new JPanel(new BorderLayout());
+        topContainer.add(topPanel, BorderLayout.NORTH);
+        topContainer.add(pinnedMessagePanel, BorderLayout.SOUTH);
+
+        // --- ZONA DE IMAGEN ---
         imagePanel = new JPanel(new BorderLayout());
-        imagePanel.setVisible(false); // Oculto por defecto
+        imagePanel.setVisible(false);
         imagePanel.setPreferredSize(new Dimension(0, 120));
         imagePanel.setBorder(BorderFactory.createTitledBorder("Enviar Imagen"));
 
@@ -200,12 +401,11 @@ public class JUi extends JFrame implements IChatView {
         imageDropLabel.setBorder(BorderFactory.createDashedBorder(Color.GRAY, 2, 5, 2, false));
 
         JButton btnSendImage = new JButton("Enviar Imagen");
-        btnSendImage.setEnabled(false); // Se habilita al cargar imagen
+        btnSendImage.setEnabled(false);
 
         imagePanel.add(imageDropLabel, BorderLayout.CENTER);
         imagePanel.add(btnSendImage, BorderLayout.EAST);
 
-        // Lógica de Drag and Drop
         imageDropLabel.setDropTarget(new DropTarget() {
             @Override
             public synchronized void drop(DropTargetDropEvent evt) {
@@ -215,15 +415,11 @@ public class JUi extends JFrame implements IChatView {
 
                     if (droppedFiles != null && !droppedFiles.isEmpty()) {
                         File file = droppedFiles.get(0);
-
-                        // Validación básica de que sea imagen (por extensión)
                         String name = file.getName().toLowerCase();
                         if (name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".gif")) {
-                            // Convertir a Base 64
                             byte[] fileContent = Files.readAllBytes(file.toPath());
                             base64ImagePending = Base64.getEncoder().encodeToString(fileContent);
 
-                            // Mostrar preview escalado
                             ImageIcon icon = new ImageIcon(file.getAbsolutePath());
                             Image scaledImage = icon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
                             imageDropLabel.setText("");
@@ -239,20 +435,22 @@ public class JUi extends JFrame implements IChatView {
                 }
             }
         });
-        // --- FIN ZONA DE IMAGEN ---
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputPanel.add(btnToggleImage, BorderLayout.WEST);
         inputPanel.add(jTextMensaje, BorderLayout.CENTER);
-        inputPanel.add(btnSend, BorderLayout.EAST);
+//        inputPanel.add(btnSend, BorderLayout.EAST);
+        JPanel sendButtonsPanel = new JPanel(new GridLayout(1, 2, 5, 0));
+        sendButtonsPanel.add(btnSendUnique);
+        sendButtonsPanel.add(btnSend);
+        inputPanel.add(sendButtonsPanel, BorderLayout.EAST);
 
-        // Contenedor sur que agrupa la zona de imagen y el input de texto
         JPanel bottomContainer = new JPanel(new BorderLayout());
         bottomContainer.add(imagePanel, BorderLayout.NORTH);
         bottomContainer.add(inputPanel, BorderLayout.SOUTH);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.add(topPanel, BorderLayout.NORTH);
+        rightPanel.add(topContainer, BorderLayout.NORTH);
         rightPanel.add(chatScrollPane, BorderLayout.CENTER);
         rightPanel.add(bottomContainer, BorderLayout.SOUTH);
 
@@ -262,36 +460,33 @@ public class JUi extends JFrame implements IChatView {
 
         // ================= ACTIONS =================
 
-        // Mostrar/Ocultar panel de imagen
         btnToggleImage.addActionListener(e -> {
             imagePanel.setVisible(btnToggleImage.isSelected());
             revalidate();
             repaint();
         });
 
-        // Enviar Imagen
         btnSendImage.addActionListener(e -> {
-            SwingUtilities.invokeLater(() -> {
+            new Thread(() -> {
                 if (base64ImagePending != null && currentContact != null) {
                     String destinationId = currentContact.getId();
 
-                    // NOTA: Asegúrate de que tu clase ImageChat reciba estos parámetros en su constructor
                     ImageChat imageChat = new ImageChat(userId, UUID.randomUUID().toString(), base64ImagePending);
                     Controller.getInstance().sendMessage(imageChat, destinationId);
 
-                    // Limpiar después de enviar
-                    base64ImagePending = null;
-                    imageDropLabel.setIcon(null);
-                    imageDropLabel.setText("Arrastra y suelta una imagen aquí");
-                    btnSendImage.setEnabled(false);
-                    btnToggleImage.setSelected(false);
-                    imagePanel.setVisible(false);
-                    revalidate();
+                    SwingUtilities.invokeLater(() -> {
+                        base64ImagePending = null;
+                        imageDropLabel.setIcon(null);
+                        imageDropLabel.setText("Arrastra y suelta una imagen aquí");
+                        btnSendImage.setEnabled(false);
+                        btnToggleImage.setSelected(false);
+                        imagePanel.setVisible(false);
+                        revalidate();
+                    });
                 } else if (currentContact == null) {
-                    showError("Selecciona un contacto primero.");
+                    SwingUtilities.invokeLater(() -> showError("Selecciona un contacto primero."));
                 }
-            });
-
+            }).start();
         });
 
         btnSend.addActionListener(e -> {
@@ -306,6 +501,27 @@ public class JUi extends JFrame implements IChatView {
                 }
                 Chat chat = new Chat(userId, UUID.randomUUID().toString(), texto);
                 Controller.getInstance().sendMessage(chat, destinationId);
+                jTextMensaje.setText("");
+            } else if (currentContact == null) {
+                showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
+            }
+        });
+
+        btnSendUnique.addActionListener(e -> {
+            String texto = jTextMensaje.getText().trim();
+
+            if (!texto.isEmpty() && currentContact != null) {
+                String destinationId = currentContact.getId();
+                if (destinationId == null || destinationId.trim().isEmpty()) {
+                    SwingUtilities.invokeLater(() ->
+                            showError("Selecciona un contacto primero."));
+                    return;
+                }
+
+
+                UniqueMessage uniqueMessage = new UniqueMessage(userId, UUID.randomUUID().toString(), texto);
+                Controller.getInstance().sendMessage(uniqueMessage, destinationId);
+
                 jTextMensaje.setText("");
             } else if (currentContact == null) {
                 showError("Por favor, selecciona un contacto de la lista izquierda para chatear.");
@@ -342,9 +558,6 @@ public class JUi extends JFrame implements IChatView {
             }
         });
     }
-
-    // ================= IChatView =================
-    // (El resto de métodos sobreescritos de la interfaz se mantienen exactamente igual)
 
     @Override
     public void updateStatus(String status) {
@@ -425,8 +638,7 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
-    // Añadir a JUi.java
-
+    // --- MÉTODOS DE IMÁGENES ---
     public void showImageChat(ImageChat imageChat) {
         Message msg = new Message(
                 imageChat.getIdMessage(),
@@ -461,6 +673,10 @@ public class JUi extends JFrame implements IChatView {
         return new ConfirmRecived(imageChat.getIdMessage());
     }
 
+    public void updateMessages(){
+        messageController.onLoadMessages(currentContact.getId());
+    }
+
     @Override
     public void onLoadContacts(List<Contact> contacts) {
         contactListModel.clear();
@@ -489,9 +705,31 @@ public class JUi extends JFrame implements IChatView {
             }
         }
         scrollToBottom();
+
+        if (currentContact != null) {
+            String pinId = currentContact.getPinId();
+
+            if (pinId != null && !pinId.equals("none")) {
+                Message pinnedMsg = null;
+                for (int i = 0; i < messageListModel.getSize(); i++) {
+                    if (messageListModel.getElementAt(i).getIdMessage().equals(pinId)) {
+                        pinnedMsg = messageListModel.getElementAt(i);
+                        break;
+                    }
+                }
+                if (pinnedMsg != null) {
+                    showPinnedMessageUI(pinnedMsg);
+                } else {
+                    pinnedMessagePanel.setVisible(false);
+                    currentPinnedMessageId = null;
+                }
+            } else {
+                pinnedMessagePanel.setVisible(false);
+                currentPinnedMessageId = null;
+            }
+        }
     }
 
-    //================= LOGICA DE COMANDOS =============================
     public boolean onInvitationReceived(Invitation invitation) {
         boolean accepted = showInvitationDialog(invitation.getUserName(), invitation.getIdUser());
         Controller.getInstance().getPendingClients().getFirst().setUid(invitation.getIdUser());
@@ -574,20 +812,67 @@ public class JUi extends JFrame implements IChatView {
         return new ConfirmRecived(chat.getIdMessage());
     }
 
+
+
     public void onBuzzingReceived(String finalName) {
-        SwingUtilities.invokeLater(() -> showBuzzNotification(finalName));
+        long currentTime = System.currentTimeMillis();
+
+        if (currentTime - lastBuzzTime < BUZZ_COOLDOWN_MS) return;
+        lastBuzzTime = currentTime;
+
+        SwingUtilities.invokeLater(() -> {
+            // JUi ya es un JFrame, así que "this" es la ventana que queremos mover.
+            shakeWindow(this);
+            markContactConBuzz(finalName);
+        });
+    }
+
+    private void shakeWindow(Window window) {
+        final int originalX = window.getLocation().x;
+        final int originalY = window.getLocation().y;
+        final int distance = 15; // 15 píxeles es perfecto para un zumbido estilo MSN Messenger
+
+        new Thread(() -> {
+            try {
+                for (int i = 0; i < 15; i++) {
+                    Thread.sleep(30);
+                    final int offset = (i % 2 == 0) ? distance : -distance;
+                    SwingUtilities.invokeLater(() -> window.setLocation(originalX + offset, originalY));
+                }
+                // Nos aseguramos de que vuelva exactamente a su posición original al terminar
+                SwingUtilities.invokeLater(() -> window.setLocation(originalX, originalY));
+            } catch (InterruptedException err) {
+                System.out.println("Error en la vibración: " + err.getMessage());
+            }
+        }).start();
+    }
+
+    private void markContactConBuzz(String contactName) {
+        try {
+            for (int i = 0; i < contactListModel.size(); i++) {
+                Contact contact = contactListModel.get(i);
+                if (contact.getName().equals(contactName)) {
+                    contact.setBuzz(true);
+                }
+            }
+            contactList.repaint();
+        }catch (Exception e){
+            throw new OperationException("No se encontro el contacto en la DB");
+        }
     }
 
     public void onByeReceived() {}
 
     public void onAcceptHelloReceived(AcceptHello acceptHello) {}
 
-    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
+    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
+        messageController.delete(deleteMessage.getIdMessage());
+        if (currentContact != null) messageController.onLoadMessages(currentContact.getId());
+    }
 
     public void onDeclineHelloReceived(DeclineHello declineHello) {}
 
     public void onConfirmedReceived(ConfirmRecived confirmRecived) {
-        System.out.println("Recibido");
         try {
             messageController.updateReceived(confirmRecived.getIdMessage());
             messageController.onLoadMessages(messageController.obtainContact(confirmRecived.getIdMessage()));
@@ -597,11 +882,139 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
-    public void onPinMessageReceived(PinMessage pinMessage) {}
+    public void onPinMessageReceived(PinMessage pinMessage) {
+        String msgId = pinMessage.getIdMessage();
+        try {
+            String contactId = messageController.obtainContact(msgId);
 
-    public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
-        System.out.println("MENSAJE ÚNICO");
+            for (int i = 0; i < contactListModel.getSize(); i++) {
+                Contact c = contactListModel.getElementAt(i);
+                if (c.getId().equals(contactId)) {
+                    c.setPinId(msgId);
+                    break;
+                }
+            }
+
+            if (currentContact != null && currentContact.getId().equals(contactId)) {
+                currentContact.setPinId(msgId);
+
+                Message pinnedMsg = null;
+                for (int i = 0; i < messageListModel.getSize(); i++) {
+                    if (messageListModel.getElementAt(i).getIdMessage().equals(msgId)) {
+                        pinnedMsg = messageListModel.getElementAt(i);
+                        break;
+                    }
+                }
+
+                if (pinnedMsg != null) {
+                    showPinnedMessageUI(pinnedMsg);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error al procesar mensaje fijado: " + e.getMessage());
+        }
     }
 
-    public void onThemeReceived(Theme theme) {}
+    private void showPinnedMessageUI(Message msg) {
+        SwingUtilities.invokeLater(() -> {
+            currentPinnedMessageId = msg.getIdMessage();
+
+            // Si es imagen (por si acaso), ponemos un texto genérico, si es texto normal o unique, el body
+            String textToShow = msg.getTypeMessage() == TypeMessage.IMAGE ?
+                    "📷 Imagen" : msg.getBody();
+
+            if (textToShow.length() > 50) {
+                textToShow = textToShow.substring(0, 47) + "...";
+            }
+
+            pinnedMessageLabel.setText("📌 " + textToShow);
+            pinnedMessagePanel.setVisible(true);
+            revalidate();
+            repaint();
+        });
+    }
+
+    public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+        try {
+            Message msgDb = new Message(
+                    uniqueMessage.getIdMessage(),
+                    uniqueMessage.getIdUser(),
+                    uniqueMessage.getMessage(),
+                    TypeMessage.UNIQUE,
+                    StatusMessage.READ,
+                    LocalDate.now().toString()
+            );
+
+            messageController.save(msgDb);
+
+            if (currentContact != null && currentContact.getId().equals(uniqueMessage.getIdUser())) {
+                SwingUtilities.invokeLater(() -> {
+                    messageListModel.addElement(msgDb);
+                    scrollToBottom();
+                });
+            }
+        } catch (Exception e) {
+            System.out.println("Error al procesar mensaje único: " + e.getMessage());
+        }
+    }
+
+    // --- AQUÍ REEMPLAZAMOS EL MÉTODO VACÍO POR LA LÓGICA DE TEMAS ---
+    public void onThemeReceived(Theme theme) {
+        String senderId = theme.getIdUser();
+        String themeId = theme.getIdTheme();
+
+        try {
+            // Actualizamos en base de datos
+            ContactDao.getInstance().updateTheme(senderId, themeId);
+
+            // Actualizamos en la lista visual de contactos
+            for (int i = 0; i < contactListModel.getSize(); i++) {
+                Contact c = contactListModel.getElementAt(i);
+                if (c.getId().equals(senderId)) {
+                    c.setTheme(themeId);
+                    break;
+                }
+            }
+
+            // Si es el contacto con el que estamos hablando, aplicamos el fondo inmediatamente
+            if (currentContact != null && currentContact.getId().equals(senderId)) {
+                currentContact.setTheme(themeId);
+                applyThemeToChat(themeId);
+            }
+        } catch (Exception e) {
+            System.out.println("Error al procesar el tema recibido: " + e.getMessage());
+        }
+    }
+
+    private void applyThemeToChat(String themeNumber) {
+        if (themeNumber == null || themeNumber.equals("0") || themeNumber.trim().isEmpty()) {
+            chatBackgroundImage = null;
+        } else {
+            String imagePath = "";
+            switch (themeNumber) {
+                case "1": imagePath = "/images/Standard.jpg"; break;
+                case "2": imagePath = "/images/Balatro.gif";break;
+                case "3": imagePath = "/images/Terraria(Islas).png"; break;
+                case "4": imagePath = "/images/Corrupcion.png"; break;
+                case "5": imagePath = "/images/Jimbo.jpg"; break;
+                default: break;
+            }
+
+            if (!imagePath.isEmpty()) {
+
+                java.net.URL imgURL = getClass().getResource(imagePath);
+
+                if (imgURL != null) {
+                    System.out.println("✅ Imagen encontrada: " + imgURL);
+                    chatBackgroundImage = new ImageIcon(imgURL).getImage();
+                } else {
+                    System.out.println("❌ ERROR: No se encontró la ruta: " + imagePath);
+                    chatBackgroundImage = null;
+                }
+            }
+        }
+        if (messageList != null) {
+            messageList.repaint();
+        }
+    }
 }

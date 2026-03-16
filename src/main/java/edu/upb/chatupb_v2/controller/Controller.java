@@ -200,8 +200,8 @@ public class Controller implements SocketClient.SocketListener {
             }
 
             if (command instanceof DeleteMessage) {
-                String id_message = ((DeleteMessage) command).getIdMessage();
-                MessageDAO.getInstance().delete(id_message);
+//                String id_message = ((DeleteMessage) command).getIdMessage();
+                uis.get(server.getUserId()).onDeleteMessageReceived((DeleteMessage) command);
             }
 
             if (command instanceof Buzzing) {
@@ -257,6 +257,12 @@ public class Controller implements SocketClient.SocketListener {
                         throw new RuntimeException("Error al enviar confirmación de imagen", e);
                     }
                 }
+            }
+            if (command instanceof PinMessage){
+                uis.get(server.getUserId()).onPinMessageReceived((PinMessage) command);
+            }
+            if (command instanceof UniqueMessage){
+                uis.get(server.getUserId()).onUniqueMessageReceived((UniqueMessage) command);
             }
         }
 

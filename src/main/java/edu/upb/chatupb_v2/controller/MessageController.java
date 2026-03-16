@@ -43,4 +43,12 @@ public class MessageController {
     public String obtainContact(String id) throws Exception{
         return messageDAO.findById(id).getContactId();
     }
+
+    public void delete(String id_message){
+        try {
+            messageDAO.delete(id_message);
+        }catch (Exception e){
+            throw new OperationException("Error al borrar el mensaje");
+        }
+    }
 }
