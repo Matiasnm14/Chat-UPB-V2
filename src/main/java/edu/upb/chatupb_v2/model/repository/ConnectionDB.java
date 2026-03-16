@@ -61,7 +61,9 @@ public class ConnectionDB {
                     "id TEXT PRIMARY KEY, " +
                     "Users_id TEXT, " +
                     "name TEXT, " +
-                    "ip TEXT " +
+                    "ip TEXT, " +
+                    "id_theme TEXT," +
+                    "id_pin TEXT"+
                     ");");
 
 

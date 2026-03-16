@@ -13,7 +13,7 @@ public class PinMessage extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + getIdMessage() + System.lineSeparator();
     }
 
     @Override

@@ -99,7 +99,6 @@ public class SocketClient extends Thread {
             while ((message = br.readLine()) != null) {
                 String[] split = message.split(Pattern.quote("|"));
                 if(split.length == 0) continue;
-                System.out.println("");
                 System.out.println(message);
                 switch (split[0]) {
                     case "001": {
@@ -157,19 +156,25 @@ public class SocketClient extends Thread {
                     }
                     case "011": {
                         PinMessage pinMes = PinMessage.parse(message);
+                        Controller.getInstance().notificarUI(pinMes);
                         break;
                     }
                     case "012": {
                         UniqueMessage uniMes = UniqueMessage.parse(message);
+                        Controller.getInstance().notificarUI(uniMes);
                         break;
                     }
                     case "013": {
                         Theme thm = Theme.parse(message);
+                        Controller.getInstance().notificarUI(thm);
                         break;
                     }
                     case "021":{
                         ImageMesagge imageMesagge = ImageMesagge.parse(message);
                         Controller.getInstance().notificarUI(imageMesagge);
+                    }
+                    default:{
+                        System.out.println("Mensaje: "+message);
                     }
 //                    case "0018": {
 //                        Bye bye = Bye.parse(message);

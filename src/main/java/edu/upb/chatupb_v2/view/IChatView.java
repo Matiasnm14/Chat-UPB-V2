@@ -4,6 +4,7 @@ import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.commands.Chat;
 
+import java.awt.*;
 import java.util.List;
 
 public interface IChatView {
@@ -20,4 +21,7 @@ public interface IChatView {
     void refreshChatView();
     Contact getCurrentContact();
     void showImageMessage(edu.upb.chatupb_v2.model.entities.commands.ImageMesagge imageMessage);
+    void applyTheme(String themeId);
+    void appendMessageToChat(Message msg);
+    void updatePinnedMessageUI(String text);
 }

@@ -36,6 +36,12 @@ public class ContactDao {
         if (existColumn(result, Contact.Column.USER_ID)) {
             contact.setUserId(result.getString(Contact.Column.USER_ID));
         }
+        if (existColumn(result, Contact.Column.ID_PIN)) {
+            contact.setIdPinMessage(result.getString(Contact.Column.ID_PIN));
+        }
+        if (existColumn(result, Contact.Column.ID_THEME)) {
+            contact.setIdTheme(result.getString(Contact.Column.ID_THEME));
+        }
         return contact;
     };
 
@@ -94,13 +100,14 @@ public class ContactDao {
 
     public void save(Contact contact) throws Exception {
         if (!exist("id='" + contact.getId() + "'")) {
-            String query = "INSERT INTO Contacts(id, name, ip, Users_id) values (?,?,?,?)";
+            String query = "INSERT INTO Contacts(id, name, ip, Users_id,id_theme) values (?,?,?,?,?)";
 
             DaoHelper.QueryParameters params = pst -> {
                 pst.setString(1, contact.getId());
                 pst.setString(2, contact.getName());
                 pst.setString(3, contact.getIp());     // Nueva columna
                 pst.setString(4, contact.getUserId()); // Nueva columna
+                pst.setString(5, "1");
             };
             helper.insert(query, params, contact);
         }
@@ -134,11 +141,20 @@ public class ContactDao {
         };
         helper.update(sql, params);
     }
-    public void updateStatus(String idCoontact) throws Exception{
-        String sql = "UPDATE Contacts SET status = ? WHERE id = ?";
+    public void setIdPin(String idCoontact, String idPin) throws Exception{
+        String sql = "UPDATE Contacts SET id_pin = ? WHERE id = ?";
 
         DaoHelper.QueryParameters params = pstmt -> {
-            pstmt.setString(1, StatusUser.ONLINE.toString());
+            pstmt.setString(1, idPin);
+            pstmt.setString(2, idCoontact);
+        };
+        helper.update(sql, params);
+    }
+    public void setIdTheme(String idCoontact, String idTheme) throws Exception{
+        String sql = "UPDATE Contacts SET id_theme = ? WHERE id = ?";
+
+        DaoHelper.QueryParameters params = pstmt -> {
+            pstmt.setString(1, idTheme);
             pstmt.setString(2, idCoontact);
         };
         helper.update(sql, params);

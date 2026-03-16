@@ -16,6 +16,7 @@ import lombok.Getter;
 
 import javax.swing.*;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -40,6 +41,8 @@ public class Controller implements SocketClient.SocketListener{
     private boolean isRunning = true;
     @Getter
     private List<SocketClient> pendingClients = new ArrayList<>();
+    private final long timerBuzz = 3000;
+    private long lastBuzz = 0;
 
     private HashMap<String, List<ConfirmRecived>> listOfConfirms = new HashMap<>();
     public static Controller getInstance(){
@@ -137,6 +140,18 @@ public class Controller implements SocketClient.SocketListener{
         }
         if (command instanceof ImageMesagge){
             onImageReceived((ImageMesagge) command);
+        }
+        if(command instanceof DeleteMessage){
+            onDeleteMessageReceived((DeleteMessage) command);
+        }
+        if(command instanceof Theme){
+            onThemeReceived((Theme) command);
+        }
+        if(command instanceof UniqueMessage){
+            onUniqueMessageReceived((UniqueMessage) command);
+        }
+        if(command instanceof PinMessage){
+            onPinMessageReceived((PinMessage) command);
         }
     }
     public void initController(String username, String userId, JUi ui){
@@ -287,7 +302,106 @@ public class Controller implements SocketClient.SocketListener{
 
     }
     public void deleteMessage(Message message){
+        try {
+            Contact contact = ContactDao.getInstance().findById(message.getContactId());
+            if (contact != null && contact.getIdPinMessage() != null && contact.getIdPinMessage().equals(message.getIdMessage())) {
 
+                ContactDao.getInstance().setIdPin(message.getContactId(), null);
+
+                if (view.getCurrentContact() != null && view.getCurrentContact().getId().equals(message.getContactId())) {
+                    view.getCurrentContact().setIdPinMessage(null);
+                    view.updatePinnedMessageUI(null);
+                }
+            }
+
+
+            MessageDAO.getInstance().delete(message.getIdMessage());
+            view.refreshChatView();
+        }catch (Exception e){
+
+        }
+    }
+    public void sendDeleteMessage(Message message, String idCurrentContact){
+        DeleteMessage deleteMessage = new DeleteMessage(message.getIdMessage());
+        SocketClient sc = clients.get(idCurrentContact);
+        try{
+
+            Contact contact = ContactDao.getInstance().findById(message.getContactId());
+            if (contact != null && contact.getIdPinMessage() != null && contact.getIdPinMessage().equals(message.getIdMessage())) {
+
+                ContactDao.getInstance().setIdPin(message.getContactId(), null);
+
+                if (view.getCurrentContact() != null && view.getCurrentContact().getId().equals(message.getContactId())) {
+                    view.getCurrentContact().setIdPinMessage(null);
+                    view.updatePinnedMessageUI(null);
+                }
+            }
+
+            sc.send(deleteMessage.createFormat());
+            MessageDAO.getInstance().delete(message.getIdMessage());
+            view.refreshChatView();
+
+        }catch (Exception e){
+
+        }
+    }
+    public void sendTheme(String idCurrentContact, String idTheme){
+        if (clients.containsKey(idCurrentContact)) {
+            Theme themeCmd = new Theme(this.userId, idTheme);
+            try {
+                ContactDao.getInstance().setIdTheme(idCurrentContact,idTheme);
+                clients.get(idCurrentContact).send(themeCmd.createFormat());
+
+
+                if (view.getCurrentContact() != null) {
+                    view.getCurrentContact().setIdTheme(idTheme);
+                }
+
+                view.applyTheme(idTheme);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println("Comando de tema enviado: " + themeCmd.createFormat());
+        }
+    }
+
+    public void sendUniqueMessage(String texto, String targetId) {
+        if (clients.containsKey(targetId)) {
+            // Creamos el comando
+            UniqueMessage uniqueCmd = new UniqueMessage(this.userId, UUID.randomUUID().toString(), texto);
+
+            // Lo enviamos por Sockets
+            try {
+                clients.get(targetId).send(uniqueCmd.createFormat());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Opcional: Mostrarlo en mi propia pantalla como un mensaje normal o como UNIQUE
+            Message msgLocal = new Message(uniqueCmd.getIdMessage(), this.userId, texto, TypeMessage.UNIQUE, StatusMessage.SENT, LocalDate.now().toString());
+            view.appendMessageToChat(msgLocal); // Ver nota abajo
+        }
+    }
+
+    public void sendPinMessage(Message msg, String idCurrentContact) {
+        if (clients.containsKey(idCurrentContact)) {
+            PinMessage pinCmd = new PinMessage(msg.getIdMessage());
+            try {
+                // 1. Mandamos la trama
+                clients.get(idCurrentContact).send(pinCmd.createFormat());
+
+                // 2. Guardamos en la Base de Datos
+                ContactDao.getInstance().setIdPin(idCurrentContact, msg.getIdMessage());
+
+                // 3. Actualizamos la memoria RAM (¡Muy importante!)
+                if (view.getCurrentContact() != null) {
+                    view.getCurrentContact().setIdPinMessage(msg.getIdMessage());
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -552,33 +666,85 @@ public class Controller implements SocketClient.SocketListener{
 
     @Override
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
+        try{
+            Contact contact = ContactDao.getInstance().findById(MessageDAO.getInstance().findById(deleteMessage.getIdMessage()).getContactId());
+            if (contact != null && contact.getIdPinMessage() != null && contact.getIdPinMessage().equals(deleteMessage.getIdMessage())) {
 
+                ContactDao.getInstance().setIdPin(contact.getId(), null);
+
+                if (view.getCurrentContact() != null && view.getCurrentContact().getId().equals(contact.getId())) {
+                    view.getCurrentContact().setIdPinMessage(null);
+                    view.updatePinnedMessageUI(null);
+                }
+            }
+            MessageDAO.getInstance().delete(deleteMessage.getIdMessage());
+            view.refreshChatView();
+            System.out.println("CHAT REFRESH");
+        }catch (Exception e){
+
+        }
     }
 
     @Override
     public void onBuzzingReceived(Buzzing buzzing) {
-        String name = "Desconocido";
-        SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
-        if (sc != null) {
-            name = sc.getNombre();
+        long currentTime = System.currentTimeMillis();
+        if(currentTime - lastBuzz > timerBuzz){
+            String name = "Desconocido";
+            SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
+            if (sc != null) {
+                name = sc.getNombre();
+            }
+            String finalName = name;
+            SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
         }
-        String finalName = name;
-        SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
     }
 
     @Override
     public void onPinMessageReceived(PinMessage pinMessage) {
-
+        try {
+            String senderId = MessageDAO.getInstance().findById(pinMessage.getIdMessage()).getContactId();
+            ContactDao.getInstance().setIdPin(senderId, pinMessage.getIdMessage());
+            if (view.getCurrentContact() != null && view.getCurrentContact().getId().equals(senderId)) {
+                Message msg = MessageDAO.getInstance().findById(pinMessage.getIdMessage());
+                if (msg != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        view.updatePinnedMessageUI(msg.getBody());
+                    });
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+        Message msgEnMemoria = new Message(
+                uniqueMessage.getIdMessage(),
+                uniqueMessage.getIdUser(),
+                uniqueMessage.getMessage(),
+                TypeMessage.UNIQUE,
+                StatusMessage.RECEIVED,
+                LocalDate.now().toString()
+        );
 
+        SwingUtilities.invokeLater(() -> {
+            view.appendMessageToChat(msgEnMemoria);
+        });
     }
 
     @Override
     public void onThemeReceived(Theme theme) {
-
+        try {
+            view.showMessage("Tema cambiado por: "+ ContactDao.getInstance().findById(theme.getIdUser()).getName());
+            ContactDao.getInstance().setIdTheme(theme.getIdUser(),theme.getIdTheme());
+            if (view.getCurrentContact() != null) {
+                view.getCurrentContact().setIdTheme(theme.getIdTheme());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        view.applyTheme(theme.getIdTheme());
     }
 
     @Override

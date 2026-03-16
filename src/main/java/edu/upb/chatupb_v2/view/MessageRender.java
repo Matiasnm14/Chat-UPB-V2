@@ -12,20 +12,43 @@ import java.util.Map;
 
 public class MessageRender extends JPanel implements ListCellRenderer<Message> {
 
-    private JPanel wrapper; // El contenedor maestro (como el de tu amigo)
+    private JPanel wrapper;
     private JPanel bubblePanel;
     private JLabel textLabel;
     private JLabel timeLabel;
-    private JLabel imageLabel; // Ahora sí lo vamos a inicializar
+    private JLabel imageLabel;
+    private Color myBubbleColor = new Color(220, 248, 198);
+    private Color otherBubbleColor = Color.WHITE;
+    private Color myTextColor = Color.BLACK;
+    private Color otherTextColor = Color.BLACK;
 
     // Caché para no recalcular la imagen cientos de veces
     private Map<String, ImageIcon> imageCache = new HashMap<>();
 
+    public void setThemeColors(Color myBubble, Color otherBubble, Color myText, Color otherText) {
+        this.myBubbleColor = myBubble;
+        this.otherBubbleColor = otherBubble;
+        this.myTextColor = myText;
+        this.otherTextColor = otherText;
+    }
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+
+        if (getBackground() != null && getBackground().getAlpha() > 0) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setColor(getBackground());
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.dispose();
+        }
+    }
+
     public MessageRender() {
+
         setLayout(new BorderLayout());
         setOpaque(false);
 
-        // 1. Inicializar etiquetas
         textLabel = new JLabel();
         textLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
@@ -33,10 +56,9 @@ public class MessageRender extends JPanel implements ListCellRenderer<Message> {
         timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         timeLabel.setForeground(Color.GRAY);
 
-        imageLabel = new JLabel(); // ¡CORREGIDO!
+        imageLabel = new JLabel();
         imageLabel.setOpaque(false);
 
-        // 2. Crear la burbuja redondeada
         bubblePanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -51,7 +73,6 @@ public class MessageRender extends JPanel implements ListCellRenderer<Message> {
         bubblePanel.setLayout(new BorderLayout());
         bubblePanel.setBorder(new EmptyBorder(10, 15, 10, 15));
 
-        // 3. Crear el Wrapper principal (Truco de tu amigo) UNA SOLA VEZ
         wrapper = new JPanel(new FlowLayout());
         wrapper.setOpaque(false);
         wrapper.add(bubblePanel);
@@ -69,16 +90,16 @@ public class MessageRender extends JPanel implements ListCellRenderer<Message> {
 
         // --- MANEJO DE ALINEACIÓN Y COLORES (Al estilo de tu amigo) ---
         if (isMe) {
-            bubblePanel.setBackground(new Color(220, 248, 198));
-            textLabel.setForeground(Color.BLACK);
+            bubblePanel.setBackground(myBubbleColor);
+            textLabel.setForeground(myTextColor);
             timeLabel.setText("Yo - " + msg.getStatusMessage().toString());
             timeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 
             // Reutilizamos el layout en lugar de crear paneles nuevos
             ((FlowLayout) wrapper.getLayout()).setAlignment(FlowLayout.RIGHT);
         } else {
-            bubblePanel.setBackground(Color.WHITE);
-            textLabel.setForeground(Color.BLACK);
+            bubblePanel.setBackground(otherBubbleColor);
+            textLabel.setForeground(otherTextColor);
             timeLabel.setText(msg.getDate());
             timeLabel.setHorizontalAlignment(SwingConstants.LEFT);
 
@@ -124,7 +145,18 @@ public class MessageRender extends JPanel implements ListCellRenderer<Message> {
                     bubblePanel.add(textLabel, BorderLayout.CENTER);
                 }
             }
-        } else {
+        }else if (msg.getTypeMessage() == TypeMessage.UNIQUE) {
+            // Dibujamos un "Botón Falso"
+            if (msg.getBody().equals("VISTO")) {
+                textLabel.setText("<html><i>🚫 Mensaje destruido</i></html>");
+                textLabel.setForeground(Color.GRAY);
+            } else {
+                // Se ve como un botón azul
+                textLabel.setText("<html><div style='background-color: #007bff; color: white; padding: 8px; border-radius: 5px;'>💣 Toca para ver mensaje oculto</div></html>");
+            }
+            bubblePanel.add(textLabel, BorderLayout.CENTER);
+
+        }else {
             // Es un mensaje de texto normal
             textLabel.setText("<html><p style='width: 250px;'>" + msg.getBody() + "</p></html>");
             bubblePanel.add(textLabel, BorderLayout.CENTER);
@@ -134,12 +166,14 @@ public class MessageRender extends JPanel implements ListCellRenderer<Message> {
 
         // --- SELECCIÓN ---
         if (isSelected) {
-            setBackground(new Color(230, 230, 230));
-            setOpaque(true);
+            setBackground(new Color(130, 180, 255, 60));
         } else {
-            setOpaque(false);
+            setBackground(new Color(0, 0, 0, 0));
         }
 
+        setOpaque(false);
+
         return this;
+
     }
 }

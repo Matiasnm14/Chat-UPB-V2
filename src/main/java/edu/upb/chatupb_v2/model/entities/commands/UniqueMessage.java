@@ -16,7 +16,7 @@ public class UniqueMessage extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + idUser + "|" + idMessage + "|" + message + System.lineSeparator();
     }
 
     @Override

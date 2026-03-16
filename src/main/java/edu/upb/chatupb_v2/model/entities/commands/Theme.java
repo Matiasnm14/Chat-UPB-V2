@@ -14,7 +14,7 @@ public class Theme extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + this.idUser + "|" + this.idTheme +System.lineSeparator();
     }
 
     @Override

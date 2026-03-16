@@ -13,7 +13,7 @@ public class DeleteMessage extends Command{
 
     @Override
     public String createFormat() {
-        return null;
+        return getID() + "|" + this.idMessage +System.lineSeparator();
     }
 
     @Override
