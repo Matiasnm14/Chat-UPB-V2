@@ -11,6 +11,7 @@ public class UserProfileDao {
 
     public UserProfileDao() {
         ensureTable();
+        ensureThemeColumn();
     }
 
     public void ensureTable() {
@@ -18,8 +19,18 @@ public class UserProfileDao {
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "user_id TEXT UNIQUE NOT NULL," +
                 "user_name TEXT NOT NULL," +
-                "created_at TEXT" +
+                "created_at TEXT," +
+                "theme_id TEXT DEFAULT 'default'" +
                 ")";
+        try (Connection conn = ConnectionDB.getInstance().getConection();
+             PreparedStatement st = conn.prepareStatement(query)) {
+            st.execute();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void ensureThemeColumn() {
+        String query = "ALTER TABLE user_profile ADD COLUMN theme_id TEXT DEFAULT 'default'";
         try (Connection conn = ConnectionDB.getInstance().getConection();
              PreparedStatement st = conn.prepareStatement(query)) {
             st.execute();
@@ -59,6 +70,52 @@ public class UserProfileDao {
         }
         if (!updateUserName(userId, trimmed)) {
             insertUserName(userId, trimmed);
+        }
+    }
+
+    public String findThemeId(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return "default";
+        }
+        String query = "SELECT theme_id FROM user_profile WHERE user_id = ?";
+        try (Connection conn = ConnectionDB.getInstance().getConection();
+             PreparedStatement st = conn.prepareStatement(query)) {
+            st.setString(1, userId);
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    String themeId = rs.getString(1);
+                    return themeId != null && !themeId.isBlank() ? themeId : "default";
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "default";
+    }
+
+    public void upsertThemeId(String userId, String themeId) {
+        if (userId == null || userId.isBlank()) {
+            return;
+        }
+        String trimmed = themeId == null || themeId.isBlank() ? "default" : themeId.trim();
+        String query = "UPDATE user_profile SET theme_id = ? WHERE user_id = ?";
+        try (Connection conn = ConnectionDB.getInstance().getConection();
+             PreparedStatement st = conn.prepareStatement(query)) {
+            st.setString(1, trimmed);
+            st.setString(2, userId);
+            if (st.executeUpdate() > 0) {
+                return;
+            }
+        } catch (Exception ignored) {
+        }
+        if (findUserName(userId) == null) {
+            insertUserName(userId, "Usuario");
+        }
+        try (Connection conn = ConnectionDB.getInstance().getConection();
+             PreparedStatement st = conn.prepareStatement(query)) {
+            st.setString(1, trimmed);
+            st.setString(2, userId);
+            st.executeUpdate();
+        } catch (Exception ignored) {
         }
     }
 

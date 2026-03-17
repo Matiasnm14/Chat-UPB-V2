@@ -15,7 +15,10 @@ public class UniqueMessage extends Command {
 
     @Override
     public String createFormat() {
-        return null;
+        String safeUserId = idUser == null ? "" : idUser;
+        String safeMessageId = idMessage == null ? "" : idMessage;
+        String safeMessage = message == null ? "" : message;
+        return getID() + "|" + safeUserId + "|" + safeMessageId + "|" + safeMessage + System.lineSeparator();
     }
 
     public UniqueMessage() {

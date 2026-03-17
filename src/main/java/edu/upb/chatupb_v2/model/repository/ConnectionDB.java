@@ -13,33 +13,30 @@ import java.sql.SQLException;
  * @author rlaredo
  */
 public class ConnectionDB {
- 
+
     private static final ConnectionDB connection = new ConnectionDB();
-    
-    private ConnectionDB(){
-       
+    private static boolean connectionLogged = false;
+
+    private ConnectionDB() {
     }
-    
-    public static ConnectionDB getInstance(){
+
+    public static ConnectionDB getInstance() {
         return connection;
     }
 
-    
-    public Connection getConection(){
+    public Connection getConection() {
         Connection conn = null;
         try {
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection("jdbc:sqlite:chat_upb.sqlite");
-            if (conn != null) {
-                System.out.println("Conexión exitosa.");
-            } else {
-                System.out.println("Conexión fallida");
+            if (conn != null && !connectionLogged) {
+                connectionLogged = true;
+                System.out.println("Conexion exitosa");
             }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
-        }catch(ClassNotFoundException e){
-        
+        } catch (ClassNotFoundException e) {
         }
-        return conn;   
+        return conn;
     }
 }

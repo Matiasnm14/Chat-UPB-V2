@@ -14,7 +14,8 @@ public class Buzzing extends Command {
 
     @Override
     public String createFormat() {
-        return getID() + "|" + idUser + "|" + System.lineSeparator();
+        String safeUserId = idUser == null ? "" : idUser;
+        return getID() + "|" + safeUserId + System.lineSeparator();
     }
 
     public Buzzing() {

@@ -19,6 +19,8 @@ public interface IContactDAO {
 
     void updateIpByCode(String code, String ip) throws Exception;
 
+    void updateThemeByCode(String code, String themeId) throws Exception;
+
     void update(String query) throws Exception;
 
     void save(AcceptHello.User.Contact contact) throws Exception;

@@ -1,6 +1,7 @@
-package edu.upb.chatupb_v2.controller;
+package edu.upb.chatupb_v2.model.network;
 
-import edu.upb.chatupb_v2.model.network.SocketClient;
+import edu.upb.chatupb_v2.controller.Mediator;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;

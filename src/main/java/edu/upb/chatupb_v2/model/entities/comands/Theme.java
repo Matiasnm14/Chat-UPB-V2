@@ -13,7 +13,9 @@ public class Theme extends Command {
 
     @Override
     public String createFormat() {
-        return null;
+        String safeUserId = idUser == null ? "" : idUser;
+        String safeThemeId = idTheme == null ? "" : idTheme;
+        return getID() + "|" + safeUserId + "|" + safeThemeId + System.lineSeparator();
     }
 
     public Theme() {

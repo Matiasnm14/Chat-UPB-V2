@@ -9,11 +9,12 @@ import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
-import edu.upb.chatupb_v2.model.repository.MessageDAO;
 import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -48,9 +49,22 @@ public class JUi extends JFrame implements IChatView {
     private static final Color PRESENCE_ONLINE = new Color(0x25D366);
     private static final int MESSAGE_MAX_WIDTH = 360;
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final Icon CHECK_SENT_ICON = loadIcon("/images/check_sent.png");
     private static final Icon CHECK_READ_ICON = loadIcon("/images/check_read.png");
+    private final BuzzSoundPlayer buzzSoundPlayer;
+    private Color currentBgApp = BG_APP;
+    private Color currentPanel = BG_PANEL;
+    private Color currentChatBg = CHAT_BG;
+    private Color currentAccent = ACCENT;
+    private Color currentTextPrimary = TEXT_PRIMARY;
+    private Color currentTextMuted = TEXT_MUTED;
+    private Color currentBorder = BORDER;
+    private Color currentBubbleOut = BUBBLE_OUT;
+    private Color currentBubbleIn = BUBBLE_IN;
+    private Color currentTimeText = TIME_TEXT;
+    private Color currentPresenceOnline = PRESENCE_ONLINE;
+    private Color currentUniqueBubble = new Color(0xFFF3CD);
+    private ChatThemeOption currentTheme = ChatThemeOption.DEFAULT;
 
     public JUi() {
         this(null);
@@ -61,6 +75,7 @@ public class JUi extends JFrame implements IChatView {
         this.userId = edu.upb.chatupb_v2.UserIdentity.loadOrCreateUserId();
         this.contactController = new ContactController(this);
         this.messageController = new MessageController(this);
+        this.buzzSoundPlayer = new BuzzSoundPlayer();
         initComponents();
     }
 
@@ -76,6 +91,16 @@ public class JUi extends JFrame implements IChatView {
         jbConectar = new JButton("Conectar");
         jbEnviar = new JButton("Enviar");
         jbImagen = new JButton("Imagen");
+        jbUnico = new JButton("Unico");
+        jbZumbido = new JButton("Zumbido");
+        jbFijar = new JButton("Fijar");
+        jbTema = new JButton("Tema");
+        jbEliminarMensaje = new JButton("Eliminar msj");
+        messagePopupMenu = new JPopupMenu();
+        miEliminarMensaje = new JMenuItem("Eliminar mensaje");
+        miFijarMensaje = new JMenuItem("Anclar mensaje");
+        messagePopupMenu.add(miFijarMensaje);
+        messagePopupMenu.add(miEliminarMensaje);
 
         statusDot = new JLabel();
         statusIcon = new DotIcon(new Color(0xB0B6BB), 10);
@@ -88,13 +113,13 @@ public class JUi extends JFrame implements IChatView {
         contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         contactList.setCellRenderer(new ContactRenderer());
         contactList.setFixedCellHeight(44);
-        contactList.setBackground(BG_PANEL);
+        contactList.setBackground(currentPanel);
         contactList.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     ContactListItem selected = contactList.getSelectedValue();
-                    if (selected != null && !selected.isOnline()) {
+                    if (selected != null) {
                         String senderName = jTextUserName.getText();
                         if (senderName == null || senderName.isBlank()) {
                             senderName = username;
@@ -110,6 +135,7 @@ public class JUi extends JFrame implements IChatView {
                 ContactListItem selected = contactList.getSelectedValue();
                 if (selected != null) {
                     selectedContactCode = selected.getCode();
+                    applyTheme(selected.getThemeId());
                     loadMessagesForContact(selected);
                     Mediator.getInstance().setActiveContact(selected.getCode(), selected.getIp());
                 }
@@ -119,20 +145,25 @@ public class JUi extends JFrame implements IChatView {
         JScrollPane contactScrollPane = new JScrollPane(contactList);
         contactScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         contactScrollPane.setBorder(BorderFactory.createEmptyBorder());
-        contactScrollPane.getViewport().setBackground(BG_PANEL);
+        contactScrollPane.getViewport().setBackground(currentPanel);
 
         messagesPanel = new JPanel();
         messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
-        messagesPanel.setBackground(CHAT_BG);
+        messagesPanel.setBackground(currentChatBg);
 
         messagesScrollPane = new JScrollPane(messagesPanel);
         messagesScrollPane.setBorder(BorderFactory.createEmptyBorder());
-        messagesScrollPane.getViewport().setBackground(CHAT_BG);
+        messagesScrollPane.getViewport().setBackground(currentChatBg);
         messagesScrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         styleButtonPrimary(jbConectar);
         styleButtonPrimary(jbEnviar);
+        styleButtonPrimary(jbUnico);
         styleButtonGhost(jbImagen);
+        styleButtonAccentOutline(jbZumbido);
+        styleButtonGhost(jbFijar);
+        styleButtonGhost(jbTema);
+        styleButtonDanger(jbEliminarMensaje);
 
         jbConectar.addActionListener(evt -> {
             String senderName = jTextUserName.getText();
@@ -171,29 +202,36 @@ public class JUi extends JFrame implements IChatView {
             jTextMensaje.setText("");
         });
         jbImagen.addActionListener(evt -> sendImage());
+        jbUnico.addActionListener(evt -> sendUniqueMessage());
+        jbZumbido.addActionListener(evt -> sendBuzz());
+        jbFijar.addActionListener(evt -> pinSelectedMessage());
+        jbTema.addActionListener(evt -> chooseTheme());
+        jbEliminarMensaje.addActionListener(evt -> deleteSelectedMessage());
+        miFijarMensaje.addActionListener(evt -> pinSelectedMessage());
+        miEliminarMensaje.addActionListener(evt -> deleteSelectedMessage());
 
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(BG_APP);
-        setContentPane(root);
+        rootPanel = new JPanel(new BorderLayout());
+        rootPanel.setBackground(currentBgApp);
+        setContentPane(rootPanel);
 
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.setBackground(BG_PANEL);
-        leftPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER));
+        leftPanel = new JPanel(new BorderLayout());
+        leftPanel.setBackground(currentPanel);
+        leftPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, currentBorder));
         leftPanel.setPreferredSize(new Dimension(280, 0));
 
-        JPanel leftHeader = new JPanel();
-        leftHeader.setBackground(BG_PANEL);
-        leftHeader.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
-        leftHeader.setLayout(new BoxLayout(leftHeader, BoxLayout.Y_AXIS));
+        leftHeaderPanel = new JPanel();
+        leftHeaderPanel.setBackground(currentPanel);
+        leftHeaderPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
+        leftHeaderPanel.setLayout(new BoxLayout(leftHeaderPanel, BoxLayout.Y_AXIS));
 
         JLabel contactsTitle = new JLabel("Contactos");
         contactsTitle.setFont(new Font("SansSerif", Font.BOLD, 18));
-        contactsTitle.setForeground(TEXT_PRIMARY);
+        contactsTitle.setForeground(currentTextPrimary);
 
         JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         statusPanel.setOpaque(false);
         jOnline.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        jOnline.setForeground(TEXT_MUTED);
+        jOnline.setForeground(currentTextMuted);
         statusPanel.add(statusDot);
         statusPanel.add(jOnline);
 
@@ -202,22 +240,22 @@ public class JUi extends JFrame implements IChatView {
         jbEliminar.setAlignmentX(Component.LEFT_ALIGNMENT);
         jbEliminar.addActionListener(evt -> deleteSelectedContact());
 
-        leftHeader.add(contactsTitle);
-        leftHeader.add(Box.createVerticalStrut(6));
-        leftHeader.add(statusPanel);
-        leftHeader.add(Box.createVerticalStrut(10));
-        leftHeader.add(jbEliminar);
+        leftHeaderPanel.add(contactsTitle);
+        leftHeaderPanel.add(Box.createVerticalStrut(6));
+        leftHeaderPanel.add(statusPanel);
+        leftHeaderPanel.add(Box.createVerticalStrut(10));
+        leftHeaderPanel.add(jbEliminar);
 
-        leftPanel.add(leftHeader, BorderLayout.NORTH);
+        leftPanel.add(leftHeaderPanel, BorderLayout.NORTH);
         leftPanel.add(contactScrollPane, BorderLayout.CENTER);
 
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(BG_APP);
+        rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(currentBgApp);
 
-        JPanel topBar = new JPanel(new GridBagLayout());
-        topBar.setBackground(BG_PANEL);
-        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER));
-        topBar.setPreferredSize(new Dimension(0, 72));
+        topBarPanel = new JPanel(new GridBagLayout());
+        topBarPanel.setBackground(currentPanel);
+        topBarPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, currentBorder));
+        topBarPanel.setPreferredSize(new Dimension(0, 72));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 12, 6, 12);
@@ -226,43 +264,63 @@ public class JUi extends JFrame implements IChatView {
 
         gbc.gridx = 0;
         gbc.weightx = 0;
-        topBar.add(makeFieldLabel("Contacto"), gbc);
+        topBarPanel.add(makeFieldLabel("Contacto"), gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1;
-        topBar.add(jIP, gbc);
+        topBarPanel.add(jIP, gbc);
 
         gbc.gridx = 2;
         gbc.weightx = 0;
-        topBar.add(makeFieldLabel("Usuario"), gbc);
+        topBarPanel.add(makeFieldLabel("Usuario"), gbc);
 
         gbc.gridx = 3;
         gbc.weightx = 1;
-        topBar.add(jTextUserName, gbc);
+        topBarPanel.add(jTextUserName, gbc);
 
         gbc.gridx = 4;
         gbc.weightx = 0;
-        topBar.add(jbConectar, gbc);
+        topBarPanel.add(jbConectar, gbc);
 
+        gbc.gridx = 5;
+        gbc.weightx = 0;
+        topBarPanel.add(jbZumbido, gbc);
 
-        JPanel inputBar = new JPanel(new BorderLayout(8, 8));
-        inputBar.setBackground(BG_PANEL);
-        inputBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
-        inputBar.add(jTextMensaje, BorderLayout.CENTER);
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        pinnedPanel = new JPanel(new BorderLayout(8, 0));
+        pinnedTitleLabel = new JLabel("Fijado");
+        pinnedTitleLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        pinnedPreviewLabel = new JLabel("Sin mensaje fijado");
+        pinnedPreviewLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        pinnedPanel.add(pinnedTitleLabel, BorderLayout.WEST);
+        pinnedPanel.add(pinnedPreviewLabel, BorderLayout.CENTER);
+        pinnedPanel.setVisible(false);
+
+        centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setOpaque(false);
+        centerPanel.add(pinnedPanel, BorderLayout.NORTH);
+        centerPanel.add(messagesScrollPane, BorderLayout.CENTER);
+
+        inputBarPanel = new JPanel(new BorderLayout(8, 8));
+        inputBarPanel.setBackground(currentPanel);
+        inputBarPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, currentBorder));
+        inputBarPanel.add(jTextMensaje, BorderLayout.CENTER);
+        actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actionPanel.setOpaque(false);
         actionPanel.add(jbImagen);
+        actionPanel.add(jbUnico);
+        actionPanel.add(jbTema);
         actionPanel.add(jbEnviar);
-        inputBar.add(actionPanel, BorderLayout.EAST);
+        inputBarPanel.add(actionPanel, BorderLayout.EAST);
 
-        rightPanel.add(topBar, BorderLayout.NORTH);
-        rightPanel.add(messagesScrollPane, BorderLayout.CENTER);
-        rightPanel.add(inputBar, BorderLayout.SOUTH);
+        rightPanel.add(topBarPanel, BorderLayout.NORTH);
+        rightPanel.add(centerPanel, BorderLayout.CENTER);
+        rightPanel.add(inputBarPanel, BorderLayout.SOUTH);
 
-        root.add(leftPanel, BorderLayout.WEST);
-        root.add(rightPanel, BorderLayout.CENTER);
+        rootPanel.add(leftPanel, BorderLayout.WEST);
+        rootPanel.add(rightPanel, BorderLayout.CENTER);
 
         setMinimumSize(new Dimension(900, 600));
+        applyThemeInternal(ChatThemeOption.DEFAULT.getId());
         pack();
         setLocationRelativeTo(null);
     }
@@ -308,13 +366,36 @@ public class JUi extends JFrame implements IChatView {
     private JButton jbConectar;
     private JButton jbEnviar;
     private JButton jbImagen;
+    private JButton jbUnico;
+    private JButton jbZumbido;
+    private JButton jbFijar;
+    private JButton jbTema;
+    private JButton jbEliminarMensaje;
     private JButton jbEliminar;
+    private JPopupMenu messagePopupMenu;
+    private JMenuItem miEliminarMensaje;
+    private JMenuItem miFijarMensaje;
     private DotIcon statusIcon;
     private DefaultListModel<ContactListItem> contactListModel;
     private JList<ContactListItem> contactList;
+    private JPanel rootPanel;
+    private JPanel leftPanel;
+    private JPanel leftHeaderPanel;
+    private JPanel rightPanel;
+    private JPanel topBarPanel;
+    private JPanel centerPanel;
+    private JPanel inputBarPanel;
+    private JPanel actionPanel;
+    private JPanel pinnedPanel;
+    private JLabel pinnedTitleLabel;
+    private JLabel pinnedPreviewLabel;
     private String selectedContactCode;
+    private String pinnedMessageId;
     private final java.util.Map<String, JLabel> outgoingStatusById = new java.util.HashMap<>();
-    private boolean autoHelloSent = false;
+    private final java.util.Map<String, JComponent> messageContainersById = new java.util.HashMap<>();
+    private MessageRow selectedMessageRow;
+    private Timer buzzShakeTimer;
+    private Point buzzOrigin;
 
     private void loadContacts() {
         contactController.unload();
@@ -327,6 +408,7 @@ public class JUi extends JFrame implements IChatView {
             ContactListItem selected = contactList.getSelectedValue();
             if (selected != null) {
                 selectedContactCode = selected.getCode();
+                applyTheme(selected.getThemeId());
                 Mediator.getInstance().setActiveContact(selected.getCode(), selected.getIp());
             }
         }
@@ -336,18 +418,7 @@ public class JUi extends JFrame implements IChatView {
         if (contact == null) {
             return;
         }
-        messageController.unloadForContact(userId.toString(), contact.getCode(), contact.getIp());
-    }
-
-    private String extractTime(String dateValue) {
-        if (dateValue == null || dateValue.isBlank()) {
-            return LocalTime.now().format(TIME_FORMAT);
-        }
-        try {
-            return java.time.LocalDateTime.parse(dateValue, DATE_FORMAT).toLocalTime().format(TIME_FORMAT);
-        } catch (Exception e) {
-            return LocalTime.now().format(TIME_FORMAT);
-        }
+        messageController.unloadForContact(userId.toString(), username, contact.getCode(), contact.getIp());
     }
 
     @Override
@@ -375,7 +446,7 @@ public class JUi extends JFrame implements IChatView {
     private void updateStatusIndicator(String status) {
         String lower = status == null ? "" : status.toLowerCase(Locale.ROOT);
         if (lower.contains("online")) {
-            statusIcon.setColor(PRESENCE_ONLINE);
+            statusIcon.setColor(currentPresenceOnline);
         } else if (lower.contains("enviando")) {
             statusIcon.setColor(new Color(0xF44242));
         } else if (lower.contains("rejected") || lower.contains("rechaz")) {
@@ -388,7 +459,7 @@ public class JUi extends JFrame implements IChatView {
 
     private JLabel makeFieldLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setForeground(TEXT_MUTED);
+        label.setForeground(currentTextMuted);
         label.setFont(new Font("SansSerif", Font.PLAIN, 12));
         return label;
     }
@@ -398,24 +469,31 @@ public class JUi extends JFrame implements IChatView {
     }
 
     private void styleButtonPrimary(JButton button) {
-        button.setBackground(ACCENT);
+        button.setBackground(currentAccent);
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
 // Stilo de mi interfase
     private void styleButtonGhost(JButton button) {
-        button.setBackground(BG_PANEL);
-        button.setForeground(TEXT_PRIMARY);
+        button.setBackground(currentPanel);
+        button.setForeground(currentTextPrimary);
         button.setFocusPainted(false);
-        button.setBorder(BorderFactory.createLineBorder(BORDER));
+        button.setBorder(BorderFactory.createLineBorder(currentBorder));
     }
 
     private void styleButtonDanger(JButton button) {
-        button.setBackground(BG_PANEL);
+        button.setBackground(currentPanel);
         button.setForeground(new Color(0xE74C3C));
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createLineBorder(new Color(0xE74C3C)));
+    }
+
+    private void styleButtonAccentOutline(JButton button) {
+        button.setBackground(blendColors(currentAccent, currentPanel, 0.08f));
+        button.setForeground(currentAccent);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(currentAccent));
     }
 
     @Override
@@ -431,8 +509,23 @@ public class JUi extends JFrame implements IChatView {
     }
 
     @Override
+    public void addChatMessage(String message, boolean outgoing, String senderName, String messageId) {
+        addChatMessageWithTime(message, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
+    }
+
+    @Override
+    public void addUniqueMessage(String message, boolean outgoing, String senderName, String messageId) {
+        addUniqueMessageWithTime(message, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
+    }
+
+    @Override
     public void addImageMessage(String imageBase64, boolean outgoing, String senderName) {
         addImageMessageWithTime(imageBase64, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), null, false);
+    }
+
+    @Override
+    public void addImageMessage(String imageBase64, boolean outgoing, String senderName, String messageId) {
+        addImageMessageWithTime(imageBase64, outgoing, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
     }
 
     @Override
@@ -442,36 +535,41 @@ public class JUi extends JFrame implements IChatView {
             for (AcceptHello.User.Contact contact : contacts) {
                 String name = contact.getName() != null ? contact.getName() : "(Sin nombre)";
                 String ip = contact.getIp() != null ? contact.getIp() : "";
-                ContactListItem item = new ContactListItem(name, ip, contact.getCode(), false);
+                ContactListItem item = new ContactListItem(name, ip, contact.getCode(), contact.getThemeId(), false);
                 contactListModel.addElement(item);
             }
         }
         refreshContactPresence();
         selectFirstContact();
-        if (!autoHelloSent) {
-            autoHelloSent = true;
-            autoSendHelloToContacts(contacts);
-        }
     }
 
     @Override
-    public void unloadMessages(List<MessageDAO.Message> messages) {
+    public void unloadMessages(List<ChatMessageViewModel> messages) {
         messagesPanel.removeAll();
         outgoingStatusById.clear();
+        messageContainersById.clear();
+        selectedMessageRow = null;
+        clearPinnedMessage();
+        ChatMessageViewModel pinnedMessage = null;
         if (messages != null) {
-            for (MessageDAO.Message message : messages) {
-                if (message.getMessage() == null || message.getMessage().isBlank()) {
+            for (ChatMessageViewModel message : messages) {
+                if (message.getContent() == null || message.getContent().isBlank()) {
                     continue;
                 }
-                boolean outgoing = userId.toString().equals(message.getSenderCode());
-                String senderName = outgoing ? username : "Desconocido";
-                String time = extractTime(message.getCreatedDate());
                 if (message.getType() == TypeMessage.IMAGE) {
-                    addImageMessageWithTime(message.getMessage(), outgoing, senderName, time, message.getCodMessage(), false);
+                    addImageMessageWithTime(message.getContent(), message.isOutgoing(), message.getSenderName(), message.getTime(), message.getMessageId(), message.isRead());
+                } else if (message.getType() == TypeMessage.UNIQUE) {
+                    addUniqueMessageWithTime(message.getContent(), message.isOutgoing(), message.getSenderName(), message.getTime(), message.getMessageId(), message.isRead());
                 } else {
-                    addChatMessageWithTime(message.getMessage(), outgoing, senderName, time, message.getCodMessage(), false);
+                    addChatMessageWithTime(message.getContent(), message.isOutgoing(), message.getSenderName(), message.getTime(), message.getMessageId(), message.isRead());
+                }
+                if (message.isPinned()) {
+                    pinnedMessage = message;
                 }
             }
+        }
+        if (pinnedMessage != null) {
+            showPinnedMessage(pinnedMessage.getMessageId(), buildPinnedPreview(pinnedMessage));
         }
         messagesPanel.revalidate();
         messagesPanel.repaint();
@@ -483,13 +581,28 @@ public class JUi extends JFrame implements IChatView {
             if (outgoing && messageId != null && !messageId.isBlank() && !read) {
                 resolvedRead = Mediator.getInstance().isMessageRead(messageId);
             }
-            MessageRow row = new MessageRow(message, null, outgoing, senderName, time, messageId, resolvedRead);
-            messagesPanel.add(row);
-            messagesPanel.add(Box.createVerticalStrut(8));
-            messagesPanel.revalidate();
-            messagesPanel.repaint();
-            JScrollBar bar = messagesScrollPane.getVerticalScrollBar();
-            bar.setValue(bar.getMaximum());
+            MessageRow row = new MessageRow(message, null, outgoing, senderName, time, messageId, resolvedRead, TypeMessage.TEXT);
+            JComponent entry = wrapMessageRow(row);
+            messagesPanel.add(entry);
+            repaintMessages();
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
+        }
+    }
+
+    private void addUniqueMessageWithTime(String message, boolean outgoing, String senderName, String time, String messageId, boolean read) {
+        Runnable task = () -> {
+            boolean resolvedRead = read;
+            if (outgoing && messageId != null && !messageId.isBlank() && !read) {
+                resolvedRead = Mediator.getInstance().isMessageRead(messageId);
+            }
+            MessageRow row = new MessageRow(message, null, outgoing, senderName, time, messageId, resolvedRead, TypeMessage.UNIQUE);
+            JComponent entry = wrapMessageRow(row);
+            messagesPanel.add(entry);
+            repaintMessages();
         };
         if (SwingUtilities.isEventDispatchThread()) {
             task.run();
@@ -506,13 +619,10 @@ public class JUi extends JFrame implements IChatView {
             }
             ImageIcon icon = decodeImage(imageBase64);
             String fallback = icon == null ? "Imagen no disponible" : null;
-            MessageRow row = new MessageRow(fallback, icon, outgoing, senderName, time, messageId, resolvedRead);
-            messagesPanel.add(row);
-            messagesPanel.add(Box.createVerticalStrut(8));
-            messagesPanel.revalidate();
-            messagesPanel.repaint();
-            JScrollBar bar = messagesScrollPane.getVerticalScrollBar();
-            bar.setValue(bar.getMaximum());
+            MessageRow row = new MessageRow(fallback, icon, outgoing, senderName, time, messageId, resolvedRead, TypeMessage.IMAGE);
+            JComponent entry = wrapMessageRow(row);
+            messagesPanel.add(entry);
+            repaintMessages();
         };
         if (SwingUtilities.isEventDispatchThread()) {
             task.run();
@@ -542,7 +652,10 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showBuzzNotification(String senderName) {
-        JOptionPane.showMessageDialog(null, senderName + " Te ha enviado un zumbido", "Zumbido", JOptionPane.INFORMATION_MESSAGE);
+        String name = (senderName == null || senderName.isBlank()) ? "Alguien" : senderName;
+        updateStatus("Zumbido de " + name);
+        buzzSoundPlayer.play();
+        shakeWindow();
     }
 
     @Override
@@ -569,28 +682,75 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
-    private void autoSendHelloToContacts(List<AcceptHello.User.Contact> contacts) {
-        if (contacts == null || contacts.isEmpty()) {
+    @Override
+    public void removeMessage(String messageId) {
+        if (messageId == null || messageId.isBlank()) {
             return;
         }
-        String senderName = jTextUserName != null ? jTextUserName.getText() : null;
-        if (senderName == null || senderName.isBlank()) {
-            senderName = username;
+        Runnable task = () -> {
+            JComponent entry = messageContainersById.remove(messageId);
+            outgoingStatusById.remove(messageId);
+            if (selectedMessageRow != null && messageId.equals(selectedMessageRow.getMessageId())) {
+                selectedMessageRow.setSelectedState(false);
+                selectedMessageRow = null;
+            }
+            if (messageId.equals(pinnedMessageId)) {
+                clearPinnedMessage();
+            }
+            if (entry != null) {
+                messagesPanel.remove(entry);
+                messagesPanel.revalidate();
+                messagesPanel.repaint();
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
         }
-        String finalSenderName = senderName;
-        for (AcceptHello.User.Contact contact : contacts) {
-            if (contact == null) {
-                continue;
+    }
+
+    @Override
+    public void showPinnedMessage(String messageId, String previewText) {
+        Runnable task = () -> {
+            pinnedMessageId = messageId;
+            pinnedPreviewLabel.setText((previewText == null || previewText.isBlank()) ? "Mensaje fijado" : previewText);
+            pinnedPanel.setVisible(true);
+            pinnedPanel.revalidate();
+            pinnedPanel.repaint();
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
+        }
+    }
+
+    @Override
+    public void applyTheme(String themeId) {
+        Runnable task = () -> applyThemeInternal(themeId);
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
+        }
+    }
+
+    @Override
+    public void applyThemeForContact(String contactCode, String themeId) {
+        Runnable task = () -> {
+            ContactListItem item = findContactByCode(contactCode);
+            if (item != null) {
+                item.setThemeId(themeId);
             }
-            String code = contact.getCode();
-            String ip = contact.getIp();
-            if (code != null && code.equals(userId.toString())) {
-                continue;
+            if (contactCode != null && contactCode.equals(selectedContactCode)) {
+                applyThemeInternal(themeId);
             }
-            if (ip == null || ip.isBlank()) {
-                continue;
-            }
-            new Thread(() -> Mediator.getInstance().connectToContact(code, ip, userId.toString(), finalSenderName)).start();
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            SwingUtilities.invokeLater(task);
         }
     }
 
@@ -613,6 +773,10 @@ public class JUi extends JFrame implements IChatView {
             contactController.deleteByCode(selected.getCode());
             selectedContactCode = null;
             messagesPanel.removeAll();
+            outgoingStatusById.clear();
+            messageContainersById.clear();
+            selectedMessageRow = null;
+            clearPinnedMessage();
             messagesPanel.revalidate();
             messagesPanel.repaint();
             reloadContacts();
@@ -621,8 +785,130 @@ public class JUi extends JFrame implements IChatView {
         }
     }
 
+    private void sendBuzz() {
+        ContactListItem selected = contactList.getSelectedValue();
+        if (selected == null) {
+            showMessage("Selecciona un contacto para enviar el zumbido.");
+            return;
+        }
+        Mediator.getInstance().sendBuzz(userId.toString(), selected.getCode(), selected.getIp());
+    }
+
+    private void shakeWindow() {
+        if (buzzShakeTimer != null && buzzShakeTimer.isRunning()) {
+            return;
+        }
+        buzzOrigin = getLocation();
+        final int[] offsets = {0, -14, 14, -12, 12, -10, 10, -6, 6, -3, 3, 0};
+        final int[] index = {0};
+        buzzShakeTimer = new Timer(35, evt -> {
+            int offset = offsets[index[0]];
+            setLocation(buzzOrigin.x + offset, buzzOrigin.y);
+            index[0]++;
+            if (index[0] >= offsets.length) {
+                buzzShakeTimer.stop();
+                setLocation(buzzOrigin);
+            }
+        });
+        buzzShakeTimer.start();
+    }
+
+    private void pinSelectedMessage() {
+        if (selectedMessageRow == null || selectedMessageRow.getMessageId() == null || selectedMessageRow.getMessageId().isBlank()) {
+            showMessage("Selecciona un mensaje para fijar.");
+            return;
+        }
+        ContactListItem selectedContact = contactList.getSelectedValue();
+        String recipientCode = selectedContact != null ? selectedContact.getCode() : null;
+        String recipientIp = selectedContact != null ? selectedContact.getIp() : null;
+        Mediator.getInstance().sendPinMessage(selectedMessageRow.getMessageId(), recipientCode, recipientIp);
+    }
+
+    private void deleteSelectedMessage() {
+        if (selectedMessageRow == null || selectedMessageRow.getMessageId() == null || selectedMessageRow.getMessageId().isBlank()) {
+            showMessage("Selecciona un mensaje para eliminar.");
+            return;
+        }
+        if (!selectedMessageRow.isOutgoing()) {
+            showMessage("Solo puedes eliminar mensajes enviados por ti.");
+            return;
+        }
+        ContactListItem selectedContact = contactList.getSelectedValue();
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "¿Eliminar este mensaje?",
+                "Eliminar mensaje",
+                JOptionPane.YES_NO_OPTION
+        );
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        String messageId = selectedMessageRow.getMessageId();
+        String recipientCode = selectedContact != null ? selectedContact.getCode() : null;
+        String recipientIp = selectedContact != null ? selectedContact.getIp() : null;
+        Mediator.getInstance().sendDeleteMessage(messageId, recipientCode, recipientIp);
+    }
+
+    private void sendUniqueMessage() {
+        ContactListItem selected = contactList.getSelectedValue();
+        if (selected == null) {
+            showMessage("Selecciona un contacto para enviar el mensaje unico.");
+            return;
+        }
+        String text = jTextMensaje.getText() == null ? "" : jTextMensaje.getText().trim();
+        if (text.isEmpty()) {
+            showMessage("Escribe el mensaje unico.");
+            return;
+        }
+        String senderName = jTextUserName.getText();
+        if (senderName == null || senderName.isBlank()) {
+            senderName = username;
+        }
+        String messageId = UUID.randomUUID().toString();
+        addUniqueMessageWithTime(text, true, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
+        Mediator.getInstance().sendUniqueMessage(text, userId.toString(), messageId, selected.getCode(), selected.getIp());
+        jTextMensaje.setText("");
+    }
+
+    private void chooseTheme() {
+        ContactListItem selected = contactList.getSelectedValue();
+        if (selected == null) {
+            showMessage("Selecciona un contacto para cambiar su tema.");
+            return;
+        }
+        String[] options = ChatThemeOption.displayNames();
+        String selectedOption = (String) JOptionPane.showInputDialog(
+                this,
+                "Selecciona el tema",
+                "Tema",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                options,
+                currentTheme.getDisplayName()
+        );
+        if (selectedOption == null || selectedOption.isBlank()) {
+            return;
+        }
+        ChatThemeOption theme = ChatThemeOption.fromDisplayName(selectedOption);
+        String themeId = theme.getId();
+        selected.setThemeId(themeId);
+        try {
+            contactController.updateThemeByCode(selected.getCode(), themeId);
+        } catch (Exception e) {
+            showError("No se pudo guardar el tema del contacto: " + e.getMessage());
+            return;
+        }
+        applyTheme(themeId);
+        contactList.repaint();
+        Mediator.getInstance().sendTheme(userId.toString(), themeId, selected.getCode(), selected.getIp());
+    }
+
     private void sendImage() {
         ContactListItem selected = contactList.getSelectedValue();
+        if (selected == null) {
+            showMessage("Selecciona un contacto para enviar la imagen.");
+            return;
+        }
         JFileChooser chooser = new JFileChooser();
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Imagenes", "png", "jpg", "jpeg", "gif", "bmp"));
         int result = chooser.showOpenDialog(this);
@@ -649,13 +935,18 @@ public class JUi extends JFrame implements IChatView {
     }
 
     private final class MessageRow extends JPanel {
-        private MessageRow(String message, ImageIcon image, boolean outgoing, String senderName, String time, String messageId, boolean read) {
+        private final String messageId;
+        private final boolean outgoing;
+
+        private MessageRow(String message, ImageIcon image, boolean outgoing, String senderName, String time, String messageId, boolean read, TypeMessage type) {
+            this.messageId = messageId;
+            this.outgoing = outgoing;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setOpaque(false);
-            setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
+            setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
 
             AvatarView avatar = new AvatarView(senderName, outgoing);
-            BubblePanel bubble = new BubblePanel(message, image, outgoing, time, read);
+            BubblePanel bubble = new BubblePanel(message, image, outgoing, time, read, type);
             bubble.setAlignmentY(Component.TOP_ALIGNMENT);
             avatar.setAlignmentY(Component.TOP_ALIGNMENT);
             if (outgoing && messageId != null) {
@@ -676,19 +967,75 @@ public class JUi extends JFrame implements IChatView {
                 add(bubble);
                 add(Box.createHorizontalGlue());
             }
+            installSelectionHandler(this);
+            setSelectedState(false);
+        }
+
+        public String getMessageId() {
+            return messageId;
+        }
+
+        public boolean isOutgoing() {
+            return outgoing;
+        }
+
+        public void setSelectedState(boolean selected) {
+            Color borderColor = selected ? currentAccent : currentChatBg;
+            setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(borderColor, 2, true),
+                    BorderFactory.createEmptyBorder(4, 10, 4, 10)
+            ));
+            repaint();
+        }
+
+        private void installSelectionHandler(Component component) {
+            component.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (e.isPopupTrigger() || SwingUtilities.isRightMouseButton(e)) {
+                        return;
+                    }
+                    selectMessageRow(MessageRow.this);
+                }
+
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    maybeShowMessageMenu(e);
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    maybeShowMessageMenu(e);
+                }
+            });
+            if (component instanceof Container) {
+                for (Component child : ((Container) component).getComponents()) {
+                    installSelectionHandler(child);
+                }
+            }
         }
     }
 
     private final class BubblePanel extends JPanel {
-        private final Color bubbleColor;
+        private final boolean outgoing;
+        private final TypeMessage type;
         private JLabel statusLabel;
 
-        private BubblePanel(String message, ImageIcon image, boolean outgoing, String time, boolean read) {
-            this.bubbleColor = outgoing ? BUBBLE_OUT : BUBBLE_IN;
+        private BubblePanel(String message, ImageIcon image, boolean outgoing, String time, boolean read, TypeMessage type) {
+            this.outgoing = outgoing;
+            this.type = type;
             setOpaque(false);
             setLayout(new BorderLayout());
             setBorder(BorderFactory.createEmptyBorder(8, 10, 6, 10));
             setMaximumSize(new Dimension(MESSAGE_MAX_WIDTH, Integer.MAX_VALUE));
+
+            if (type == TypeMessage.UNIQUE) {
+                JLabel uniqueLabel = new JLabel("UNICO");
+                uniqueLabel.setFont(new Font("SansSerif", Font.BOLD, 10));
+                uniqueLabel.setForeground(new Color(0x8A6D3B));
+                uniqueLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+                add(uniqueLabel, BorderLayout.NORTH);
+            }
 
             if (image != null) {
                 JLabel imageLabel = new JLabel(image);
@@ -704,14 +1051,14 @@ public class JUi extends JFrame implements IChatView {
                 messageArea.setMargin(new Insets(0, 0, 0, 0));
                 messageArea.setFocusable(false);
                 messageArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                messageArea.setForeground(TEXT_PRIMARY);
+                messageArea.setForeground(currentTextPrimary);
                 messageArea.setColumns(24);
                 add(messageArea, BorderLayout.CENTER);
             }
 
             JLabel timeLabel = new JLabel(time == null || time.isBlank() ? LocalTime.now().format(TIME_FORMAT) : time);
             timeLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            timeLabel.setForeground(TIME_TEXT);
+            timeLabel.setForeground(currentTimeText);
 
             JPanel timePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
             timePanel.setOpaque(false);
@@ -733,10 +1080,17 @@ public class JUi extends JFrame implements IChatView {
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(bubbleColor);
+            g2.setColor(resolveBubbleColor());
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
             g2.dispose();
             super.paintComponent(g);
+        }
+
+        private Color resolveBubbleColor() {
+            if (type == TypeMessage.UNIQUE) {
+                return currentUniqueBubble;
+            }
+            return outgoing ? currentBubbleOut : currentBubbleIn;
         }
     }
 
@@ -808,16 +1162,82 @@ public class JUi extends JFrame implements IChatView {
         return new ImageIcon(scaled);
     }
 
+    private JComponent wrapMessageRow(MessageRow row) {
+        JPanel entry = new JPanel(new BorderLayout());
+        entry.setOpaque(false);
+        entry.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        entry.add(row, BorderLayout.CENTER);
+        if (row.getMessageId() != null && !row.getMessageId().isBlank()) {
+            messageContainersById.put(row.getMessageId(), entry);
+        }
+        return entry;
+    }
+
+    private void selectMessageRow(MessageRow row) {
+        if (row == null || row.getMessageId() == null || row.getMessageId().isBlank()) {
+            return;
+        }
+        if (selectedMessageRow != null && selectedMessageRow != row) {
+            selectedMessageRow.setSelectedState(false);
+        }
+        selectedMessageRow = row;
+        selectedMessageRow.setSelectedState(true);
+    }
+
+    private void maybeShowMessageMenu(MouseEvent event) {
+        if (event == null || !event.isPopupTrigger()) {
+            return;
+        }
+        if (!(event.getComponent() instanceof Component)) {
+            return;
+        }
+        Component component = event.getComponent();
+        MessageRow row = resolveMessageRow(component);
+        if (row == null) {
+            return;
+        }
+        selectMessageRow(row);
+        miFijarMensaje.setEnabled(true);
+        miEliminarMensaje.setEnabled(row.isOutgoing());
+        messagePopupMenu.show(component, event.getX(), event.getY());
+    }
+
+    private MessageRow resolveMessageRow(Component component) {
+        Component current = component;
+        while (current != null) {
+            if (current instanceof MessageRow) {
+                return (MessageRow) current;
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
+    private ContactListItem findContactByCode(String contactCode) {
+        if (contactCode == null || contactCode.isBlank()) {
+            return null;
+        }
+        for (int i = 0; i < contactListModel.size(); i++) {
+            ContactListItem item = contactListModel.get(i);
+            if (contactCode.equals(item.getCode())) {
+                return item;
+            }
+        }
+        return null;
+    }
+
     private static final class ContactListItem {
         private final String name;
         private final String ip;
         private final String code;
+        private String themeId;
         private boolean online;
 
-        private ContactListItem(String name, String ip, String code, boolean online) {
+        private ContactListItem(String name, String ip, String code, String themeId, boolean online) {
             this.name = name;
             this.ip = ip;
             this.code = code;
+            this.themeId = themeId;
             this.online = online;
         }
 
@@ -833,8 +1253,16 @@ public class JUi extends JFrame implements IChatView {
             return code;
         }
 
+        public String getThemeId() {
+            return themeId;
+        }
+
         public boolean isOnline() {
             return online;
+        }
+
+        public void setThemeId(String themeId) {
+            this.themeId = themeId;
         }
 
         public void setOnline(boolean online) {
@@ -897,9 +1325,9 @@ public class JUi extends JFrame implements IChatView {
             textPanel.setOpaque(false);
 
             nameLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
-            nameLabel.setForeground(TEXT_PRIMARY);
+            nameLabel.setForeground(currentTextPrimary);
             ipLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
-            ipLabel.setForeground(TEXT_MUTED);
+            ipLabel.setForeground(currentTextMuted);
             ipLabel.setVisible(false);
 
             textPanel.add(nameLabel);
@@ -919,13 +1347,165 @@ public class JUi extends JFrame implements IChatView {
         ) {
             if (value != null) {
                 nameLabel.setText(value.getName());
+                nameLabel.setForeground(currentTextPrimary);
+                ipLabel.setForeground(currentTextMuted);
                 ipLabel.setText("");
-                DotIcon icon = new DotIcon(value.isOnline() ? PRESENCE_ONLINE : new Color(0xE74C3C), 10);
+                DotIcon icon = new DotIcon(value.isOnline() ? currentPresenceOnline : new Color(0xE74C3C), 10);
                 dotLabel.setIcon(icon);
             }
-            setBackground(isSelected ? new Color(0xEAF5EF) : BG_PANEL);
+            setBackground(isSelected ? blendColors(currentAccent, currentPanel, 0.15f) : currentPanel);
             return this;
         }
+    }
+
+    private void repaintMessages() {
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+        JScrollBar bar = messagesScrollPane.getVerticalScrollBar();
+        bar.setValue(bar.getMaximum());
+    }
+
+    private void clearPinnedMessage() {
+        pinnedMessageId = null;
+        if (pinnedPreviewLabel != null) {
+            pinnedPreviewLabel.setText("Sin mensaje fijado");
+        }
+        if (pinnedPanel != null) {
+            pinnedPanel.setVisible(false);
+            pinnedPanel.revalidate();
+            pinnedPanel.repaint();
+        }
+    }
+
+    private String buildPinnedPreview(ChatMessageViewModel message) {
+        if (message == null) {
+            return "Mensaje fijado";
+        }
+        if (message.getType() == TypeMessage.IMAGE) {
+            return "Imagen";
+        }
+        String text = message.getContent();
+        if (text == null || text.isBlank()) {
+            return "Mensaje fijado";
+        }
+        String normalized = text.replace('\n', ' ').trim();
+        if (normalized.length() > 40) {
+            return normalized.substring(0, 40) + "...";
+        }
+        return normalized;
+    }
+
+    private void applyThemeInternal(String themeId) {
+        currentTheme = ChatThemeOption.fromId(themeId);
+        currentBgApp = currentTheme.getBgApp();
+        currentPanel = currentTheme.getPanel();
+        currentChatBg = currentTheme.getChatBg();
+        currentAccent = currentTheme.getAccent();
+        currentTextPrimary = currentTheme.getTextPrimary();
+        currentTextMuted = currentTheme.getTextMuted();
+        currentBorder = currentTheme.getBorder();
+        currentBubbleOut = currentTheme.getBubbleOut();
+        currentBubbleIn = currentTheme.getBubbleIn();
+        currentTimeText = currentTheme.getTimeText();
+        currentPresenceOnline = currentTheme.getPresenceOnline();
+        currentUniqueBubble = currentTheme.getUniqueBubble();
+        refreshThemeUi();
+    }
+
+    private void refreshThemeUi() {
+        if (rootPanel != null) {
+            rootPanel.setBackground(currentBgApp);
+        }
+        if (leftPanel != null) {
+            leftPanel.setBackground(currentPanel);
+            leftPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, currentBorder));
+        }
+        if (leftHeaderPanel != null) {
+            leftHeaderPanel.setBackground(currentPanel);
+        }
+        if (rightPanel != null) {
+            rightPanel.setBackground(currentBgApp);
+        }
+        if (topBarPanel != null) {
+            topBarPanel.setBackground(currentPanel);
+            topBarPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, currentBorder));
+        }
+        if (inputBarPanel != null) {
+            inputBarPanel.setBackground(currentPanel);
+            inputBarPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, currentBorder));
+        }
+        if (pinnedPanel != null) {
+            pinnedPanel.setBackground(blendColors(currentAccent, currentPanel, 0.10f));
+            pinnedPanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, currentBorder),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+        }
+        if (pinnedTitleLabel != null) {
+            pinnedTitleLabel.setForeground(currentAccent);
+        }
+        if (pinnedPreviewLabel != null) {
+            pinnedPreviewLabel.setForeground(currentTextPrimary);
+        }
+        if (messagesPanel != null) {
+            messagesPanel.setBackground(currentChatBg);
+        }
+        if (messagesScrollPane != null) {
+            messagesScrollPane.getViewport().setBackground(currentChatBg);
+        }
+        if (contactList != null) {
+            contactList.setBackground(currentPanel);
+            contactList.repaint();
+        }
+        if (jOnline != null) {
+            jOnline.setForeground(currentTextMuted);
+        }
+        styleTextField(jIP);
+        styleTextField(jTextUserName);
+        styleTextField(jTextMensaje);
+        styleButtonPrimary(jbConectar);
+        styleButtonPrimary(jbEnviar);
+        styleButtonPrimary(jbUnico);
+        styleButtonGhost(jbImagen);
+        styleButtonAccentOutline(jbZumbido);
+        styleButtonGhost(jbFijar);
+        styleButtonGhost(jbTema);
+        styleButtonDanger(jbEliminarMensaje);
+        styleButtonDanger(jbEliminar);
+        updateStatusIndicator(jOnline != null ? jOnline.getText() : "");
+        for (JComponent entry : messageContainersById.values()) {
+            if (entry.getComponentCount() == 0) {
+                continue;
+            }
+            Component child = entry.getComponent(0);
+            if (child instanceof MessageRow) {
+                MessageRow row = (MessageRow) child;
+                row.setSelectedState(row == selectedMessageRow);
+            }
+        }
+        repaint();
+    }
+
+    private void styleTextField(JTextField field) {
+        if (field == null) {
+            return;
+        }
+        field.setBackground(currentPanel);
+        field.setForeground(currentTextPrimary);
+        field.setCaretColor(currentTextPrimary);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(currentBorder),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
+        ));
+    }
+
+    private Color blendColors(Color first, Color second, float ratioToFirst) {
+        float ratio = Math.max(0f, Math.min(1f, ratioToFirst));
+        float inverse = 1f - ratio;
+        int red = Math.round(first.getRed() * ratio + second.getRed() * inverse);
+        int green = Math.round(first.getGreen() * ratio + second.getGreen() * inverse);
+        int blue = Math.round(first.getBlue() * ratio + second.getBlue() * inverse);
+        return new Color(red, green, blue);
     }
 }//172.16.41.214
 

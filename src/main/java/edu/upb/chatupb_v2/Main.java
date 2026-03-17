@@ -1,23 +1,23 @@
 package edu.upb.chatupb_v2;
 
-import edu.upb.chatupb_v2.controller.ChatServer;
+import edu.upb.chatupb_v2.model.network.ChatServer;
 import edu.upb.chatupb_v2.controller.Mediator;
-import edu.upb.chatupb_v2.model.repository.UserProfileDao;
+import edu.upb.chatupb_v2.controller.ProfileController;
 import edu.upb.chatupb_v2.view.JUi;
 import edu.upb.chatupb_v2.view.LoginDialog;
 
 public class Main {
     public static void main(String[] args) throws Exception {
         String userId = UserIdentity.loadOrCreateUserId().toString();
-        UserProfileDao profileDao = new UserProfileDao();
-        String username = profileDao.findUserName(userId);
+        ProfileController profileController = new ProfileController();
+        String username = profileController.findUserName(userId);
         if (username == null || username.isBlank()) {
             LoginDialog.LoginResult login = LoginDialog.showDialog();
             if (login == null) {
                 return;
             }
             username = login.getUsername();
-            profileDao.upsertUserName(userId, username);
+            profileController.upsertUserName(userId, username);
         }
         JUi jUi = new JUi(username);
         Mediator mediator = Mediator.getInstance();

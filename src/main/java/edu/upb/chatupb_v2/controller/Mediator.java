@@ -2,6 +2,7 @@ package edu.upb.chatupb_v2.controller;
 
 import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.comands.*;
+import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.model.repository.CacheContactDAO;
 import edu.upb.chatupb_v2.model.repository.IContactDAO;
@@ -41,6 +42,7 @@ public class Mediator implements SocketClient.SocketListener {
     private final Map<String, java.util.List<String>> pendingReadBySender = new HashMap<>();
     private final Set<String> confirmedMessageIds = new HashSet<>();
     private final Set<String> readMessageIds = new HashSet<>();
+    private final MessageDAO messageDao = new MessageDAO();
 
     private Mediator() {}
 
@@ -146,6 +148,18 @@ public class Mediator implements SocketClient.SocketListener {
             }
         }
         return null;
+    }
+
+    private SocketClient resolveClientForUser(String userId, String contactIp) {
+        SocketClient client = findClientByCodeOrIp(userId, contactIp);
+        if (client != null) {
+            return client;
+        }
+        String resolvedIp = resolveContactIp(userId, contactIp);
+        if (resolvedIp == null || resolvedIp.isBlank()) {
+            return null;
+        }
+        return findClientByCodeOrIp(userId, resolvedIp);
     }
 
     private String resolveContactIp(String contactCode, String contactIp) {
@@ -293,14 +307,121 @@ public class Mediator implements SocketClient.SocketListener {
         }
     }
 
-    public void sendBuzz(String userId) {
-        for (SocketClient sc : Mediator.getInstance().getClients().values()) {
-            Buzzing bz = new Buzzing(userId);
-            try {
-                sc.send(bz.createFormat());
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
+    public void sendBuzz(String userId, String recipientCode, String recipientIp) {
+        SocketClient target = findClientByCodeOrIp(recipientCode, recipientIp);
+        if (target == null) {
+            return;
+        }
+        Buzzing bz = new Buzzing(userId);
+        try {
+            target.send(bz.createFormat());
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private String resolveContactDisplayName(String userId, String contactIp, String fallbackName) {
+        try {
+            if (userId != null && !userId.isBlank() && !userId.equals(localUserId)) {
+                AcceptHello.User.Contact byCode = contactDao.findByCode(userId);
+                if (byCode != null && byCode.getName() != null && !byCode.getName().isBlank()) {
+                    return byCode.getName();
+                }
             }
+            if (contactIp != null && !contactIp.isBlank()) {
+                AcceptHello.User.Contact byIp = contactDao.findByIp(contactIp);
+                if (byIp != null && byIp.getName() != null && !byIp.getName().isBlank()) {
+                    return byIp.getName();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("No se pudo resolver nombre del contacto: " + e.getMessage());
+        }
+        if (fallbackName != null && !fallbackName.isBlank() && !fallbackName.equals(localUserName)) {
+            return fallbackName;
+        }
+        return "Desconocido";
+    }
+
+    public void sendDeleteMessage(String messageId, String recipientCode, String recipientIp) {
+        if (messageId == null || messageId.isBlank()) {
+            return;
+        }
+        deleteMessageLocal(messageId);
+        IChatView view = this.view;
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.removeMessage(messageId));
+        }
+        SocketClient target = findClientByCodeOrIp(recipientCode, recipientIp);
+        if (target == null) {
+            return;
+        }
+        DeleteMessage deleteMessage = new DeleteMessage(messageId);
+        try {
+            target.send(deleteMessage.createFormat());
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public void sendPinMessage(String messageId, String recipientCode, String recipientIp) {
+        if (messageId == null || messageId.isBlank()) {
+            return;
+        }
+        pinMessageLocal(messageId);
+        SocketClient target = findClientByCodeOrIp(recipientCode, recipientIp);
+        if (target == null) {
+            return;
+        }
+        PinMessage pinMessage = new PinMessage(messageId);
+        try {
+            target.send(pinMessage.createFormat());
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public void sendUniqueMessage(String messageText, String userId, String messageId, String recipientCode, String recipientIp) {
+        try {
+            if (messageText == null || messageText.isBlank()) {
+                return;
+            }
+            SocketClient target = findClientByCodeOrIp(recipientCode, recipientIp);
+            String resolvedRecipient = recipientCode;
+            String resolvedRoomCode = recipientIp;
+            if ((resolvedRecipient == null || resolvedRecipient.isBlank()) && target != null) {
+                resolvedRecipient = target.getUID();
+            }
+            if ((resolvedRoomCode == null || resolvedRoomCode.isBlank()) && target != null) {
+                resolvedRoomCode = target.getIp();
+            }
+            saveOutgoingMessage(messageId, userId, resolvedRecipient != null ? resolvedRecipient : "", messageText, resolvedRoomCode, TypeMessage.UNIQUE);
+            if (target == null) {
+                return;
+            }
+            if (localUserId != null && localUserId.equals(target.getUID())) {
+                return;
+            }
+            UniqueMessage uniqueMessage = new UniqueMessage(userId, messageId, messageText);
+            target.send(uniqueMessage.createFormat());
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public void sendTheme(String userId, String themeId, String recipientCode, String recipientIp) {
+        if (themeId == null || themeId.isBlank()) {
+            return;
+        }
+        SocketClient target = findClientByCodeOrIp(recipientCode, recipientIp);
+        if (target == null) {
+            return;
+        }
+        Theme theme = new Theme(userId, themeId);
+        try {
+            target.send(theme.createFormat());
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
         }
     }
 // CHAT SERVER REVISAR
@@ -511,23 +632,26 @@ public class Mediator implements SocketClient.SocketListener {
             return;
         }
         System.out.println("Mensaje: " + chat.getMessage());
-        SocketClient sc = Mediator.getInstance().getClients().get(chat.getIdUser());
+        String resolvedIp = resolveContactIp(chat.getIdUser(), null);
+        SocketClient sc = resolveClientForUser(chat.getIdUser(), resolvedIp);
         updateContactIpIfNeeded(chat.getIdUser(), sc);
         String recipientCode = localUserId != null ? localUserId : "";
-        saveIncomingMessage(chat.getIdMessage(), chat.getIdUser(), recipientCode, chat.getMessage(), sc != null ? sc.getIp() : null, TypeMessage.TEXT);
+        String socketIp = sc != null ? sc.getIp() : resolvedIp;
+        saveIncomingMessage(chat.getIdMessage(), chat.getIdUser(), recipientCode, chat.getMessage(), socketIp, TypeMessage.TEXT);
         String name = "Desconocido";
         if (sc != null && sc.getNombre() != null) {
             name = sc.getNombre();
         }
         String finalName = name;
-        SwingUtilities.invokeLater(() -> view.addChatMessage(chat.getMessage(), false, finalName));
-        boolean activeNow = isActiveContact(chat.getIdUser(), sc != null ? sc.getIp() : null);
+        String messageId = chat.getIdMessage();
+        SwingUtilities.invokeLater(() -> view.addChatMessage(chat.getMessage(), false, finalName, messageId));
+        boolean activeNow = isActiveContact(chat.getIdUser(), socketIp);
         if (activeNow) {
             sendConfirmReceived(chat.getIdMessage(), sc);
         } else if (chat.getIdMessage() != null && !chat.getIdMessage().isBlank()) {
             String key = chat.getIdUser() != null && !chat.getIdUser().isBlank()
                     ? chat.getIdUser()
-                    : (sc != null && sc.getIp() != null ? IP_KEY_PREFIX + sc.getIp() : null);
+                    : (socketIp != null ? IP_KEY_PREFIX + socketIp : null);
             if (key != null) {
                 synchronized (pendingReadBySender) {
                     pendingReadBySender.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(chat.getIdMessage());
@@ -541,14 +665,49 @@ public class Mediator implements SocketClient.SocketListener {
         if (view == null) {
             return;
         }
-        String name = "Desconocido";
         SocketClient sc = Mediator.getInstance().getClients().get(buzzing.getIdUser());
-        if (sc != null) {
+        String finalName = resolveContactDisplayName(
+                buzzing.getIdUser(),
+                sc != null ? sc.getIp() : resolveContactIp(buzzing.getIdUser(), null),
+                sc != null ? sc.getNombre() : null
+        );
+        SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
+    }
+
+    public void onUniqueMessageReceived(UniqueMessage uniqueMessage, String clientId) {
+        IChatView view = this.view;
+        if (view == null || uniqueMessage == null) {
+            return;
+        }
+        if (localUserId != null && localUserId.equals(uniqueMessage.getIdUser())) {
+            return;
+        }
+        String resolvedIp = resolveContactIp(uniqueMessage.getIdUser(), null);
+        SocketClient sc = resolveClientForUser(uniqueMessage.getIdUser(), resolvedIp);
+        updateContactIpIfNeeded(uniqueMessage.getIdUser(), sc);
+        String recipientCode = localUserId != null ? localUserId : "";
+        String socketIp = sc != null ? sc.getIp() : resolvedIp;
+        saveIncomingMessage(uniqueMessage.getIdMessage(), uniqueMessage.getIdUser(), recipientCode, uniqueMessage.getMessage(), socketIp, TypeMessage.UNIQUE);
+        String name = "Desconocido";
+        if (sc != null && sc.getNombre() != null) {
             name = sc.getNombre();
         }
-
         String finalName = name;
-        SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
+        String messageId = uniqueMessage.getIdMessage();
+        SwingUtilities.invokeLater(() -> view.addUniqueMessage(uniqueMessage.getMessage(), false, finalName, messageId));
+        boolean activeNow = isActiveContact(uniqueMessage.getIdUser(), socketIp);
+        if (activeNow) {
+            sendConfirmReceived(uniqueMessage.getIdMessage(), sc);
+        } else if (uniqueMessage.getIdMessage() != null && !uniqueMessage.getIdMessage().isBlank()) {
+            String key = uniqueMessage.getIdUser() != null && !uniqueMessage.getIdUser().isBlank()
+                    ? uniqueMessage.getIdUser()
+                    : (socketIp != null ? IP_KEY_PREFIX + socketIp : null);
+            if (key != null) {
+                synchronized (pendingReadBySender) {
+                    pendingReadBySender.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(uniqueMessage.getIdMessage());
+                }
+            }
+        }
     }
 
     public void onGoodByeReceived(GoodBye goodBye, String clientId) {
@@ -556,13 +715,12 @@ public class Mediator implements SocketClient.SocketListener {
         if (view == null) {
             return;
         }
-        String name = "Desconocido";
         SocketClient sc = Mediator.getInstance().getClients().get(goodBye.getIdUser());
-        if (sc != null) {
-            name = sc.getNombre();
-        }
-
-        String finalName = name;
+        String finalName = resolveContactDisplayName(
+                goodBye.getIdUser(),
+                sc != null ? sc.getIp() : resolveContactIp(goodBye.getIdUser(), null),
+                sc != null ? sc.getNombre() : null
+        );
         SwingUtilities.invokeLater(() -> view.showClientOffline(finalName));
         if (goodBye.getIdUser() != null && !goodBye.getIdUser().isBlank()) {
             helloPresence.put(goodBye.getIdUser(), false);
@@ -578,7 +736,7 @@ public class Mediator implements SocketClient.SocketListener {
         }
         String uid = client.getUID();
         String ip = client.getIp();
-        String name = client.getNombre() != null ? client.getNombre() : "Desconocido";
+        String name = resolveContactDisplayName(uid, ip, client.getNombre());
         if (uid != null && !uid.isBlank()) {
             helloPresence.put(uid, false);
             clients.remove(uid);
@@ -640,6 +798,7 @@ public class Mediator implements SocketClient.SocketListener {
                 .type(type)
                 .createdDate(LocalDateTime.now().format(DATE_FORMAT))
                 .roomCode(roomCode)
+                .statusMessage(StatusMessage.RECEIVED)
                 .build();
         try {
             new MessageDAO().save(message);
@@ -660,6 +819,7 @@ public class Mediator implements SocketClient.SocketListener {
                 .type(type)
                 .createdDate(LocalDateTime.now().format(DATE_FORMAT))
                 .roomCode(roomCode)
+                .statusMessage(StatusMessage.SENT)
                 .build();
         try {
             new MessageDAO().save(message);
@@ -676,23 +836,26 @@ public class Mediator implements SocketClient.SocketListener {
         if (localUserId != null && localUserId.equals(imageMessage.getIdUser())) {
             return;
         }
-        SocketClient sc = Mediator.getInstance().getClients().get(imageMessage.getIdUser());
+        String resolvedIp = resolveContactIp(imageMessage.getIdUser(), null);
+        SocketClient sc = resolveClientForUser(imageMessage.getIdUser(), resolvedIp);
         updateContactIpIfNeeded(imageMessage.getIdUser(), sc);
         String recipientCode = localUserId != null ? localUserId : "";
-        saveIncomingMessage(imageMessage.getIdMessage(), imageMessage.getIdUser(), recipientCode, imageMessage.getImageBase64(), sc != null ? sc.getIp() : null, TypeMessage.IMAGE);
+        String socketIp = sc != null ? sc.getIp() : resolvedIp;
+        saveIncomingMessage(imageMessage.getIdMessage(), imageMessage.getIdUser(), recipientCode, imageMessage.getImageBase64(), socketIp, TypeMessage.IMAGE);
         String name = "Desconocido";
         if (sc != null && sc.getNombre() != null) {
             name = sc.getNombre();
         }
         String finalName = name;
-        SwingUtilities.invokeLater(() -> view.addImageMessage(imageMessage.getImageBase64(), false, finalName));
-        boolean activeNow = isActiveContact(imageMessage.getIdUser(), sc != null ? sc.getIp() : null);
+        String messageId = imageMessage.getIdMessage();
+        SwingUtilities.invokeLater(() -> view.addImageMessage(imageMessage.getImageBase64(), false, finalName, messageId));
+        boolean activeNow = isActiveContact(imageMessage.getIdUser(), socketIp);
         if (activeNow) {
             sendConfirmReceived(imageMessage.getIdMessage(), sc);
         } else if (imageMessage.getIdMessage() != null && !imageMessage.getIdMessage().isBlank()) {
             String key = imageMessage.getIdUser() != null && !imageMessage.getIdUser().isBlank()
                     ? imageMessage.getIdUser()
-                    : (sc != null && sc.getIp() != null ? IP_KEY_PREFIX + sc.getIp() : null);
+                    : (socketIp != null ? IP_KEY_PREFIX + socketIp : null);
             if (key != null) {
                 synchronized (pendingReadBySender) {
                     pendingReadBySender.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(imageMessage.getIdMessage());
@@ -779,6 +942,20 @@ public class Mediator implements SocketClient.SocketListener {
         if (acceptHello == null || acceptHello.getIdUser() == null || acceptHello.getIdUser().isBlank()) {
             return;
         }
+        SocketClient sc = clients.get(acceptHello.getIdUser());
+        if (sc == null) {
+            for (SocketClient candidate : clients.values()) {
+                if (localUserId != null && localUserId.equals(candidate.getUID())) {
+                    sc = candidate;
+                    break;
+                }
+            }
+            if (sc != null) {
+                clients.remove(sc.getUID());
+                sc.setUid(acceptHello.getIdUser());
+                clients.put(acceptHello.getIdUser(), sc);
+            }
+        }
         helloPresence.put(acceptHello.getIdUser(), true);
         if (lastHelloIp != null && !lastHelloIp.isBlank()) {
             helloPresence.put(IP_KEY_PREFIX + lastHelloIp, true);
@@ -789,11 +966,14 @@ public class Mediator implements SocketClient.SocketListener {
                 helloPresence.put(IP_KEY_PREFIX + client.getIp(), true);
             }
         }
-        SocketClient sc = clients.get(acceptHello.getIdUser());
+        sc = clients.get(acceptHello.getIdUser());
         updateContactIpIfNeeded(acceptHello.getIdUser(), sc);
         IChatView view = this.view;
         if (view != null) {
-            SwingUtilities.invokeLater(view::refreshContactPresence);
+            SwingUtilities.invokeLater(() -> {
+                view.updateStatus("Online");
+                view.refreshContactPresence();
+            });
         }
     }
 
@@ -830,16 +1010,101 @@ public class Mediator implements SocketClient.SocketListener {
         if (confirmRecived == null || confirmRecived.getIdMessage() == null || confirmRecived.getIdMessage().isBlank()) {
             return;
         }
-        readMessageIds.add(confirmRecived.getIdMessage());
+        String messageId = confirmRecived.getIdMessage();
+        readMessageIds.add(messageId);
+        try {
+            messageDao.updateStatusByCodeMessage(messageId, StatusMessage.READ);
+        } catch (Exception e) {
+            System.out.println("No se pudo actualizar estado de lectura: " + e.getMessage());
+        }
         IChatView view = this.view;
         if (view != null) {
-            String messageId = confirmRecived.getIdMessage();
             SwingUtilities.invokeLater(() -> view.markMessageRead(messageId));
         }
     }
-    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {}
-    public void onPinMessageReceived(PinMessage pinMessage) {}
-    public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {}
-    public void onThemeReceived(Theme theme) {}
+    public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
+        if (deleteMessage == null || deleteMessage.getIdMessage() == null || deleteMessage.getIdMessage().isBlank()) {
+            return;
+        }
+        String messageId = deleteMessage.getIdMessage();
+        deleteMessageLocal(messageId);
+        IChatView view = this.view;
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.removeMessage(messageId));
+        }
+    }
+    public void onPinMessageReceived(PinMessage pinMessage) {
+        if (pinMessage == null || pinMessage.getIdMessage() == null || pinMessage.getIdMessage().isBlank()) {
+            return;
+        }
+        pinMessageLocal(pinMessage.getIdMessage());
+    }
+    public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+        SwingUtilities.invokeLater(() -> onUniqueMessageReceived(uniqueMessage, uniqueMessage.getIdUser()));
+    }
+    public void onThemeReceived(Theme theme) {
+        if (theme == null || theme.getIdTheme() == null || theme.getIdTheme().isBlank()) {
+            return;
+        }
+        String senderCode = theme.getIdUser();
+        if (senderCode != null && !senderCode.isBlank()) {
+            try {
+                contactDao.updateThemeByCode(senderCode, theme.getIdTheme());
+            } catch (Exception ignored) {
+            }
+        }
+        IChatView view = this.view;
+        if (view != null) {
+            SwingUtilities.invokeLater(() -> view.applyThemeForContact(senderCode, theme.getIdTheme()));
+        }
+    }
+
+    private void deleteMessageLocal(String messageId) {
+        try {
+            messageDao.deleteByCodeMessage(messageId);
+        } catch (Exception e) {
+            System.out.println("No se pudo eliminar mensaje: " + e.getMessage());
+        }
+        confirmedMessageIds.remove(messageId);
+        readMessageIds.remove(messageId);
+        synchronized (pendingReadBySender) {
+            pendingReadBySender.values().forEach(ids -> ids.removeIf(messageId::equals));
+        }
+    }
+
+    private void pinMessageLocal(String messageId) {
+        try {
+            messageDao.pinMessage(messageId);
+            MessageDAO.Message message = messageDao.findByCodeMessage(messageId);
+            if (message == null) {
+                return;
+            }
+            IChatView view = this.view;
+            if (view != null) {
+                String preview = buildMessagePreview(message);
+                SwingUtilities.invokeLater(() -> view.showPinnedMessage(messageId, preview));
+            }
+        } catch (Exception e) {
+            System.out.println("No se pudo fijar mensaje: " + e.getMessage());
+        }
+    }
+
+    private String buildMessagePreview(MessageDAO.Message message) {
+        if (message == null) {
+            return "Mensaje fijado";
+        }
+        if (message.getType() == TypeMessage.IMAGE) {
+            return "Imagen";
+        }
+        String text = message.getMessage();
+        if (text == null || text.isBlank()) {
+            return "Mensaje fijado";
+        }
+        String trimmed = text.trim();
+        if (trimmed.length() <= 60) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 57) + "...";
+    }
 
 }

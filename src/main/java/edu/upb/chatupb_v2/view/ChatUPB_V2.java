@@ -3,7 +3,7 @@
  */
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.controller.ChatServer;
+import edu.upb.chatupb_v2.model.network.ChatServer;
 
 public class ChatUPB_V2 {
 

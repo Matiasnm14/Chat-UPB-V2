@@ -12,7 +12,8 @@ public class PinMessage extends Command {
 
     @Override
     public String createFormat() {
-        return null;
+        String safeMessageId = idMessage == null ? "" : idMessage;
+        return getID() + "|" + safeMessageId + System.lineSeparator();
     }
 
     public PinMessage() {

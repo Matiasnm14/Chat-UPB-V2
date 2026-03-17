@@ -32,6 +32,10 @@ public class ContactController {
         contactDao.deleteByCode(code);
     }
 
+    public void updateThemeByCode(String code, String themeId) throws Exception {
+        contactDao.updateThemeByCode(code, themeId);
+    }
+
     public void deleteAll() throws Exception {
         contactDao.deleteAll();
     }

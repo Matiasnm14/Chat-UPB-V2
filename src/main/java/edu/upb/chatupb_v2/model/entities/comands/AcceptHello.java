@@ -71,6 +71,7 @@ public class AcceptHello extends Command {
                 public static final String CODE ="code";
                 public static final String NAME ="name";
                 public static final String IP ="ip";
+                public static final String THEME_ID = "theme_id";
 
             }
             @Override
@@ -85,6 +86,7 @@ public class AcceptHello extends Command {
             private String code;
             private String name;
             private String ip;
+            private String themeId;
             private boolean stateConnect = false;
 
             public String roomCode(){

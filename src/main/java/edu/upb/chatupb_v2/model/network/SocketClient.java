@@ -91,7 +91,7 @@ public class SocketClient extends Thread {
     }
 
     public void addListener(SocketListener listener) {
-        if (listener != null) {
+        if (listener != null && !listeners.contains(listener)) {
             listeners.add(listener);
         }
     }
