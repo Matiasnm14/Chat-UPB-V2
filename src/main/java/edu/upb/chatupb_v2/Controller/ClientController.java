@@ -4,6 +4,7 @@ import edu.upb.chatupb_v2.Model.entities.User;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
+import edu.upb.chatupb_v2.Model.repository.MessageDAO;
 import edu.upb.chatupb_v2.Model.repository.UserDAO;
 import lombok.Getter;
 
@@ -44,6 +45,26 @@ public class ClientController {
             }
         } else {
             chat.execute(sc);
+        }
+    }
+
+    public String retrieveName(String id){
+        try {
+            return UserDAO.getInstance().findById(id).getName();
+        } catch (ConnectException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String retrieveMessage(String id){
+        try {
+            return MessageDAO.getInstance().findById(id).getBody();
+        } catch (ConnectException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -165,7 +186,7 @@ public class ClientController {
         scw = sc;
         sc.setSocketListener(listener);
         sc.start();
-        Hello hel = new Hello(userId);
+        Hello hel = new Hello(my_uid);
         sc.send(hel.createFormat());
     }
 

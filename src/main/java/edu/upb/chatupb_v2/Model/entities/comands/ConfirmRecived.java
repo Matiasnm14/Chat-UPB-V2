@@ -18,7 +18,11 @@ public class ConfirmRecived extends Command{
 
     @Override
     public void execute(SocketClient sc) {
-
+        try{
+            sc.send(createFormat());
+        }catch (Exception e){
+            e.getMessage();
+        }
     }
 
     public ConfirmRecived() {

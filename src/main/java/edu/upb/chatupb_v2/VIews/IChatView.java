@@ -23,4 +23,6 @@ public interface IChatView {
     void changeThemeSelected(Theme theme);
     void showImage(Image image);
     void showPinnedMessage(String messageId);
+
+    void addMessage(String text, boolean isOwn, String idMessage);
 }

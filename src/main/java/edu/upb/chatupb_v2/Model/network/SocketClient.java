@@ -161,6 +161,19 @@ public class SocketClient extends Thread {
     }
 
 
+    @Override
+    public String toString() {
+        return "SocketClient{" +
+                "dout=" + dout +
+                ", br=" + br +
+                ", socket=" + socket +
+                ", name='" + name + '\'' +
+                ", uid='" + uid + '\'' +
+                ", ip='" + ip + '\'' +
+                ", socketListener=" + socketListener +
+                '}';
+    }
+
     public void send(String message) throws IOException {
         try {
             dout.write(message.getBytes(StandardCharsets.UTF_8));

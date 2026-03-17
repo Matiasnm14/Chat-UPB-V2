@@ -4,7 +4,7 @@ import edu.upb.chatupb_v2.Controller.*;
 import edu.upb.chatupb_v2.Model.entities.*;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.entities.comands.Image;
-import edu.upb.chatupb_v2.Model.entities.enums.TypeMessage;
+import edu.upb.chatupb_v2.Model.entities.enums.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 public class JUi extends JFrame implements IChatView {
 
@@ -496,8 +497,10 @@ public class JUi extends JFrame implements IChatView {
         popup.add(j2);
 
         j1.addActionListener(e -> UIController.connectPrev(chatList.getSelectedValue()));
-        j2.addActionListener(e ->
-                UIController.deleteUser(chatList.getSelectedValue()));
+        j2.addActionListener(e ->{
+                UIController.deleteUser(chatList.getSelectedValue());
+                repaint();
+        });
         return popup;
     }
 
@@ -516,8 +519,9 @@ public class JUi extends JFrame implements IChatView {
     private void sendCurrentMessage() {
         String text = jTextMensaje.getText().trim();
         if (!text.isEmpty()) {
-            addMessage(text, true);
-            UIController.sendMessage(text, selectedUser);
+            String id = UUID.randomUUID().toString();
+            addMessage(text, true, id);
+            UIController.sendMessage(text, selectedUser, id);
             jTextMensaje.setText("");
         }
     }
@@ -525,8 +529,7 @@ public class JUi extends JFrame implements IChatView {
     private void sendCurrentMessageUnique() {
         String text = jTextMensaje.getText().trim();
         if (!text.isEmpty()) {
-            addMessage(text, true);
-            UIController.sendMessageUnique(text, selectedUser);
+            UIController.sendMessageUnique(text, selectedUser, UUID.randomUUID().toString());
             jTextMensaje.setText("");
         }
     }
@@ -561,7 +564,7 @@ public class JUi extends JFrame implements IChatView {
      * The bubble carries the message text as its tooltip so we can display it
      * in the banner without needing a separate id→text map.
      */
-    private void attachBubblePopup(MessageBubble bubble, String text) {
+    private void attachBubblePopup(MessageBubble bubble, String text, String idMessage) {
         if (text == null) return; // image bubbles — skip for now
 
         // Store display text on the component for later retrieval
@@ -572,19 +575,24 @@ public class JUi extends JFrame implements IChatView {
         menu.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1, true));
 
         JMenuItem pinItem = styledMenuItem("📌  Fijar mensaje", ACCENT);
+        JMenuItem deleteItem = styledMenuItem("BORRAR MENSAJE", ACCENT);
         menu.add(pinItem);
+        menu.add(deleteItem);
 
         pinItem.addActionListener(e -> {
             // Generate a stable id for this message (use text hash as fallback)
-            String msgId = Integer.toHexString(text.hashCode());
-            pinnedMessages.put(msgId, text);
-            currentPinnedId = msgId;
+            currentPinnedId = idMessage;
 
             // Show in banner
             displayPinnedBanner(text);
 
             // Send to peer
-            if (selectedUser != null) UIController.sendPinMessage(msgId, selectedUser);
+            if (selectedUser != null) UIController.sendPinMessage(idMessage, selectedUser);
+        });
+
+        deleteItem.addActionListener(e -> {
+            if (selectedUser != null) UIController.deleteMessage(idMessage);
+            repaint();
         });
 
         bubble.addMouseListener(new MouseAdapter() {
@@ -607,15 +615,18 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showPinnedMessage(String messageId) {
-        // Look up text if we have it locally; otherwise just show the id
-        String text = pinnedMessages.getOrDefault(messageId, "Mensaje fijado");
+        String message = ClientController.getInstance().retrieveMessage(messageId);
+        if (message.isEmpty() || message == null){
+            message = "Mensaje Pineado";
+        }
         currentPinnedId = messageId;
-        displayPinnedBanner(text);
+        displayPinnedBanner(message);
     }
 
     // ── Message rendering ─────────────────────────────────────
 
-    private void addMessage(String text, boolean isOwn) {
+    @Override
+    public void addMessage(String text, boolean isOwn, String idMessage) {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
         row.setBorder(new EmptyBorder(4, 4, 4, 4));
@@ -631,7 +642,7 @@ public class JUi extends JFrame implements IChatView {
         }
 
         // Right-click to pin
-        attachBubblePopup(bubble, text);
+        attachBubblePopup(bubble, text, idMessage);
 
         messagesPanel.add(row);
         messagesPanel.add(Box.createVerticalStrut(6));
@@ -696,7 +707,7 @@ public class JUi extends JFrame implements IChatView {
         statusDot.setForeground(status.toLowerCase().contains("offline") ? DANGER : ONLINE_GREEN);
     }
 
-    @Override public void showMessage(String message)   { addMessage(message, false); }
+    @Override public void showMessage(String message)   { addMessage(message, false, UUID.randomUUID().toString()); }
 
     @Override public void showError(String error) {
         JOptionPane.showMessageDialog(this, error, "Error", JOptionPane.ERROR_MESSAGE);
@@ -715,10 +726,10 @@ public class JUi extends JFrame implements IChatView {
     }
 
     @Override public void showChat(Chat chat) {
-        addMessage(chat.getMessage(), false);
+        addMessage(chat.getMessage(), false, chat.getIdMessage());
     }
     @Override public void showUniqueMessage(UniqueMessage uni) {
-        addMessage(uni.getMessage(), false);
+        addMessage(uni.getMessage(), false, uni.getIdMessage());
     }
 
     @Override public void renderContacts() {
@@ -750,10 +761,11 @@ public class JUi extends JFrame implements IChatView {
 
                 } catch (Exception e) {
                     // En caso de error (Base64 corrupto, etc.), podrías mostrar un mensaje de texto
-                    addMessage("[Error al cargar imagen]", m.getSendUser().equals(userId));
+                    //addMessage("[Error al cargar imagen]", m.getSendUser().equals(userId));
                 }
             } else {
-                addMessage(m.getBody(), isMine);
+                addMessage(m.getBody(), isMine, m.getIdMessage());
+//                addMessage(m, isMine);
             }
         }
 
@@ -933,7 +945,7 @@ public class JUi extends JFrame implements IChatView {
             addImage(icon, isMine);
 
         } catch (Exception e) {
-            addMessage("[Error al cargar imagen]", image.getSendUser().equals(userId));
+            //addMessage("[Error al cargar imagen]", image.getSendUser().equals(userId));
         }
     }
 

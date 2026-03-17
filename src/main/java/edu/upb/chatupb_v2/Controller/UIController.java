@@ -65,11 +65,21 @@ public class UIController implements SocketListener {
         }
     }
 
+    public void deleteMessage(String id){
+        try {
+            MessageDAO.getInstance().delete(id);
+        } catch (ConnectException | SQLException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     TextAnalizeController textAnalizeController = new TextAnalizeController();
-    public void sendMessage(String messageText, User target) {
+    public void sendMessage(String messageText, User target, String idMessage) {
         try {
             messageText = textAnalizeController.analizarTexto(messageText);
-            Chat chat = new Chat(this.userId, UUID.randomUUID().toString(), messageText);
+            Chat chat = new Chat(this.userId, idMessage, messageText);
             MessageDAO.getInstance().save(new Message(
                     chat.getIdMessage(),
                     this.userId,
@@ -85,10 +95,10 @@ public class UIController implements SocketListener {
         }
     }
 
-    public void sendMessageUnique(String messageText, User target) {
+    public void sendMessageUnique(String messageText, User target, String idMessage) {
         try {
             messageText = textAnalizeController.analizarTexto(messageText);
-            UniqueMessage uniqueMessage = new UniqueMessage(this.userId, UUID.randomUUID().toString(), messageText);
+            UniqueMessage uniqueMessage = new UniqueMessage(this.userId, idMessage, messageText);
             MessageDAO.getInstance().save(new Message(
                     uniqueMessage.getIdMessage(),
                     this.userId,
@@ -99,6 +109,7 @@ public class UIController implements SocketListener {
                     LocalDate.now().toString()
             ));
             ClientController.getInstance().sendToClientUnique(target.getId(), target.getIp(), uniqueMessage, this);
+            view.addMessage(messageText, true, idMessage);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -207,8 +218,8 @@ public class UIController implements SocketListener {
     public void onHelloReceived(Hello hello, SocketClient client) {
         Command response;
         if (ClientController.getInstance().userInDB(hello.getIdUser())) {
-            // Usuario ya conocido: aceptar y actualizar socket activo
             ClientController.getInstance().registerClient(client);
+            client.setName(ClientController.getInstance().retrieveName(hello.getIdUser()));
             try {
                 System.out.println("HELLO ACCEPTED (known user)!");
                 response = new AcceptHello(userId);
@@ -258,9 +269,7 @@ public class UIController implements SocketListener {
     public void onBuzzingReceived(Buzzing buzzing) {
         String name = "Desconocido";
         SocketClient sc = ClientController.getInstance().getClients().get(buzzing.getIdUser());
-        if (sc != null) {
-            name = sc.getNombre();
-        }
+        name = (ClientController.getInstance().retrieveName(buzzing.getIdUser()));
         String finalName = name;
         SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
     }
@@ -280,6 +289,7 @@ public class UIController implements SocketListener {
     public void onAcceptHelloReceived(AcceptHello acceptHello, SocketClient client) {
         client.setUid(acceptHello.getIdUser());
         ClientController.getInstance().registerClient(client);
+        client.setName(ClientController.getInstance().retrieveName(acceptHello.getIdUser()));
         try {
             ClientController.getInstance().flushPending(client); // usa el socket como clave
         } catch (IOException e) {
@@ -314,10 +324,11 @@ public class UIController implements SocketListener {
     @Override
     public void onNewFriendReceived(NewFriend newFriend) {
         try {
-            UserDAO.getInstance().save(new User("0000001",newFriend.getName_user(), newFriend.getIp_user(), userId));
+            UserDAO.getInstance().save(new User(newFriend.getId_sent(), newFriend.getName_user(), newFriend.getIp_user(), userId));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        view.renderContacts();
     }
 
     @Override
@@ -332,9 +343,9 @@ public class UIController implements SocketListener {
 
     @Override
     public void onDeleteMessageReceived(DeleteMessage deleteMessage) {
-        String id_message = deleteMessage.getIdMessage();
+        String idMessage = deleteMessage.getIdMessage();
         try {
-            MessageDAO.getInstance().delete(id_message);
+            MessageDAO.getInstance().delete(idMessage);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -362,6 +373,7 @@ public class UIController implements SocketListener {
 
     @Override
     public void onUniqueMessageReceived(UniqueMessage uniqueMessage) {
+        view.addMessage(uniqueMessage.getMessage(),false,uniqueMessage.getIdMessage());
         try {
             MessageDAO.getInstance().save(new Message(
                     uniqueMessage.getIdMessage(),
@@ -371,6 +383,8 @@ public class UIController implements SocketListener {
                     TypeMessage.TEXT,
                     StatusMessage.READ,
                     LocalDate.now().toString()));
+            ConfirmRecived confirmRecived = new ConfirmRecived(uniqueMessage.getIdMessage());
+            confirmRecived.execute(socketClient);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
