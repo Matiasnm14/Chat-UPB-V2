@@ -367,32 +367,32 @@ public class JUi extends JFrame implements IChatView {
             public void mousePressed(MouseEvent e) { showPopup(e); }
             @Override
             public void mouseReleased(MouseEvent e) { showPopup(e); }
-             @Override
-             public void mouseClicked(MouseEvent e) {
-                 if (SwingUtilities.isLeftMouseButton(e)) {
-                     int row = messageList.locationToIndex(e.getPoint());
-                     if (row >= 0) {
-                         Message selectedMsg = messageList.getModel().getElementAt(row);
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    int index = messageList.locationToIndex(e.getPoint());
+                    if (index >= 0) {
+                        Message selectedMsg = messageList.getModel().getElementAt(index);
 
-                         // Si es un mensaje único y no ha sido visto...
-                         if (selectedMsg.getTypeMessage() == TypeMessage.UNIQUE && !selectedMsg.getBody().equals("VISTO")) {
+                        if (selectedMsg.getTypeMessage() == TypeMessage.UNIQUE && !selectedMsg.getBody().equals("VISTO")) {
 
-                             // 1. REVELAR EL MENSAJE en un PopUp
-                             JOptionPane.showMessageDialog(JUi.this,
-                                     "Mensaje confidencial:\n\n" + selectedMsg.getBody(),
-                                     "💣 Mensaje de una sola vista",
-                                     JOptionPane.WARNING_MESSAGE);
+                            JOptionPane.showMessageDialog(JUi.this,
+                                    "Mensaje confidencial:\n\n" + selectedMsg.getBody(),
+                                    "💣 Mensaje de una sola vista",
+                                    JOptionPane.WARNING_MESSAGE);
 
-                             // 2. DESTRUIR EL MENSAJE
-                             // Cambiamos el cuerpo para que no se pueda volver a leer
-                             selectedMsg.setBody("VISTO");
 
-                             // 3. Actualizar la lista para que muestre "Mensaje destruido"
-                             messageList.repaint();
-                         }
-                     }
-                 }
-             }
+                            if (currentContact != null && controller != null) {
+                                controller.sendUniqueMessageSeen(selectedMsg, currentContact.getId());
+                            }
+
+                            selectedMsg.setBody("VISTO");
+
+                            messageList.repaint();
+                        }
+                    }
+                }
+            }
 
             private void showPopup(MouseEvent e) {
                 if (e.isPopupTrigger()) {
@@ -401,8 +401,7 @@ public class JUi extends JFrame implements IChatView {
                     if (row >= 0) {
                         messageList.setSelectedIndex(row); // Seleccionamos ese mensaje
 
-                        // 2. Obtener el mensaje exacto que
-                        //tocamos
+                        // 2. Obtener el mensaje exacto que tocamos
                         Message selectedMsg = messageList.getModel().getElementAt(row);
 
                         // 3. Evaluar si el mensaje es mío o del contacto
@@ -457,6 +456,7 @@ public class JUi extends JFrame implements IChatView {
 
         shakeWindow();
         Sound.BUZZ.play();
+        showMessage(senderName + " te envio un zumbido");
     }
 
     @Override

@@ -4,6 +4,7 @@ import edu.upb.chatupb_v2.controller.exception.OperationException;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.commands.*;
+import edu.upb.chatupb_v2.model.entities.enums.Sound;
 import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import edu.upb.chatupb_v2.model.network.ChatServer;
@@ -379,7 +380,7 @@ public class Controller implements SocketClient.SocketListener{
 
             // Opcional: Mostrarlo en mi propia pantalla como un mensaje normal o como UNIQUE
             Message msgLocal = new Message(uniqueCmd.getIdMessage(), this.userId, texto, TypeMessage.UNIQUE, StatusMessage.SENT, LocalDate.now().toString());
-            view.appendMessageToChat(msgLocal); // Ver nota abajo
+            view.appendMessageToChat(msgLocal);
         }
     }
 
@@ -402,6 +403,17 @@ public class Controller implements SocketClient.SocketListener{
                 e.printStackTrace();
             }
         }
+    }
+    public void sendUniqueMessageSeen(Message message, String idContact){
+        try{
+            SocketClient sc = clients.get(idContact);
+
+            ConfirmRecived confirmRecived = new ConfirmRecived(message.getIdMessage());
+
+            sc.send(confirmRecived.createFormat());
+
+        }catch (Exception e){}
+
     }
 
     @Override
@@ -531,6 +543,13 @@ public class Controller implements SocketClient.SocketListener{
         if (incomingSocket == null) return;
 
         incomingSocket.setUid(senderId);
+        try {
+            incomingSocket.setUserName(ContactDao.getInstance().findById(senderId).getName());
+        } catch (ConnectException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
 
 
         try {
@@ -639,6 +658,7 @@ public class Controller implements SocketClient.SocketListener{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        Sound.NEW_MESSAGE.play();
 //
 
     }
@@ -689,10 +709,15 @@ public class Controller implements SocketClient.SocketListener{
     public void onBuzzingReceived(Buzzing buzzing) {
         long currentTime = System.currentTimeMillis();
         if(currentTime - lastBuzz > timerBuzz){
+            lastBuzz = System.currentTimeMillis();
             String name = "Desconocido";
-            SocketClient sc = Controller.getInstance().getClients().get(buzzing.getIdUser());
-            if (sc != null) {
-                name = sc.getNombre();
+
+            try {
+                name = ContactDao.getInstance().findById(buzzing.getIdUser()).getName();
+            } catch (ConnectException e) {
+                throw new RuntimeException(e);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
             String finalName = name;
             SwingUtilities.invokeLater(() -> view.showBuzzNotification(finalName));
@@ -736,7 +761,6 @@ public class Controller implements SocketClient.SocketListener{
     @Override
     public void onThemeReceived(Theme theme) {
         try {
-            view.showMessage("Tema cambiado por: "+ ContactDao.getInstance().findById(theme.getIdUser()).getName());
             ContactDao.getInstance().setIdTheme(theme.getIdUser(),theme.getIdTheme());
             if (view.getCurrentContact() != null) {
                 view.getCurrentContact().setIdTheme(theme.getIdTheme());
