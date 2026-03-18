@@ -1,11 +1,14 @@
 package edu.upb.chatupb_v2.view;
 
+import edu.upb.chatupb_v2.Main;
 import edu.upb.chatupb_v2.bl.ChatService;
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.Controller;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.controller.UserController;
 import edu.upb.chatupb_v2.controller.exception.OperationException;
+import edu.upb.chatupb_v2.model.audio.AudioManager;
+import edu.upb.chatupb_v2.model.audio.enums.AudioName;
 import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.Message;
 import edu.upb.chatupb_v2.model.entities.User;
@@ -51,6 +54,8 @@ public class JUi extends JFrame implements IChatView {
     private JTextField jTextMensaje;
     private JLabel jOnline;
 
+    private AudioManager audioManager = new AudioManager();
+
     private DefaultListModel<Contact> contactListModel;
     private JList<Contact> contactList;
 
@@ -93,7 +98,7 @@ public class JUi extends JFrame implements IChatView {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
+        setIconImage(Toolkit.getDefaultToolkit().getImage(Main.class.getResource("/icono/icon.png")));
         System.out.println("------------------------------------------------------------------");
         System.out.println("ID: " + userId);
         System.out.println("Nombre: " + username);
@@ -265,10 +270,11 @@ public class JUi extends JFrame implements IChatView {
                                     "Mensaje de una sola vista",
                                     JOptionPane.INFORMATION_MESSAGE
                             );
-
+                            ConfirmRecived confirmRecived = new ConfirmRecived(selectedMessage.getIdMessage());
                             try {
                                 messageController.updateUniqueMessage(selectedMessage.getIdMessage());
                                 messageController.onLoadMessages(selectedMessage.getContactId());
+                                if (selectedMessage.getStatusMessage() == StatusMessage.READ)Controller.getInstance().sendMessage(confirmRecived, currentContact.getId());
                             } catch (Exception ex) {
                                 throw new RuntimeException(ex);
                             }
@@ -880,6 +886,7 @@ public class JUi extends JFrame implements IChatView {
 
         SwingUtilities.invokeLater(() -> {
 
+            audioManager.addAudio(AudioName.BUZZ);
             shakeWindow(this);
             markContactConBuzz(finalName);
         });
@@ -1006,6 +1013,7 @@ public class JUi extends JFrame implements IChatView {
             );
 
             messageController.save(msgDb);
+            msgDb.setIdMessage(uniqueMessage.getIdMessage());
 
             if (currentContact != null && currentContact.getId().equals(uniqueMessage.getIdUser())) {
                 SwingUtilities.invokeLater(() -> {

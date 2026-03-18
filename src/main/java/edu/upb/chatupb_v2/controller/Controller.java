@@ -363,7 +363,7 @@ public class Controller implements SocketClient.SocketListener {
 
     public void sendBuzz() {
         for (SocketClient sc : Controller.getInstance().getClients().values()) {
-            Buzzing bz = new Buzzing(this.server.getUserId());
+            Buzzing bz = new Buzzing(server.getUserId());
             try {
                 sc.send(bz.createFormat());
             } catch (IOException e) {
