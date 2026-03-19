@@ -466,7 +466,7 @@ public class JUi extends JFrame implements IChatView {
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createLineBorder(currentAccent));
     }
-
+    /// /
     @Override
     public void updateStatus(String status) {
         jOnline.setText(status);
