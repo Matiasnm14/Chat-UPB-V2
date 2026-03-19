@@ -29,7 +29,7 @@ public class MessageController {
             if (contactCode != null && !contactCode.isBlank()) {
                 messages = messageDao.findByParticipants(userId, contactCode);
             }
-            if (messages.isEmpty() && roomCode != null && !roomCode.isBlank()) {
+            if ((contactCode == null || contactCode.isBlank()) && roomCode != null && !roomCode.isBlank()) {
                 messages = messageDao.findByRoomCode(roomCode);
             }
             iChatView.unloadMessages(toViewModels(messages, userId, userName));

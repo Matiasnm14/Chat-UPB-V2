@@ -1,13 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package edu.upb.chatupb_v2.view;
 
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
+import edu.upb.chatupb_v2.model.entities.enums.ChatThemeOption;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import lombok.Getter;
 
@@ -24,10 +21,6 @@ import java.util.Locale;
 import java.util.UUID;
 import java.nio.file.Files;
 
-/**
- *
- * @author USER 1
- */
 @Getter
 public class JUi extends JFrame implements IChatView {
     //YA NO HAY CHAT SERVER!
@@ -89,7 +82,6 @@ public class JUi extends JFrame implements IChatView {
         jTextMensaje = new javax.swing.JTextField();
 
         jbConectar = new JButton("Conectar");
-        jbEnviar = new JButton("Enviar");
         jbImagen = new JButton("Imagen");
         jbUnico = new JButton("Unico");
         jbZumbido = new JButton("Zumbido");
@@ -157,7 +149,6 @@ public class JUi extends JFrame implements IChatView {
         messagesScrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         styleButtonPrimary(jbConectar);
-        styleButtonPrimary(jbEnviar);
         styleButtonPrimary(jbUnico);
         styleButtonGhost(jbImagen);
         styleButtonAccentOutline(jbZumbido);
@@ -182,25 +173,7 @@ public class JUi extends JFrame implements IChatView {
                 Mediator.getInstance().connectToContact(trimmedTarget, null, userId.toString(), senderName);
             }
         });
-        jbEnviar.addActionListener(evt -> {
-            String text = jTextMensaje.getText() == null ? "" : jTextMensaje.getText().trim();
-            if (text.isEmpty()) {
-                return;
-            }
-            String senderName = jTextUserName.getText();
-            if (senderName == null || senderName.isBlank()) {
-                senderName = username;
-            }
-            ContactListItem selected = contactList.getSelectedValue();
-            if (selected == null) {
-                showMessage("Selecciona un contacto para enviar el mensaje.");
-                return;
-            }
-            String messageId = UUID.randomUUID().toString();
-            addChatMessageWithTime(text, true, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
-            Mediator.getInstance().sendMessage(text, userId.toString(), messageId, selected.getCode(), selected.getIp());
-            jTextMensaje.setText("");
-        });
+        jTextMensaje.addActionListener(evt -> sendCurrentMessage());
         jbImagen.addActionListener(evt -> sendImage());
         jbUnico.addActionListener(evt -> sendUniqueMessage());
         jbZumbido.addActionListener(evt -> sendBuzz());
@@ -309,7 +282,6 @@ public class JUi extends JFrame implements IChatView {
         actionPanel.add(jbImagen);
         actionPanel.add(jbUnico);
         actionPanel.add(jbTema);
-        actionPanel.add(jbEnviar);
         inputBarPanel.add(actionPanel, BorderLayout.EAST);
 
         rightPanel.add(topBarPanel, BorderLayout.NORTH);
@@ -364,7 +336,6 @@ public class JUi extends JFrame implements IChatView {
     private JPanel messagesPanel;
     private JScrollPane messagesScrollPane;
     private JButton jbConectar;
-    private JButton jbEnviar;
     private JButton jbImagen;
     private JButton jbUnico;
     private JButton jbZumbido;
@@ -665,6 +636,17 @@ public class JUi extends JFrame implements IChatView {
     }
 
     @Override
+    public void showUniqueMessageOnce(String message, String senderName) {
+        String titleName = (senderName == null || senderName.isBlank()) ? "Desconocido" : senderName;
+        JOptionPane.showMessageDialog(
+                this,
+                message == null || message.isBlank() ? "(Sin contenido)" : message,
+                "Mensaje unico de " + titleName,
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+
+    @Override
     public void markMessageRead(String messageId) {
         if (messageId == null || messageId.isBlank()) {
             return;
@@ -792,6 +774,26 @@ public class JUi extends JFrame implements IChatView {
             return;
         }
         Mediator.getInstance().sendBuzz(userId.toString(), selected.getCode(), selected.getIp());
+    }
+
+    private void sendCurrentMessage() {
+        String text = jTextMensaje.getText() == null ? "" : jTextMensaje.getText().trim();
+        if (text.isEmpty()) {
+            return;
+        }
+        String senderName = jTextUserName.getText();
+        if (senderName == null || senderName.isBlank()) {
+            senderName = username;
+        }
+        ContactListItem selected = contactList.getSelectedValue();
+        if (selected == null) {
+            showMessage("Selecciona un contacto para enviar el mensaje.");
+            return;
+        }
+        String messageId = UUID.randomUUID().toString();
+        addChatMessageWithTime(text, true, senderName, LocalTime.now().format(TIME_FORMAT), messageId, false);
+        Mediator.getInstance().sendMessage(text, userId.toString(), messageId, selected.getCode(), selected.getIp());
+        jTextMensaje.setText("");
     }
 
     private void shakeWindow() {
@@ -937,10 +939,16 @@ public class JUi extends JFrame implements IChatView {
     private final class MessageRow extends JPanel {
         private final String messageId;
         private final boolean outgoing;
+        private final TypeMessage type;
+        private final String content;
+        private final String senderName;
 
         private MessageRow(String message, ImageIcon image, boolean outgoing, String senderName, String time, String messageId, boolean read, TypeMessage type) {
             this.messageId = messageId;
             this.outgoing = outgoing;
+            this.type = type;
+            this.content = message;
+            this.senderName = senderName;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
@@ -969,6 +977,7 @@ public class JUi extends JFrame implements IChatView {
             }
             installSelectionHandler(this);
             setSelectedState(false);
+            lockRowHeight();
         }
 
         public String getMessageId() {
@@ -977,6 +986,10 @@ public class JUi extends JFrame implements IChatView {
 
         public boolean isOutgoing() {
             return outgoing;
+        }
+
+        private boolean isIncomingUnique() {
+            return !outgoing && type == TypeMessage.UNIQUE;
         }
 
         public void setSelectedState(boolean selected) {
@@ -993,6 +1006,10 @@ public class JUi extends JFrame implements IChatView {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     if (e.isPopupTrigger() || SwingUtilities.isRightMouseButton(e)) {
+                        return;
+                    }
+                    if (isIncomingUnique()) {
+                        openUniqueMessage();
                         return;
                     }
                     selectMessageRow(MessageRow.this);
@@ -1014,6 +1031,20 @@ public class JUi extends JFrame implements IChatView {
                 }
             }
         }
+
+        private void openUniqueMessage() {
+            showUniqueMessageOnce(content, senderName);
+            ContactListItem selectedContact = contactList.getSelectedValue();
+            String recipientCode = selectedContact != null ? selectedContact.getCode() : null;
+            String recipientIp = selectedContact != null ? selectedContact.getIp() : null;
+            Mediator.getInstance().consumeUniqueMessage(messageId, recipientCode, recipientIp);
+        }
+
+        private void lockRowHeight() {
+            Dimension preferred = getPreferredSize();
+            setPreferredSize(preferred);
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, preferred.height));
+        }
     }
 
     private final class BubblePanel extends JPanel {
@@ -1027,10 +1058,9 @@ public class JUi extends JFrame implements IChatView {
             setOpaque(false);
             setLayout(new BorderLayout());
             setBorder(BorderFactory.createEmptyBorder(8, 10, 6, 10));
-            setMaximumSize(new Dimension(MESSAGE_MAX_WIDTH, Integer.MAX_VALUE));
 
             if (type == TypeMessage.UNIQUE) {
-                JLabel uniqueLabel = new JLabel("UNICO");
+                JLabel uniqueLabel = new JLabel("O Mensaje");
                 uniqueLabel.setFont(new Font("SansSerif", Font.BOLD, 10));
                 uniqueLabel.setForeground(new Color(0x8A6D3B));
                 uniqueLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
@@ -1042,7 +1072,8 @@ public class JUi extends JFrame implements IChatView {
                 imageLabel.setOpaque(false);
                 add(imageLabel, BorderLayout.CENTER);
             } else {
-                JTextArea messageArea = new JTextArea(message == null ? "" : message);
+                String displayMessage = type == TypeMessage.UNIQUE ? "Toca para abrir" : (message == null ? "" : message);
+                JTextArea messageArea = new JTextArea(displayMessage);
                 messageArea.setLineWrap(true);
                 messageArea.setWrapStyleWord(true);
                 messageArea.setEditable(false);
@@ -1052,7 +1083,7 @@ public class JUi extends JFrame implements IChatView {
                 messageArea.setFocusable(false);
                 messageArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
                 messageArea.setForeground(currentTextPrimary);
-                messageArea.setColumns(24);
+                configureMessageAreaSize(messageArea, displayMessage);
                 add(messageArea, BorderLayout.CENTER);
             }
 
@@ -1070,6 +1101,7 @@ public class JUi extends JFrame implements IChatView {
             }
 
             add(timePanel, BorderLayout.SOUTH);
+            lockBubbleWidth();
         }
 
         public JLabel getStatusLabel() {
@@ -1091,6 +1123,31 @@ public class JUi extends JFrame implements IChatView {
                 return currentUniqueBubble;
             }
             return outgoing ? currentBubbleOut : currentBubbleIn;
+        }
+
+        private void configureMessageAreaSize(JTextArea messageArea, String text) {
+            int maxTextWidth = Math.max(120, MESSAGE_MAX_WIDTH - 28);
+            FontMetrics metrics = messageArea.getFontMetrics(messageArea.getFont());
+            String safeText = text == null ? "" : text;
+            int naturalWidth = 0;
+            for (String line : safeText.split("\\R", -1)) {
+                naturalWidth = Math.max(naturalWidth, metrics.stringWidth(line));
+            }
+            int targetWidth = Math.max(42, Math.min(maxTextWidth, naturalWidth + 8));
+            messageArea.setSize(new Dimension(targetWidth, Short.MAX_VALUE));
+            Dimension preferredSize = messageArea.getPreferredSize();
+            Dimension finalSize = new Dimension(targetWidth, preferredSize.height);
+            messageArea.setPreferredSize(finalSize);
+            messageArea.setMinimumSize(finalSize);
+        }
+
+        private void lockBubbleWidth() {
+            Dimension preferred = getPreferredSize();
+            int width = Math.min(MESSAGE_MAX_WIDTH, preferred.width);
+            Dimension lockedPreferred = new Dimension(width, preferred.height);
+            setPreferredSize(lockedPreferred);
+            setMinimumSize(lockedPreferred);
+            setMaximumSize(lockedPreferred);
         }
     }
 
@@ -1464,7 +1521,6 @@ public class JUi extends JFrame implements IChatView {
         styleTextField(jTextUserName);
         styleTextField(jTextMensaje);
         styleButtonPrimary(jbConectar);
-        styleButtonPrimary(jbEnviar);
         styleButtonPrimary(jbUnico);
         styleButtonGhost(jbImagen);
         styleButtonAccentOutline(jbZumbido);
@@ -1508,4 +1564,3 @@ public class JUi extends JFrame implements IChatView {
         return new Color(red, green, blue);
     }
 }//172.16.41.214
-

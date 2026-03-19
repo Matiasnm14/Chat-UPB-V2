@@ -694,20 +694,19 @@ public class Mediator implements SocketClient.SocketListener {
         }
         String finalName = name;
         String messageId = uniqueMessage.getIdMessage();
-        SwingUtilities.invokeLater(() -> view.addUniqueMessage(uniqueMessage.getMessage(), false, finalName, messageId));
         boolean activeNow = isActiveContact(uniqueMessage.getIdUser(), socketIp);
         if (activeNow) {
-            sendConfirmReceived(uniqueMessage.getIdMessage(), sc);
-        } else if (uniqueMessage.getIdMessage() != null && !uniqueMessage.getIdMessage().isBlank()) {
-            String key = uniqueMessage.getIdUser() != null && !uniqueMessage.getIdUser().isBlank()
-                    ? uniqueMessage.getIdUser()
-                    : (socketIp != null ? IP_KEY_PREFIX + socketIp : null);
-            if (key != null) {
-                synchronized (pendingReadBySender) {
-                    pendingReadBySender.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(uniqueMessage.getIdMessage());
-                }
-            }
+            SwingUtilities.invokeLater(() -> view.addUniqueMessage(uniqueMessage.getMessage(), false, finalName, messageId));
         }
+    }
+
+    public void consumeUniqueMessage(String messageId, String contactCode, String contactIp) {
+        if (messageId == null || messageId.isBlank()) {
+            return;
+        }
+        SocketClient target = findClientByCodeOrIp(contactCode, contactIp);
+        sendConfirmReceived(messageId, target);
+        deleteMessageLocal(messageId);
     }
 
     public void onGoodByeReceived(GoodBye goodBye, String clientId) {

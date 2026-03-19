@@ -11,6 +11,7 @@ public interface IChatView {
     boolean showInvitationDialog(String userName, String userId);
     void showBuzzNotification(String senderName);
     void showClientOffline(String senderName);
+    void showUniqueMessageOnce(String message, String senderName);
     void addChatMessage(String message, boolean outgoing, String senderName);
     void addChatMessage(String message, boolean outgoing, String senderName, String messageId);
     void addUniqueMessage(String message, boolean outgoing, String senderName, String messageId);

@@ -1,9 +1,9 @@
-package edu.upb.chatupb_v2.view;
+package edu.upb.chatupb_v2.model.entities.enums;
 
 import java.awt.Color;
 
 public enum ChatThemeOption {
-    DEFAULT("default", "Default",
+    DEFAULT("0", "default", "Default",
             new Color(0xF0F2F5),
             new Color(0xFFFFFF),
             new Color(0xE9EDF1),
@@ -16,7 +16,7 @@ public enum ChatThemeOption {
             new Color(0x667781),
             new Color(0x25D366),
             new Color(0xFFF3CD)),
-    OCEANO("oceano", "Oceano",
+    OCEANO("1", "oceano", "Oceano",
             new Color(0xE7F3F8),
             new Color(0xF9FCFD),
             new Color(0xDDEEF5),
@@ -27,9 +27,9 @@ public enum ChatThemeOption {
             new Color(0xBEE3F8),
             new Color(0xFFFFFF),
             new Color(0x486581),
-            new Color(0x0EA5A4),
+            new Color(0x25D366),
             new Color(0xFFE3B3)),
-    ARENA("arena", "Arena",
+    ARENA("2", "arena", "Arena",
             new Color(0xF7F1E5),
             new Color(0xFFFDF8),
             new Color(0xF2E7D5),
@@ -40,9 +40,9 @@ public enum ChatThemeOption {
             new Color(0xF6D7A7),
             new Color(0xFFFDF8),
             new Color(0x7B5E3B),
-            new Color(0x8BAA36),
+            new Color(0x25D366),
             new Color(0xFCE6A8)),
-    BOSQUE("bosque", "Bosque",
+    BOSQUE("3", "bosque", "Bosque",
             new Color(0xEEF4EC),
             new Color(0xFBFDF9),
             new Color(0xE0EBDD),
@@ -53,9 +53,9 @@ public enum ChatThemeOption {
             new Color(0xCFE7C9),
             new Color(0xFFFFFF),
             new Color(0x5D735F),
-            new Color(0x4F8A3F),
+            new Color(0x25D366),
             new Color(0xE8DFA9)),
-    CORAL("coral", "Coral",
+    CORAL("4", "coral", "Coral",
             new Color(0xFFF3EE),
             new Color(0xFFFCFA),
             new Color(0xFFE3DA),
@@ -66,10 +66,11 @@ public enum ChatThemeOption {
             new Color(0xFFD1C4),
             new Color(0xFFFFFF),
             new Color(0x8C5A52),
-            new Color(0xD96C4D),
+            new Color(0x25D366),
             new Color(0xFFE6A7));
 
     private final String id;
+    private final String legacyId;
     private final String displayName;
     private final Color bgApp;
     private final Color panel;
@@ -86,6 +87,7 @@ public enum ChatThemeOption {
 
     ChatThemeOption(
             String id,
+            String legacyId,
             String displayName,
             Color bgApp,
             Color panel,
@@ -101,6 +103,7 @@ public enum ChatThemeOption {
             Color uniqueBubble
     ) {
         this.id = id;
+        this.legacyId = legacyId;
         this.displayName = displayName;
         this.bgApp = bgApp;
         this.panel = panel;
@@ -118,8 +121,9 @@ public enum ChatThemeOption {
 
     public static ChatThemeOption fromId(String id) {
         if (id != null) {
+            String normalized = id.trim();
             for (ChatThemeOption option : values()) {
-                if (option.id.equalsIgnoreCase(id.trim())) {
+                if (option.id.equalsIgnoreCase(normalized) || option.legacyId.equalsIgnoreCase(normalized)) {
                     return option;
                 }
             }
@@ -153,6 +157,10 @@ public enum ChatThemeOption {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    public String getLegacyId() {
+        return legacyId;
     }
 
     public Color getBgApp() {
