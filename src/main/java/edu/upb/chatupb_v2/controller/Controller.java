@@ -27,8 +27,6 @@ import java.util.*;
 public class Controller implements SocketClient.SocketListener{
     @Getter
     private Map<String, SocketClient> clients = new HashMap<>();
-    @Getter
-    private Map<String, JUi> uis = new HashMap<>();
     private static Controller instance;
     private ChatServer chatServer;
 
@@ -38,13 +36,10 @@ public class Controller implements SocketClient.SocketListener{
     private  String userId;
     private SocketClient socketClient;
     private ServerSocket serverSocket;
-    private Thread helloThread;
-    private boolean isRunning = true;
     @Getter
     private List<SocketClient> pendingClients = new ArrayList<>();
     private final long timerBuzz = 3000;
     private long lastBuzz = 0;
-
     private HashMap<String, List<ConfirmRecived>> listOfConfirms = new HashMap<>();
     public static Controller getInstance(){
         if (instance == null) instance = new Controller();
@@ -235,28 +230,6 @@ public class Controller implements SocketClient.SocketListener{
                 System.out.println(e.getMessage());
             }
         }
-    }
-
-    private void startHelloService() {
-        helloThread = new Thread(() -> {
-            while (isRunning) {
-                try {
-                    Thread.sleep(5000);
-                    for (SocketClient client : Controller.getInstance().getClients().values()) {
-                        Hello hello = new Hello(userId);
-                        try {
-                            client.send(hello.createFormat());
-                        } catch (IOException e) {
-                            System.out.println(e.getMessage());
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        });
-        helloThread.start();
     }
 
     public void sendHello(String ip, String username, String id){
