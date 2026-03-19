@@ -1,6 +1,7 @@
 package edu.upb.chatupb_v2.controller;
 
 import edu.upb.chatupb_v2.controller.exception.OperationException;
+import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.comands.*;
 import edu.upb.chatupb_v2.model.entities.enums.StatusMessage;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
@@ -170,7 +171,7 @@ public class Mediator implements SocketClient.SocketListener {
             return null;
         }
         try {
-            AcceptHello.User.Contact contact = contactDao.findByCode(contactCode);
+            Contact contact = contactDao.findByCode(contactCode);
             if (contact != null && contact.getIp() != null && !contact.getIp().isBlank()) {
                 return contact.getIp();
             }
@@ -189,7 +190,7 @@ public class Mediator implements SocketClient.SocketListener {
             return;
         }
         try {
-            AcceptHello.User.Contact existing = contactDao.findByCode(userId);
+            Contact existing = contactDao.findByCode(userId);
             if (existing == null) {
                 return;
             }
@@ -323,13 +324,13 @@ public class Mediator implements SocketClient.SocketListener {
     private String resolveContactDisplayName(String userId, String contactIp, String fallbackName) {
         try {
             if (userId != null && !userId.isBlank() && !userId.equals(localUserId)) {
-                AcceptHello.User.Contact byCode = contactDao.findByCode(userId);
+                Contact byCode = contactDao.findByCode(userId);
                 if (byCode != null && byCode.getName() != null && !byCode.getName().isBlank()) {
                     return byCode.getName();
                 }
             }
             if (contactIp != null && !contactIp.isBlank()) {
-                AcceptHello.User.Contact byIp = contactDao.findByIp(contactIp);
+                Contact byIp = contactDao.findByIp(contactIp);
                 if (byIp != null && byIp.getName() != null && !byIp.getName().isBlank()) {
                     return byIp.getName();
                 }
@@ -762,14 +763,14 @@ public class Mediator implements SocketClient.SocketListener {
         String name = userName != null && !userName.isBlank() ? userName : "Desconocido";
         try {
             if (contactDao.existByCode(userId)) {
-                AcceptHello.User.Contact existing = contactDao.findByCode(userId);
+                Contact existing = contactDao.findByCode(userId);
                 String finalIp = (ip != null && !ip.isBlank())
                         ? ip
                         : (existing != null ? existing.getIp() : "");
                 String query = "UPDATE contact SET name='" + name + "', ip='" + finalIp + "' WHERE code='" + userId + "'";
                 contactDao.update(query);
             } else {
-                AcceptHello.User.Contact contact = AcceptHello.User.Contact.builder()
+                Contact contact = Contact.builder()
                         .code(userId)
                         .name(name)
                         .ip(ip != null ? ip : "")
@@ -886,8 +887,8 @@ public class Mediator implements SocketClient.SocketListener {
             throw new OperationException("No se logro establecer la conexion");
         }
         boolean knownContact = false;
-        AcceptHello.User.Contact knownByIp = null;
-        AcceptHello.User.Contact knownByCode = null;
+        Contact knownByIp = null;
+        Contact knownByCode = null;
         try {
             if (contactCodeHint != null && !contactCodeHint.isBlank()) {
                 knownContact = contactDao.existByCode(contactCodeHint);

@@ -1,6 +1,6 @@
 package edu.upb.chatupb_v2.view;
 
-import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
+import edu.upb.chatupb_v2.model.entities.Contact;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ public interface IChatView {
     void addUniqueMessage(String message, boolean outgoing, String senderName, String messageId);
     void addImageMessage(String imageBase64, boolean outgoing, String senderName);
     void addImageMessage(String imageBase64, boolean outgoing, String senderName, String messageId);
-    void unload(List<AcceptHello.User.Contact> contacts);
+    void unload(List<Contact> contacts);
     void unloadMessages(List<ChatMessageViewModel> messages);
     void reloadContacts();
     void refreshContactPresence();

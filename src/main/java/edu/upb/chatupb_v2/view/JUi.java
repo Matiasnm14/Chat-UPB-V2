@@ -3,7 +3,7 @@ package edu.upb.chatupb_v2.view;
 import edu.upb.chatupb_v2.controller.ContactController;
 import edu.upb.chatupb_v2.controller.MessageController;
 import edu.upb.chatupb_v2.controller.Mediator;
-import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
+import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.entities.enums.ChatThemeOption;
 import edu.upb.chatupb_v2.model.entities.enums.TypeMessage;
 import lombok.Getter;
@@ -500,10 +500,10 @@ public class JUi extends JFrame implements IChatView {
     }
 
     @Override
-    public void unload(List<AcceptHello.User.Contact> contacts) {
+    public void unload(List<Contact> contacts) {
         contactListModel.clear();
         if (contacts != null) {
-            for (AcceptHello.User.Contact contact : contacts) {
+            for (Contact contact : contacts) {
                 String name = contact.getName() != null ? contact.getName() : "(Sin nombre)";
                 String ip = contact.getIp() != null ? contact.getIp() : "";
                 ContactListItem item = new ContactListItem(name, ip, contact.getCode(), contact.getThemeId(), false);

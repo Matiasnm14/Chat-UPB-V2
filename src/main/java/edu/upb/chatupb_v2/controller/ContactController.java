@@ -1,6 +1,6 @@
 package edu.upb.chatupb_v2.controller;
 
-import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
+import edu.upb.chatupb_v2.model.entities.Contact;
 import edu.upb.chatupb_v2.model.repository.CacheContactDAO;
 import edu.upb.chatupb_v2.model.repository.IContactDAO;
 import edu.upb.chatupb_v2.view.IChatView;
@@ -21,7 +21,7 @@ public class ContactController {
             return;
         }
         try {
-            List<AcceptHello.User.Contact> contacts = contactDao.findAll();
+            List<Contact> contacts = contactDao.findAll();
             iChatView.unload(contacts);
         } catch (Exception e) {
             iChatView.showError("No se pudieron cargar los contactos: " + e.getMessage());

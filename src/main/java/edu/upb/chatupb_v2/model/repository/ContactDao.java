@@ -1,6 +1,6 @@
 package edu.upb.chatupb_v2.model.repository;
 
-import edu.upb.chatupb_v2.model.entities.comands.AcceptHello;
+import edu.upb.chatupb_v2.model.entities.Contact;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.ConnectException;
@@ -14,7 +14,7 @@ import java.util.List;
 public class ContactDao implements IContactDAO {
 
 
-    private DaoHelper<AcceptHello.User.Contact> helper;
+    private DaoHelper<Contact> helper;
 
     public ContactDao() {
         helper = new DaoHelper<>();
@@ -22,22 +22,22 @@ public class ContactDao implements IContactDAO {
         ensureThemeColumn();
     }
 
-    DaoHelper.ResultReader<AcceptHello.User.Contact> resultReader = result -> {
-        AcceptHello.User.Contact prefacturaSync = new AcceptHello.User.Contact();
-        if (existColumn(result, AcceptHello.User.Contact.Column.ID)) {
-            prefacturaSync.setId(result.getLong(AcceptHello.User.Contact.Column.ID));
+    DaoHelper.ResultReader<Contact> resultReader = result -> {
+        Contact prefacturaSync = new Contact();
+        if (existColumn(result, Contact.Column.ID)) {
+            prefacturaSync.setId(result.getLong(Contact.Column.ID));
         }
-        if (existColumn(result, AcceptHello.User.Contact.Column.CODE)) {
-            prefacturaSync.setCode(result.getString(AcceptHello.User.Contact.Column.CODE));
+        if (existColumn(result, Contact.Column.CODE)) {
+            prefacturaSync.setCode(result.getString(Contact.Column.CODE));
         }
-        if (existColumn(result, AcceptHello.User.Contact.Column.NAME)) {
-            prefacturaSync.setName(result.getString(AcceptHello.User.Contact.Column.NAME));
+        if (existColumn(result, Contact.Column.NAME)) {
+            prefacturaSync.setName(result.getString(Contact.Column.NAME));
         }
-        if (existColumn(result, AcceptHello.User.Contact.Column.IP)) {
-            prefacturaSync.setIp(result.getString(AcceptHello.User.Contact.Column.IP));
+        if (existColumn(result, Contact.Column.IP)) {
+            prefacturaSync.setIp(result.getString(Contact.Column.IP));
         }
-        if (existColumn(result, AcceptHello.User.Contact.Column.THEME_ID)) {
-            prefacturaSync.setThemeId(result.getString(AcceptHello.User.Contact.Column.THEME_ID));
+        if (existColumn(result, Contact.Column.THEME_ID)) {
+            prefacturaSync.setThemeId(result.getString(Contact.Column.THEME_ID));
         }
         return prefacturaSync;
     };
@@ -76,7 +76,7 @@ public class ContactDao implements IContactDAO {
         return false;
     }
 
-    public List<AcceptHello.User.Contact> findAll() throws ConnectException, SQLException {
+    public List<Contact> findAll() throws ConnectException, SQLException {
         String query = "SELECT * FROM contact";
         return helper.executeQuery(query, resultReader);
     }
@@ -91,18 +91,18 @@ public class ContactDao implements IContactDAO {
         return helper.executeQueryCount(query, null) >= 1;
     }
 
-    public AcceptHello.User.Contact findByIp(String ip) throws ConnectException, SQLException {
+    public Contact findByIp(String ip) throws ConnectException, SQLException {
         String query = "SELECT * FROM contact WHERE ip ='" + ip + "'";
-        List<AcceptHello.User.Contact> list = helper.executeQuery(query, resultReader);
+        List<Contact> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
             return null;
         }
         return list.get(0);
     }
 
-    public AcceptHello.User.Contact findByCode(String code) throws ConnectException, SQLException {
+    public Contact findByCode(String code) throws ConnectException, SQLException {
         String query = "SELECT * FROM contact WHERE code ='" + code + "'";
-        List<AcceptHello.User.Contact> list = helper.executeQuery(query, resultReader);
+        List<Contact> list = helper.executeQuery(query, resultReader);
         if (list.isEmpty()) {
             return null;
         }
@@ -127,7 +127,7 @@ public class ContactDao implements IContactDAO {
         helper.update(query, null);
     }
 
-    public void save(AcceptHello.User.Contact contact) throws Exception {
+    public void save(Contact contact) throws Exception {
         String query = "INSERT INTO contact(code, name, ip, theme_id) values (?,?,?,?)";
         DaoHelper.QueryParameters params = new DaoHelper.QueryParameters() {
             @Override
