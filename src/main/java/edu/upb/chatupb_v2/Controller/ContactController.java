@@ -26,7 +26,8 @@ public class ContactController {
     public List<Message> returnMessages(String id_me, String id_other) {
         List<Message> messages = null;
         try {
-             messages = MessageDAO.getInstance().getConversation(id_me, id_other);
+            messages = MessageDAO.getInstance().getConversation(id_me, id_other);
+            System.out.println(messages.getFirst().getStatusMessage());
         } catch (SQLException sql){
             throw new DatabaseException("Conexión a Base de Datos Fallida");
         } catch (ConnectException conn){

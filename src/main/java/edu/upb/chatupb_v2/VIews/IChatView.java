@@ -24,5 +24,5 @@ public interface IChatView {
     void showImage(Image image);
     void showPinnedMessage(String messageId);
 
-    void addMessage(String text, boolean isOwn, String idMessage);
+    void addMessage(String text, boolean isOwn, String idMessage, boolean isRead);
 }

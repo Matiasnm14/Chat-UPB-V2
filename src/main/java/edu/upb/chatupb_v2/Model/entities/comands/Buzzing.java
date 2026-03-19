@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.Model.entities.comands;
 
+import edu.upb.chatupb_v2.Controller.exceptions.ChatException;
 import edu.upb.chatupb_v2.Model.network.SocketClient;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +21,11 @@ public class Buzzing extends Command{
 
     @Override
     public void execute(SocketClient sc) {
+        try {
+            sc.send(createFormat());
+        } catch (Exception e){
+            throw new ChatException(sc);
+        }
 
     }
 

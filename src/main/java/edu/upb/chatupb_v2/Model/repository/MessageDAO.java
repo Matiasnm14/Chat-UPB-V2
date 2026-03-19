@@ -39,8 +39,8 @@ public class MessageDAO {
         if (existColumn(result, Message.Column.BODY)) {
             prefacturaSync.setBody(result.getString(Message.Column.BODY));
         }
-        if (existColumn(result, Message.Column.STATUSMESSAGE)) {
-            switch (result.getString(Message.Column.STATUSMESSAGE).toLowerCase()){
+        if (existColumn(result, Message.Column.STATUS_MESSAGE)) {
+            switch (result.getString(Message.Column.STATUS_MESSAGE).toLowerCase()){
                 case "sent":
                     prefacturaSync.setStatusMessage(StatusMessage.SENT);
                     break;
@@ -54,7 +54,6 @@ public class MessageDAO {
 //                    prefacturaSync.setStatusMessage(StatusMessage.ERROR);
 
             }
-
         }
         if (existColumn(result, Message.Column.TYPEMESSAGE)) {
             switch (result.getString(Message.Column.TYPEMESSAGE).toLowerCase()){
@@ -90,7 +89,7 @@ public class MessageDAO {
             throws ConnectException, SQLException {
 
         String query = """
-        SELECT id_message, sender_id, receiver_id, body, type_message, date FROM Messages
+        SELECT id_message, sender_id, receiver_id, body, type_message, status_message,date FROM Messages
         WHERE ((sender_id = ?) AND (receiver_id = ?))
            OR ((sender_id = ?) AND (receiver_id = ?))
         ORDER BY date ASC

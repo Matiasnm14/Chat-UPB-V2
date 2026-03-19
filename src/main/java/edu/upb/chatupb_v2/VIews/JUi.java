@@ -12,16 +12,23 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Vista principal del chat. Implementa {@link IChatView} y actúa como
+ * la única ventana Swing de la aplicación.
+ */
 public class JUi extends JFrame implements IChatView {
 
-    // ── Palette (Light Mode) ─────────────────────────────────
+    // =========================================================================
+    // CONSTANTES DE DISEÑO
+    // =========================================================================
+
+    // Paleta de colores (Light Mode)
     private static final Color BG_DARK        = new Color(0xF0F2F5);
     private static final Color BG_SIDEBAR     = new Color(0xFFFFFF);
     private static final Color BG_CHAT        = new Color(0xF7F8FA);
@@ -34,771 +41,24 @@ public class JUi extends JFrame implements IChatView {
     private static final Color ONLINE_GREEN   = new Color(0x16A34A);
     private static final Color DANGER         = new Color(0xDC2626);
 
-    // ── Fonts ─────────────────────────────────────────────────
-    private static final Font FONT_TITLE  = new Font("SF Pro Display", Font.BOLD, 15);
-    private static final Font FONT_BODY   = new Font("SF Pro Text",    Font.PLAIN, 13);
-    private static final Font FONT_SMALL  = new Font("SF Pro Text",    Font.PLAIN, 11);
-
-    // ── State ─────────────────────────────────────────────────
-    @Setter @Getter private UIController UIController;
-    private final String username;
-    private static String userId;
-    private User selectedUser;
-    private DefaultListModel<User> chatListModel;
-    private JList<User> chatList;
-    private ContactController controller;
-    private JPanel messagesPanel;
-    private JScrollPane scrollPane;
-    private JPanel pinnedBar;
-    private JLabel pinnedLabel;
-    private final java.util.Map<String, String> pinnedMessages = new java.util.HashMap<>();
-    private String currentPinnedId = null;
-    private final CobroController cobroController = new CobroController();
-    private JTextField jTextMensaje;
-    private JLabel statusDot;
-    private JLabel statusLabel;
-    private JLabel chatTitle;
-
-    public void setController(ContactController controller) {
-        this.controller = controller;
-        renderContacts();
-    }
-
-    public JUi() {
-        Account account = ConnectionDialog.showAccountPicker(this);
-        if (account == null) System.exit(0);
-        this.username = account.getNombre();
-        userId   = account.getId();
-        applyGlobalLAF();
-        initComponents();
-        this.UIController = new UIController(this, username, userId);
-    }
-
-    // ── Global look-and-feel tweaks ───────────────────────────
-    private void applyGlobalLAF() {
-        UIManager.put("Panel.background",          BG_DARK);
-        UIManager.put("Label.foreground",          TEXT_PRIMARY);
-        UIManager.put("TextField.background",      BG_INPUT);
-        UIManager.put("TextField.foreground",      TEXT_PRIMARY);
-        UIManager.put("TextField.caretForeground", ACCENT);
-        UIManager.put("ScrollBar.thumb",           new Color(0xCCCCDD));
-        UIManager.put("ScrollBar.track",           BG_CHAT);
-        UIManager.put("ScrollBar.width",           6);
-    }
-
-    // ── Build UI ──────────────────────────────────────────────
-    private void initComponents() {
-        setTitle("ChatUPB");
-        setSize(1000, 680);
-        setMinimumSize(new Dimension(800, 550));
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        getContentPane().setBackground(BG_DARK);
-
-        // ── Sidebar ───────────────────────────────────────────
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setBackground(BG_SIDEBAR);
-        sidebar.setPreferredSize(new Dimension(260, 0));
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
-
-        // Sidebar header
-        JPanel sideHeader = new JPanel(new BorderLayout());
-        sideHeader.setBackground(BG_SIDEBAR);
-        sideHeader.setBorder(new EmptyBorder(18, 16, 14, 16));
-
-        JLabel appName = new JLabel("ChatUPB");
-        appName.setFont(new Font("SF Pro Display", Font.BOLD, 20));
-        appName.setForeground(TEXT_PRIMARY);
-
-        JLabel userTag = new JLabel("@" + username);
-        userTag.setFont(FONT_SMALL);
-        userTag.setForeground(TEXT_SECONDARY);
-
-        JPanel nameStack = new JPanel();
-        nameStack.setLayout(new BoxLayout(nameStack, BoxLayout.Y_AXIS));
-        nameStack.setOpaque(false);
-        nameStack.add(appName);
-        nameStack.add(Box.createVerticalStrut(2));
-        nameStack.add(userTag);
-
-        // Avatar circle
-        JLabel avatar = getJLabel();
-
-        sideHeader.add(avatar,    BorderLayout.WEST);
-        sideHeader.add(Box.createHorizontalStrut(10), BorderLayout.CENTER);
-        sideHeader.add(nameStack, BorderLayout.EAST);
-        // Actually use a proper layout:
-        sideHeader.removeAll();
-        sideHeader.setLayout(new BorderLayout(10, 0));
-        sideHeader.add(avatar,    BorderLayout.WEST);
-        sideHeader.add(nameStack, BorderLayout.CENTER);
-
-        // Section label
-        JLabel contactsLabel = new JLabel("CONTACTOS");
-        contactsLabel.setFont(new Font("SF Pro Text", Font.BOLD, 10));
-        contactsLabel.setForeground(TEXT_SECONDARY);
-        contactsLabel.setBorder(new EmptyBorder(8, 16, 4, 16));
-
-        // Chat list
-        chatListModel = new DefaultListModel<>();
-        chatList = new JList<>(chatListModel);
-        chatList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        chatList.setFixedCellHeight(58);
-        chatList.setBackground(BG_SIDEBAR);
-        chatList.setForeground(TEXT_PRIMARY);
-        chatList.setCellRenderer(new ContactCellRenderer());
-        chatList.setBorder(null);
-
-        JScrollPane leftScroll = new JScrollPane(chatList);
-        leftScroll.setBorder(null);
-        leftScroll.setBackground(BG_SIDEBAR);
-        leftScroll.getViewport().setBackground(BG_SIDEBAR);
-        styleScrollBar(leftScroll);
-
-        // New connection button
-        JButton btnNewConn = createSidebarButton();
-
-        JPanel sideBottom = new JPanel(new BorderLayout());
-        sideBottom.setBackground(BG_SIDEBAR);
-        sideBottom.setBorder(new EmptyBorder(10, 12, 14, 12));
-        sideBottom.add(btnNewConn, BorderLayout.CENTER);
-
-        sidebar.add(sideHeader,    BorderLayout.NORTH);
-        sidebar.add(contactsLabel, BorderLayout.NORTH); // overwritten — fix below
-        sidebar.setLayout(new BorderLayout());
-        JPanel sideTop = new JPanel(new BorderLayout());
-        sideTop.setBackground(BG_SIDEBAR);
-        sideTop.add(sideHeader,    BorderLayout.NORTH);
-        sideTop.add(contactsLabel, BorderLayout.SOUTH);
-        sidebar.add(sideTop,       BorderLayout.NORTH);
-        sidebar.add(leftScroll,    BorderLayout.CENTER);
-        sidebar.add(sideBottom,    BorderLayout.SOUTH);
-
-        // ── Chat Area ─────────────────────────────────────────
-        // Top bar
-        JPanel topBar = new JPanel(new BorderLayout(12, 0));
-        topBar.setBackground(BG_CHAT);
-        topBar.setBorder(new CompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR),
-                new EmptyBorder(12, 18, 12, 14)
-        ));
-
-        chatTitle = new JLabel("Selecciona un contacto");
-        chatTitle.setFont(new Font("SF Pro Display", Font.BOLD, 16));
-        chatTitle.setForeground(TEXT_PRIMARY);
-
-        statusDot = new JLabel("●");
-        statusDot.setForeground(ONLINE_GREEN);
-        statusDot.setFont(FONT_SMALL);
-
-        statusLabel = new JLabel("Online");
-        statusLabel.setFont(FONT_SMALL);
-        statusLabel.setForeground(TEXT_SECONDARY);
-
-        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        statusRow.setOpaque(false);
-        statusRow.add(statusDot);
-        statusRow.add(statusLabel);
-
-        JPanel chatInfo = new JPanel(new BorderLayout(0, 2));
-        chatInfo.setOpaque(false);
-        chatInfo.add(chatTitle, BorderLayout.NORTH);
-        chatInfo.add(statusRow, BorderLayout.SOUTH);
-
-        // Action buttons
-        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        actionRow.setOpaque(false);
-        actionRow.add(createIconButton("⚡", "Buzz",           new Color(0xFBBF24)));
-        actionRow.add(createIconButton("👤", "Send Contact",   ACCENT));
-        actionRow.add(createIconButton("🎨", "Tema",           new Color(0xA855F7)));
-        actionRow.add(createIconButton("💳", "Pagar",          ONLINE_GREEN));
-        actionRow.add(createIconButton("⏻",  "Fuera de Línea", DANGER));
-
-        topBar.add(chatInfo,  BorderLayout.CENTER);
-        topBar.add(actionRow, BorderLayout.EAST);
-
-        // Messages area
-        messagesPanel = new JPanel();
-        messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
-        messagesPanel.setBackground(BG_CHAT);
-        messagesPanel.setBorder(new EmptyBorder(16, 16, 8, 16));
-
-        scrollPane = new JScrollPane(messagesPanel);
-        scrollPane.setBorder(null);
-        scrollPane.setBackground(BG_CHAT);
-        scrollPane.getViewport().setBackground(BG_CHAT);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        styleScrollBar(scrollPane);
-
-        // Input bar
-        JPanel inputBar = new JPanel(new BorderLayout(10, 0));
-        inputBar.setBackground(BG_SIDEBAR);
-        inputBar.setBorder(new CompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_COLOR),
-                new EmptyBorder(12, 16, 14, 16)
-        ));
-
-        jTextMensaje = new JTextField();
-        jTextMensaje.setFont(FONT_BODY);
-        jTextMensaje.setBackground(BG_INPUT);
-        jTextMensaje.setForeground(TEXT_PRIMARY);
-        jTextMensaje.setCaretColor(ACCENT);
-        jTextMensaje.setBorder(new CompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1, true),
-                new EmptyBorder(10, 14, 10, 14)
-        ));
-
-        JButton btnImage = getJButton();
-
-        JButton btnSend = getButton("Enviar →");
-        JButton btnUniqueSend = getButton("Unique");
-        JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        rightButtons.setOpaque(false);
-        rightButtons.add(btnUniqueSend);
-        rightButtons.add(btnSend);
-
-        inputBar.add(jTextMensaje, BorderLayout.CENTER);
-        inputBar.add(rightButtons,      BorderLayout.EAST);
-        inputBar.add(btnImage, BorderLayout.WEST);
-
-        // Pinned message banner (hidden by default)
-        pinnedBar = new JPanel(new BorderLayout(10, 0));
-        pinnedBar.setBackground(new Color(0xEEEEFF));
-        pinnedBar.setBorder(new CompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR),
-                new EmptyBorder(7, 16, 7, 12)
-        ));
-        pinnedBar.setVisible(false);
-
-        JLabel pinIcon = new JLabel("📌");
-        pinIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
-
-        pinnedLabel = new JLabel("");
-        pinnedLabel.setFont(FONT_BODY);
-        pinnedLabel.setForeground(ACCENT);
-
-        JButton btnUnpin = new JButton("✕");
-        btnUnpin.setFont(FONT_SMALL);
-        btnUnpin.setForeground(TEXT_SECONDARY);
-        btnUnpin.setBorderPainted(false);
-        btnUnpin.setContentAreaFilled(false);
-        btnUnpin.setFocusPainted(false);
-        btnUnpin.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnUnpin.addActionListener(e -> pinnedBar.setVisible(false));
-
-        JPanel pinLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        pinLeft.setOpaque(false);
-        pinLeft.add(pinIcon);
-        pinLeft.add(pinnedLabel);
-
-        pinnedBar.add(pinLeft,  BorderLayout.CENTER);
-        pinnedBar.add(btnUnpin, BorderLayout.EAST);
-
-        // Assemble right panel
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(BG_CHAT);
-        rightPanel.add(topBar,    BorderLayout.NORTH);
-
-        JPanel chatBody = new JPanel(new BorderLayout());
-        chatBody.setBackground(BG_CHAT);
-        chatBody.add(pinnedBar,  BorderLayout.NORTH);
-        chatBody.add(scrollPane, BorderLayout.CENTER);
-
-        rightPanel.add(chatBody,  BorderLayout.CENTER);
-        rightPanel.add(inputBar,  BorderLayout.SOUTH);
-
-        // ── Root layout ───────────────────────────────────────
-        setLayout(new BorderLayout());
-        add(sidebar,    BorderLayout.WEST);
-        add(rightPanel, BorderLayout.CENTER);
-
-        // ── Wire actions ──────────────────────────────────────
-        btnSend.addActionListener(e -> sendCurrentMessage());
-//        jTextMensaje.addActionListener(e -> sendCurrentMessage());
-        btnUniqueSend.addActionListener(e -> sendCurrentMessageUnique());
-
-        // Wire icon buttons (stored in actionRow)
-        Component[] btns = actionRow.getComponents();
-        // ⚡ Buzz
-        ((JButton) btns[0]).addActionListener(e -> UIController.sendBuzz());
-        // 👤 Send Contact
-        ((JButton) btns[1]).addActionListener(e -> {
-            try { UIController.sendContact(chatList.getSelectedValue()); }
-            catch (IOException ex) { throw new RuntimeException(ex); }
-        });
-        // 🎨 Tema
-        ((JButton) btns[2]).addActionListener(e -> showThemeDialog());
-        // 💳 Pagar
-        ((JButton) btns[3]).addActionListener(e -> showPaymentDialog());
-        // ⏻ Offline
-        ((JButton) btns[4]).addActionListener(e -> UIController.sendBye());
-
-        btnNewConn.addActionListener(e -> showConnectDialog());
-
-        chatList.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                User sel = chatList.getSelectedValue();
-                if (sel != null) {
-                    selectedUser = sel;
-                    chatTitle.setText(sel.getName() != null ? sel.getName() : sel.toString());
-                    pinnedBar.setVisible(false);
-                    currentPinnedId = null;
-                    renderMessages(controller.returnMessages(userId, selectedUser.getId()));
-                    // Reset pinned banner — each conversation tracks its own pin
-                    pinnedBar.setVisible(false);
-                    currentPinnedId = null;
-                }
-            }
-        });
-
-        // Right-click context menu
-        JPopupMenu popup = buildContextMenu();
-        chatList.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (SwingUtilities.isRightMouseButton(e)) {
-                    int idx = chatList.locationToIndex(e.getPoint());
-                    chatList.setSelectedIndex(idx);
-                    popup.show(chatList, e.getX(), e.getY());
-                }
-            }
-        });
-    }
-
-    private JButton getButton(String text) {
-        JButton btnSend = new JButton(text) {
-            {
-                setFont(new Font("SF Pro Text", Font.BOLD, 13));
-                setForeground(Color.WHITE);
-                setBackground(ACCENT);
-                setBorder(new EmptyBorder(10, 20, 10, 20));
-                setFocusPainted(false);
-                setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                setOpaque(true);
-            }
-
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getModel().isRollover() ? ACCENT_HOVER : ACCENT);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        btnSend.setContentAreaFilled(false);
-        return btnSend;
-    }
-
-    private JButton getJButton() {
-        JButton btnImage = getButton("Imagen");
-
-        btnImage.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            int result = fileChooser.showOpenDialog(null);
-
-            if(result == JFileChooser.APPROVE_OPTION){
-                File file = fileChooser.getSelectedFile();
-                ImageIcon icon = new ImageIcon(file.getPath());
-                addImage(icon, true);
-                UIController.sendImage(file,chatList.getSelectedValue());
-            }
-        });
-        return btnImage;
-    }
-
-    private JLabel getJLabel() {
-        JLabel avatar = new JLabel(String.valueOf(username.charAt(0)).toUpperCase()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(ACCENT);
-                g2.fillOval(0, 0, getWidth(), getHeight());
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        avatar.setFont(new Font("SF Pro Display", Font.BOLD, 16));
-        avatar.setForeground(Color.WHITE);
-        avatar.setHorizontalAlignment(SwingConstants.CENTER);
-        avatar.setPreferredSize(new Dimension(38, 38));
-        return avatar;
-    }
-
-    // ── Helper builders ───────────────────────────────────────
-
-    private JButton createIconButton(String icon, String tooltip, Color accent) {
-        JButton btn = new JButton(icon) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color bg = getModel().isRollover()
-                        ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 50)
-                        : new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 20);
-                g2.setColor(bg);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        btn.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-        btn.setForeground(accent);
-        btn.setToolTipText(tooltip);
-        btn.setPreferredSize(new Dimension(38, 34));
-        btn.setFocusPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    private JButton createSidebarButton() {
-        JButton btn = new JButton("＋  Nueva Conexión") {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getModel().isRollover() ? ACCENT_HOVER : ACCENT);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        btn.setFont(new Font("SF Pro Text", Font.BOLD, 13));
-        btn.setForeground(Color.WHITE);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setPreferredSize(new Dimension(0, 38));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    private void styleScrollBar(JScrollPane sp) {
-        JScrollBar vsb = sp.getVerticalScrollBar();
-        vsb.setBackground(BG_CHAT);
-        vsb.setForeground(new Color(0x3A3A50));
-        vsb.setPreferredSize(new Dimension(6, 0));
-    }
-
-    private JPopupMenu buildContextMenu() {
-        JPopupMenu popup = new JPopupMenu();
-        popup.setBackground(BG_INPUT);
-        popup.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
-
-        JMenuItem j1 = styledMenuItem("Conectar", ACCENT);
-        JMenuItem j2 = styledMenuItem("Eliminar Contacto",  TEXT_SECONDARY);
-        popup.add(j1);
-        popup.add(j2);
-
-        j1.addActionListener(e -> UIController.connectPrev(chatList.getSelectedValue()));
-        j2.addActionListener(e ->{
-                UIController.deleteUser(chatList.getSelectedValue());
-                repaint();
-        });
-        return popup;
-    }
-
-    private JMenuItem styledMenuItem(String text, Color fg) {
-        JMenuItem item = new JMenuItem(text);
-        item.setFont(FONT_BODY);
-        item.setForeground(fg);
-        item.setBackground(BG_INPUT);
-        item.setBorder(new EmptyBorder(8, 14, 8, 14));
-        item.setOpaque(true);
-        return item;
-    }
-
-    // ── Actions ───────────────────────────────────────────────
-
-    private void sendCurrentMessage() {
-        String text = jTextMensaje.getText().trim();
-        if (!text.isEmpty()) {
-            String id = UUID.randomUUID().toString();
-            addMessage(text, true, id);
-            UIController.sendMessage(text, selectedUser, id);
-            jTextMensaje.setText("");
-        }
-    }
-
-    private void sendCurrentMessageUnique() {
-        String text = jTextMensaje.getText().trim();
-        if (!text.isEmpty()) {
-            UIController.sendMessageUnique(text, selectedUser, UUID.randomUUID().toString());
-            jTextMensaje.setText("");
-        }
-    }
-
-    private void showPaymentDialog() {
-        String[] options = {"🔐  Cripto", "🏦  Bob (Fiat)"};
-        int choice = JOptionPane.showOptionDialog(
-                this,
-                "¿Tipo de pago?",
-                "Nuevo Pago",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]
-        );
-        if (choice < 0) return;
-        Cobro res = cobroController.cobrarController(choice);
-        String tipo = res.getRed().isEmpty() ? "FIAT" : "CRIPTO";
-        String red  = res.getRed().isEmpty() ? "" : "\nRed: " + res.getRed();
-        JOptionPane.showMessageDialog(this,
-                "Tipo: " + tipo + "\nImporte: " + res.getImporte() + "\nQR: " + res.getQr() + red,
-                "Pago", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private void showConnectDialog() {
-        String ip = JOptionPane.showInputDialog(
-                this, "Dirección IP del servidor:", "Nueva Conexión", JOptionPane.QUESTION_MESSAGE);
-        if (ip != null && !ip.trim().isEmpty()) UIController.connect(ip.trim());
-    }
-
-    /**
-     * Attaches a right-click popup to a bubble that lets the user pin it.
-     * The bubble carries the message text as its tooltip so we can display it
-     * in the banner without needing a separate id→text map.
-     */
-    private void attachBubblePopup(MessageBubble bubble, String text, String idMessage) {
-        if (text == null) return; // image bubbles — skip for now
-
-        // Store display text on the component for later retrieval
-        bubble.putClientProperty("msgText", text);
-
-        JPopupMenu menu = new JPopupMenu();
-        menu.setBackground(BG_SIDEBAR);
-        menu.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1, true));
-
-        JMenuItem pinItem = styledMenuItem("📌  Fijar mensaje", ACCENT);
-        JMenuItem deleteItem = styledMenuItem("BORRAR MENSAJE", ACCENT);
-        menu.add(pinItem);
-        menu.add(deleteItem);
-
-        pinItem.addActionListener(e -> {
-            // Generate a stable id for this message (use text hash as fallback)
-            currentPinnedId = idMessage;
-
-            // Show in banner
-            displayPinnedBanner(text);
-
-            // Send to peer
-            if (selectedUser != null) UIController.sendPinMessage(idMessage, selectedUser);
-        });
-
-        deleteItem.addActionListener(e -> {
-            if (selectedUser != null) UIController.deleteMessage(idMessage);
-            repaint();
-        });
-
-        bubble.addMouseListener(new MouseAdapter() {
-            @Override public void mousePressed(MouseEvent e)  { maybeShow(e); }
-            @Override public void mouseReleased(MouseEvent e) { maybeShow(e); }
-            private void maybeShow(MouseEvent e) {
-                if (e.isPopupTrigger()) menu.show(bubble, e.getX(), e.getY());
-            }
-        });
-    }
-
-    /** Shows or updates the pinned banner with the given message text. */
-    private void displayPinnedBanner(String text) {
-        String preview = text.length() > 60 ? text.substring(0, 57) + "…" : text;
-        pinnedLabel.setText(preview);
-        pinnedBar.setVisible(true);
-        pinnedBar.revalidate();
-        pinnedBar.repaint();
-    }
-
-    @Override
-    public void showPinnedMessage(String messageId) {
-        String message = ClientController.getInstance().retrieveMessage(messageId);
-        if (message.isEmpty() || message == null){
-            message = "Mensaje Pineado";
-        }
-        currentPinnedId = messageId;
-        displayPinnedBanner(message);
-    }
-
-    // ── Message rendering ─────────────────────────────────────
-
-    @Override
-    public void addMessage(String text, boolean isOwn, String idMessage) {
-        JPanel row = new JPanel(new BorderLayout());
-        row.setOpaque(false);
-        row.setBorder(new EmptyBorder(4, 4, 4, 4));
-
-        MessageBubble bubble = new MessageBubble(text, isOwn);
-        Dimension ps = bubble.getPreferredSize();
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, ps.height + 8));
-
-        if (isOwn) {
-            row.add(bubble, BorderLayout.EAST);
-        } else {
-            row.add(bubble, BorderLayout.WEST);
-        }
-
-        // Right-click to pin
-        attachBubblePopup(bubble, text, idMessage);
-
-        messagesPanel.add(row);
-        messagesPanel.add(Box.createVerticalStrut(6));
-
-        messagesPanel.revalidate();
-        messagesPanel.repaint();
-
-        SwingUtilities.invokeLater(() -> {
-            JScrollBar v = scrollPane.getVerticalScrollBar();
-            v.setValue(v.getMaximum());
-        });
-    }
-
-    private void addImage(ImageIcon icon, boolean isOwn) {
-
-        JPanel row = new JPanel(new BorderLayout());
-        row.setOpaque(false);
-        row.setBorder(new EmptyBorder(4, 4, 4, 4));
-
-        MessageBubble bubble = new MessageBubble(null, icon, isOwn);
-        Dimension ps = bubble.getPreferredSize();
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, ps.height + 8));
-
-        if (isOwn) {
-            row.add(bubble, BorderLayout.EAST);
-        } else {
-            row.add(bubble, BorderLayout.WEST);
-        }
-
-        messagesPanel.add(row);
-        messagesPanel.add(Box.createVerticalStrut(8));
-
-        messagesPanel.revalidate();
-        messagesPanel.repaint();
-
-        SwingUtilities.invokeLater(() -> {
-            JScrollBar v = scrollPane.getVerticalScrollBar();
-            v.setValue(v.getMaximum());
-        });
-    }
-
-    // Nuevo método privado
-    private void selectUser(String targetUserId) {
-        for (int i = 0; i < chatListModel.size(); i++) {
-            if (chatListModel.get(i).getId().equals(targetUserId)) {
-                chatList.setSelectedIndex(i);
-                // Dispara el ListSelectionListener que ya existe,
-                // que carga los mensajes y setea selectedUser
-                break;
-            }
-        }
-    }
-
-    public void init() {
-        EventQueue.invokeLater(() -> setVisible(true));
-    }
-
-    // ── IChatView ─────────────────────────────────────────────
-
-    @Override public void updateStatus(String status) {
-        statusLabel.setText(status);
-        statusDot.setForeground(status.toLowerCase().contains("offline") ? DANGER : ONLINE_GREEN);
-    }
-
-    @Override public void showMessage(String message)   { addMessage(message, false, UUID.randomUUID().toString()); }
-
-    @Override public void showError(String error) {
-        JOptionPane.showMessageDialog(this, error, "Error", JOptionPane.ERROR_MESSAGE);
-    }
-
-    @Override public boolean showInvitationDialog(String userName, String id) {
-        int res = JOptionPane.showConfirmDialog(
-                this, "Invitación de: " + userName + "\n¿Aceptar?",
-                "Nueva conexión", JOptionPane.YES_NO_OPTION);
-        return res == JOptionPane.YES_OPTION;
-    }
-
-    @Override public void showBuzzNotification(String senderName) {
-        JOptionPane.showMessageDialog(this,
-                "⚡ " + senderName + " te envió un buzz", "Buzz", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    @Override public void showChat(Chat chat) {
-        addMessage(chat.getMessage(), false, chat.getIdMessage());
-    }
-    @Override public void showUniqueMessage(UniqueMessage uni) {
-        addMessage(uni.getMessage(), false, uni.getIdMessage());
-    }
-
-    @Override public void renderContacts() {
-        chatListModel.clear();
-        try {
-            for (User u : controller.returnContacts(userId)) chatListModel.addElement(u);
-        } catch (Exception e) { System.out.println(e.getMessage()); }
-    }
-
-    @Override
-    public void renderMessages(List<Message> messages) {
-        messagesPanel.removeAll();
-
-        for (Message m : messages) {
-            boolean isMine = m.getSendUser().equals(userId);
-
-            if (m.getTypeMessage() == TypeMessage.IMAGE) {
-                try {
-                    // 1. Decodificar el cuerpo del mensaje (Base64) a bytes
-                    byte[] imageBytes = Base64.getDecoder().decode(m.getBody());
-
-                    // 2. Crear el icono
-                    ImageIcon icon = new ImageIcon(imageBytes);
-
-                    // 3. Determinar si el mensaje es mío comparando IDs
-
-                    // 4. Llamar al método addImage que creamos
-                    addImage(icon, isMine);
-
-                } catch (Exception e) {
-                    // En caso de error (Base64 corrupto, etc.), podrías mostrar un mensaje de texto
-                    //addMessage("[Error al cargar imagen]", m.getSendUser().equals(userId));
-                }
-            } else {
-                addMessage(m.getBody(), isMine, m.getIdMessage());
-//                addMessage(m, isMine);
-            }
-        }
-
-        // Forzar actualización de layout
-        messagesPanel.revalidate();
-        messagesPanel.repaint();
-
-        // Scroll al final
-        SwingUtilities.invokeLater(() -> {
-            JScrollBar v = scrollPane.getVerticalScrollBar();
-            v.setValue(v.getMaximum());
-        });
-    }
-    @Override public void showByeNotification(String id) {
-        JOptionPane.showMessageDialog(this,
-                id + " se desconectó", "Desconectado", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    @Override
-    public void onNewConnectionEstablished(String userName, String userId) {
-        renderContacts();
-        updateStatus("Status: Online");
-        selectUser(userId); // ← selecciona automáticamente
-    }
-
-    // ── Theme definitions ─────────────────────────────────────
-    record ChatTheme(String id, String label,
-                     Color bgChat, Color bgSidebar, Color bgInput,
-                     Color accent, Color accentHover,
-                     Color bubbleOwn, Color bubbleThem,
-                     Color textPrimary, Color textSecondary, Color borderColor) {}
-
-    private static final java.util.List<ChatTheme> THEMES = java.util.List.of(
+    // Fuentes
+    private static final Font FONT_TITLE = new Font("SF Pro Display", Font.BOLD,  15);
+    private static final Font FONT_BODY  = new Font("SF Pro Text",    Font.PLAIN, 13);
+    private static final Font FONT_SMALL = new Font("SF Pro Text",    Font.PLAIN, 11);
+
+    // =========================================================================
+    // TEMAS
+    // =========================================================================
+
+    record ChatTheme(
+            String id, String label,
+            Color bgChat, Color bgSidebar, Color bgInput,
+            Color accent, Color accentHover,
+            Color bubbleOwn, Color bubbleThem,
+            Color textPrimary, Color textSecondary, Color borderColor
+    ) {}
+
+    private static final List<ChatTheme> THEMES = List.of(
             new ChatTheme("1", "🔵 Default",
                     new Color(0xF7F8FA), new Color(0xFFFFFF), new Color(0xFFFFFF),
                     new Color(0x5B5BD6), new Color(0x4848C0),
@@ -826,44 +86,662 @@ public class JUi extends JFrame implements IChatView {
                     new Color(0x1A0010), new Color(0x8B5260), new Color(0xFFB3C6))
     );
 
+    // =========================================================================
+    // ESTADO
+    // =========================================================================
+
+    @Setter @Getter private UIController UIController;
+
+    private final String username;
+    private static String userId;
+
+    private User selectedUser;
+    private ContactController controller;
     private ChatTheme activeTheme = THEMES.getFirst();
 
-    private void applyTheme(ChatTheme t) {
-        activeTheme = t;
+    private final CobroController cobroController = new CobroController();
+    private final java.util.Map<String, String> pinnedMessages = new java.util.HashMap<>();
+    private String currentPinnedId = null;
 
-        // Update live color fields so paintComponent methods pick them up
-        // Re-background panels directly
-        messagesPanel.setBackground(t.bgChat());
-        scrollPane.setBackground(t.bgChat());
-        scrollPane.getViewport().setBackground(t.bgChat());
-        getContentPane().setBackground(t.bgChat());
+    // Componentes de la UI
+    private DefaultListModel<User> chatListModel;
+    private JList<User> chatList;
+    private JPanel messagesPanel;
+    private JScrollPane scrollPane;
+    private JPanel pinnedBar;
+    private JLabel pinnedLabel;
+    private JTextField jTextMensaje;
+    private JLabel statusDot;
+    private JLabel statusLabel;
+    private JLabel chatTitle;
 
-        // Propagate to all panels recursively
-        applyBgRecursive(getContentPane(), t);
+    // =========================================================================
+    // CONSTRUCTOR
+    // =========================================================================
 
-        messagesPanel.repaint();
-        repaint();
+    public JUi() {
+        Account account = ConnectionDialog.showAccountPicker(this);
+        if (account == null) System.exit(0);
+
+        this.username = account.getNombre();
+        userId = account.getId();
+
+        applyGlobalLAF();
+        initComponents();
+        this.UIController = new UIController(this, username, userId);
     }
 
-    private void applyBgRecursive(Container c, ChatTheme t) {
-        for (Component comp : c.getComponents()) {
-            // Only repaint panels that were using one of our known bg colors
-            if (comp instanceof JPanel p && p.isOpaque()) {
-                Color bg = p.getBackground();
-                if (bg.equals(activeTheme.bgChat()) || bg.getRGB() == new Color(0xF7F8FA).getRGB())
-                    p.setBackground(t.bgChat());
-                else if (bg.equals(activeTheme.bgSidebar()) || bg.getRGB() == new Color(0xFFFFFF).getRGB())
-                    p.setBackground(t.bgSidebar());
+    // =========================================================================
+    // INICIALIZACIÓN DE LA UI
+    // =========================================================================
+
+    /** Aplica ajustes globales de look-and-feel a los componentes Swing. */
+    private void applyGlobalLAF() {
+        UIManager.put("Panel.background",          BG_DARK);
+        UIManager.put("Label.foreground",          TEXT_PRIMARY);
+        UIManager.put("TextField.background",      BG_INPUT);
+        UIManager.put("TextField.foreground",      TEXT_PRIMARY);
+        UIManager.put("TextField.caretForeground", ACCENT);
+        UIManager.put("ScrollBar.thumb",           new Color(0xCCCCDD));
+        UIManager.put("ScrollBar.track",           BG_CHAT);
+        UIManager.put("ScrollBar.width",           6);
+    }
+
+    /** Construye y ensambla todos los paneles de la ventana principal. */
+    private void initComponents() {
+        setTitle("ChatUPB");
+        setSize(1000, 680);
+        setMinimumSize(new Dimension(800, 550));
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        getContentPane().setBackground(BG_DARK);
+
+        JPanel sidebar    = buildSidebar();
+        JPanel rightPanel = buildRightPanel();
+
+        setLayout(new BorderLayout());
+        add(sidebar,    BorderLayout.WEST);
+        add(rightPanel, BorderLayout.CENTER);
+    }
+
+    // ── Sidebar ───────────────────────────────────────────────────────────────
+
+    private JPanel buildSidebar() {
+        JPanel sidebar = new JPanel(new BorderLayout());
+        sidebar.setBackground(BG_SIDEBAR);
+        sidebar.setPreferredSize(new Dimension(260, 0));
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
+
+        JPanel sideTop = buildSidebarTop();
+        JScrollPane contactScroll = buildContactList();
+        JPanel sideBottom = buildSidebarBottom();
+
+        sidebar.add(sideTop,       BorderLayout.NORTH);
+        sidebar.add(contactScroll, BorderLayout.CENTER);
+        sidebar.add(sideBottom,    BorderLayout.SOUTH);
+        return sidebar;
+    }
+
+    private JPanel buildSidebarTop() {
+        // Avatar
+        JLabel avatar = new JLabel(String.valueOf(username.charAt(0)).toUpperCase()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(ACCENT);
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.dispose();
+                super.paintComponent(g);
             }
-            if (comp instanceof Container sub) applyBgRecursive(sub, t);
+        };
+        avatar.setFont(new Font("SF Pro Display", Font.BOLD, 16));
+        avatar.setForeground(Color.WHITE);
+        avatar.setHorizontalAlignment(SwingConstants.CENTER);
+        avatar.setPreferredSize(new Dimension(38, 38));
+
+        // Nombre y tag de usuario
+        JLabel appName = new JLabel("ChatUPB");
+        appName.setFont(new Font("SF Pro Display", Font.BOLD, 20));
+        appName.setForeground(TEXT_PRIMARY);
+
+        JLabel userTag = new JLabel("@" + username);
+        userTag.setFont(FONT_SMALL);
+        userTag.setForeground(TEXT_SECONDARY);
+
+        JPanel nameStack = new JPanel();
+        nameStack.setLayout(new BoxLayout(nameStack, BoxLayout.Y_AXIS));
+        nameStack.setOpaque(false);
+        nameStack.add(appName);
+        nameStack.add(Box.createVerticalStrut(2));
+        nameStack.add(userTag);
+
+        JPanel header = new JPanel(new BorderLayout(10, 0));
+        header.setBackground(BG_SIDEBAR);
+        header.setBorder(new EmptyBorder(18, 16, 14, 16));
+        header.add(avatar,    BorderLayout.WEST);
+        header.add(nameStack, BorderLayout.CENTER);
+
+        JLabel contactsLabel = new JLabel("CONTACTOS");
+        contactsLabel.setFont(new Font("SF Pro Text", Font.BOLD, 10));
+        contactsLabel.setForeground(TEXT_SECONDARY);
+        contactsLabel.setBorder(new EmptyBorder(8, 16, 4, 16));
+
+        JPanel sideTop = new JPanel(new BorderLayout());
+        sideTop.setBackground(BG_SIDEBAR);
+        sideTop.add(header,        BorderLayout.NORTH);
+        sideTop.add(contactsLabel, BorderLayout.SOUTH);
+        return sideTop;
+    }
+
+    private JScrollPane buildContactList() {
+        chatListModel = new DefaultListModel<>();
+        chatList = new JList<>(chatListModel);
+        chatList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        chatList.setFixedCellHeight(58);
+        chatList.setBackground(BG_SIDEBAR);
+        chatList.setForeground(TEXT_PRIMARY);
+        chatList.setCellRenderer(new ContactCellRenderer());
+        chatList.setBorder(null);
+
+        // Selección de contacto
+        chatList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) onContactSelected(chatList.getSelectedValue());
+        });
+
+        // Menú contextual con clic derecho
+        JPopupMenu popup = buildContactContextMenu();
+        chatList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    chatList.setSelectedIndex(chatList.locationToIndex(e.getPoint()));
+                    popup.show(chatList, e.getX(), e.getY());
+                }
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(chatList);
+        scroll.setBorder(null);
+        scroll.setBackground(BG_SIDEBAR);
+        scroll.getViewport().setBackground(BG_SIDEBAR);
+        styleScrollBar(scroll);
+        return scroll;
+    }
+
+    private JPanel buildSidebarBottom() {
+        JButton btnNewConn = createSidebarButton("＋  Nueva Conexión");
+        btnNewConn.addActionListener(e -> showConnectDialog());
+
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setBackground(BG_SIDEBAR);
+        bottom.setBorder(new EmptyBorder(10, 12, 14, 12));
+        bottom.add(btnNewConn, BorderLayout.CENTER);
+        return bottom;
+    }
+
+    private JPopupMenu buildContactContextMenu() {
+        JPopupMenu popup = new JPopupMenu();
+        popup.setBackground(BG_INPUT);
+        popup.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
+
+        JMenuItem itemConectar  = styledMenuItem("Conectar",          ACCENT);
+        JMenuItem itemEliminar  = styledMenuItem("Eliminar Contacto", TEXT_SECONDARY);
+        popup.add(itemConectar);
+        popup.add(itemEliminar);
+
+        itemConectar.addActionListener(e -> UIController.connectPrev(chatList.getSelectedValue()));
+        itemEliminar.addActionListener(e -> {
+            UIController.deleteUser(chatList.getSelectedValue());
+            repaint();
+        });
+        return popup;
+    }
+
+    // ── Panel derecho (topBar + mensajes + inputBar) ──────────────────────────
+
+    private JPanel buildRightPanel() {
+        JPanel topBar  = buildTopBar();
+        JPanel chatBody = buildChatBody();
+        JPanel inputBar = buildInputBar();
+
+        JPanel right = new JPanel(new BorderLayout());
+        right.setBackground(BG_CHAT);
+        right.add(topBar,   BorderLayout.NORTH);
+        right.add(chatBody, BorderLayout.CENTER);
+        right.add(inputBar, BorderLayout.SOUTH);
+        return right;
+    }
+
+    private JPanel buildTopBar() {
+        chatTitle = new JLabel("Selecciona un contacto");
+        chatTitle.setFont(new Font("SF Pro Display", Font.BOLD, 16));
+        chatTitle.setForeground(TEXT_PRIMARY);
+
+        statusDot = new JLabel("●");
+        statusDot.setForeground(ONLINE_GREEN);
+        statusDot.setFont(FONT_SMALL);
+
+        statusLabel = new JLabel("Online");
+        statusLabel.setFont(FONT_SMALL);
+        statusLabel.setForeground(TEXT_SECONDARY);
+
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        statusRow.setOpaque(false);
+        statusRow.add(statusDot);
+        statusRow.add(statusLabel);
+
+        JPanel chatInfo = new JPanel(new BorderLayout(0, 2));
+        chatInfo.setOpaque(false);
+        chatInfo.add(chatTitle, BorderLayout.NORTH);
+        chatInfo.add(statusRow, BorderLayout.SOUTH);
+
+        JPanel actionRow = buildActionRow();
+
+        JPanel topBar = new JPanel(new BorderLayout(12, 0));
+        topBar.setBackground(BG_CHAT);
+        topBar.setBorder(new CompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR),
+                new EmptyBorder(12, 18, 12, 14)));
+        topBar.add(chatInfo,  BorderLayout.CENTER);
+        topBar.add(actionRow, BorderLayout.EAST);
+        return topBar;
+    }
+
+    private JPanel buildActionRow() {
+        JButton btnBuzz    = createIconButton("⚡", "Buzz",           new Color(0xFBBF24));
+        JButton btnContact = createIconButton("👤", "Send Contact",   ACCENT);
+        JButton btnTheme   = createIconButton("🎨", "Tema",           new Color(0xA855F7));
+        JButton btnPay     = createIconButton("💳", "Pagar",          ONLINE_GREEN);
+        JButton btnBye     = createIconButton("⏻",  "Fuera de Línea", DANGER);
+
+        btnBuzz   .addActionListener(e -> UIController.sendBuzz());
+        btnContact.addActionListener(e -> {
+            try { UIController.sendContact(chatList.getSelectedValue()); }
+            catch (IOException ex) { throw new RuntimeException(ex); }
+        });
+        btnTheme  .addActionListener(e -> showThemeDialog());
+        btnPay    .addActionListener(e -> showPaymentDialog());
+        btnBye    .addActionListener(e -> UIController.sendBye());
+
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        row.setOpaque(false);
+        row.add(btnBuzz);
+        row.add(btnContact);
+        row.add(btnTheme);
+        row.add(btnPay);
+        row.add(btnBye);
+        return row;
+    }
+
+    private JPanel buildChatBody() {
+        // Área de mensajes
+        messagesPanel = new JPanel();
+        messagesPanel.setLayout(new BoxLayout(messagesPanel, BoxLayout.Y_AXIS));
+        messagesPanel.setBackground(BG_CHAT);
+        messagesPanel.setBorder(new EmptyBorder(16, 16, 8, 16));
+
+        scrollPane = new JScrollPane(messagesPanel);
+        scrollPane.setBorder(null);
+        scrollPane.setBackground(BG_CHAT);
+        scrollPane.getViewport().setBackground(BG_CHAT);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        styleScrollBar(scrollPane);
+
+        // Banner de mensaje fijado
+        pinnedBar = buildPinnedBar();
+
+        JPanel chatBody = new JPanel(new BorderLayout());
+        chatBody.setBackground(BG_CHAT);
+        chatBody.add(pinnedBar,  BorderLayout.NORTH);
+        chatBody.add(scrollPane, BorderLayout.CENTER);
+        return chatBody;
+    }
+
+    private JPanel buildPinnedBar() {
+        JLabel pinIcon = new JLabel("📌");
+        pinIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+
+        pinnedLabel = new JLabel("");
+        pinnedLabel.setFont(FONT_BODY);
+        pinnedLabel.setForeground(ACCENT);
+
+        JButton btnUnpin = new JButton("✕");
+        btnUnpin.setFont(FONT_SMALL);
+        btnUnpin.setForeground(TEXT_SECONDARY);
+        btnUnpin.setBorderPainted(false);
+        btnUnpin.setContentAreaFilled(false);
+        btnUnpin.setFocusPainted(false);
+        btnUnpin.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnUnpin.addActionListener(e -> pinnedBar.setVisible(false));
+
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        left.setOpaque(false);
+        left.add(pinIcon);
+        left.add(pinnedLabel);
+
+        JPanel bar = new JPanel(new BorderLayout(10, 0));
+        bar.setBackground(new Color(0xEEEEFF));
+        bar.setBorder(new CompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR),
+                new EmptyBorder(7, 16, 7, 12)));
+        bar.setVisible(false);
+        bar.add(left,     BorderLayout.CENTER);
+        bar.add(btnUnpin, BorderLayout.EAST);
+        return bar;
+    }
+
+    private JPanel buildInputBar() {
+        jTextMensaje = new JTextField();
+        jTextMensaje.setFont(FONT_BODY);
+        jTextMensaje.setBackground(BG_INPUT);
+        jTextMensaje.setForeground(TEXT_PRIMARY);
+        jTextMensaje.setCaretColor(ACCENT);
+        jTextMensaje.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1, true),
+                new EmptyBorder(10, 14, 10, 14)));
+
+        JButton btnImage  = buildImageButton();
+        JButton btnSend   = createStyledButton("Enviar →");
+        JButton btnUnique = createStyledButton("Unique");
+
+        btnSend  .addActionListener(e -> sendCurrentMessage());
+        btnUnique.addActionListener(e -> sendCurrentMessageUnique());
+
+        JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        rightButtons.setOpaque(false);
+        rightButtons.add(btnUnique);
+        rightButtons.add(btnSend);
+
+        JPanel inputBar = new JPanel(new BorderLayout(10, 0));
+        inputBar.setBackground(BG_SIDEBAR);
+        inputBar.setBorder(new CompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_COLOR),
+                new EmptyBorder(12, 16, 14, 16)));
+        inputBar.add(btnImage,     BorderLayout.WEST);
+        inputBar.add(jTextMensaje, BorderLayout.CENTER);
+        inputBar.add(rightButtons, BorderLayout.EAST);
+        return inputBar;
+    }
+
+    private JButton buildImageButton() {
+        JButton btn = createStyledButton("Imagen");
+        btn.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                File file = chooser.getSelectedFile();
+                addImage(new ImageIcon(file.getPath()), true,true);
+                UIController.sendImage(file, chatList.getSelectedValue());
+            }
+        });
+        return btn;
+    }
+
+    // =========================================================================
+    // FÁBRICA DE COMPONENTES
+    // =========================================================================
+
+    /** Botón de acción principal con esquinas redondeadas y color ACCENT. */
+    private JButton createStyledButton(String text) {
+        JButton btn = new JButton(text) {
+            { setFont(new Font("SF Pro Text", Font.BOLD, 13));
+                setForeground(Color.WHITE);
+                setBackground(ACCENT);
+                setBorder(new EmptyBorder(10, 20, 10, 20));
+                setFocusPainted(false);
+                setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                setOpaque(true); }
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getModel().isRollover() ? ACCENT_HOVER : ACCENT);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setContentAreaFilled(false);
+        return btn;
+    }
+
+    /** Botón de ícono pequeño para la barra de acciones. */
+    private JButton createIconButton(String icon, String tooltip, Color accent) {
+        JButton btn = new JButton(icon) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color bg = getModel().isRollover()
+                        ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 50)
+                        : new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 20);
+                g2.setColor(bg);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+        btn.setForeground(accent);
+        btn.setToolTipText(tooltip);
+        btn.setPreferredSize(new Dimension(38, 34));
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    /** Botón ancho para la parte inferior del sidebar. */
+    private JButton createSidebarButton(String label) {
+        JButton btn = new JButton(label) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getModel().isRollover() ? ACCENT_HOVER : ACCENT);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setFont(new Font("SF Pro Text", Font.BOLD, 13));
+        btn.setForeground(Color.WHITE);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setPreferredSize(new Dimension(0, 38));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    private JMenuItem styledMenuItem(String text, Color fg) {
+        JMenuItem item = new JMenuItem(text);
+        item.setFont(FONT_BODY);
+        item.setForeground(fg);
+        item.setBackground(BG_INPUT);
+        item.setBorder(new EmptyBorder(8, 14, 8, 14));
+        item.setOpaque(true);
+        return item;
+    }
+
+    private void styleScrollBar(JScrollPane sp) {
+        JScrollBar vsb = sp.getVerticalScrollBar();
+        vsb.setBackground(BG_CHAT);
+        vsb.setForeground(new Color(0x3A3A50));
+        vsb.setPreferredSize(new Dimension(6, 0));
+    }
+
+    // =========================================================================
+    // LÓGICA DE MENSAJES
+    // =========================================================================
+
+    /** Envía el texto del campo de entrada como mensaje normal. */
+    private void sendCurrentMessage() {
+        String text = jTextMensaje.getText().trim();
+        if (!text.isEmpty()) {
+            String id = UUID.randomUUID().toString();
+            addMessage(text, true, id,true);
+            UIController.sendMessage(text, selectedUser, id);
+            jTextMensaje.setText("");
         }
+    }
+
+    /** Envía el texto del campo de entrada como mensaje único. */
+    private void sendCurrentMessageUnique() {
+        String text = jTextMensaje.getText().trim();
+        if (!text.isEmpty()) {
+            UIController.sendMessageUnique(text, selectedUser, UUID.randomUUID().toString());
+            jTextMensaje.setText("");
+        }
+    }
+
+    /** Agrega un burbuja de texto al panel de mensajes. */
+    @Override
+    public void addMessage(String text, boolean isOwn, String idMessage, boolean isRead) {
+        JPanel row = createMessageRow(isOwn);
+        MessageBubble bubble = new MessageBubble(text, isOwn, isRead);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, bubble.getPreferredSize().height + 8));
+        row.add(bubble, isOwn ? BorderLayout.EAST : BorderLayout.WEST);
+
+        attachBubblePopup(bubble, text, idMessage);
+        appendToMessagesPanel(row);
+    }
+
+    /** Agrega una burbuja de imagen al panel de mensajes. */
+    private void addImage(ImageIcon icon, boolean isOwn, boolean isRead) {
+        JPanel row = createMessageRow(isOwn);
+        MessageBubble bubble = new MessageBubble(null, icon, isOwn, isRead);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, bubble.getPreferredSize().height + 8));
+        row.add(bubble, isOwn ? BorderLayout.EAST : BorderLayout.WEST);
+        appendToMessagesPanel(row);
+    }
+
+    private JPanel createMessageRow(boolean isOwn) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setBorder(new EmptyBorder(4, 4, 4, 4));
+        return row;
+    }
+
+    private void appendToMessagesPanel(JPanel row) {
+        messagesPanel.add(row);
+        messagesPanel.add(Box.createVerticalStrut(6));
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
+        SwingUtilities.invokeLater(() -> {
+            JScrollBar v = scrollPane.getVerticalScrollBar();
+            v.setValue(v.getMaximum());
+        });
+    }
+
+    /**
+     * Adjunta un menú contextual a una burbuja de texto
+     * con opciones de fijar y borrar el mensaje.
+     */
+    private void attachBubblePopup(MessageBubble bubble, String text, String idMessage) {
+        if (text == null) return;
+        bubble.putClientProperty("msgText", text);
+
+        JMenuItem pinItem    = styledMenuItem("📌  Fijar mensaje", ACCENT);
+        JMenuItem deleteItem = styledMenuItem("Borrar Mensaje",    ACCENT);
+
+        pinItem.addActionListener(e -> {
+            currentPinnedId = idMessage;
+            displayPinnedBanner(text);
+            if (selectedUser != null) UIController.sendPinMessage(idMessage, selectedUser);
+        });
+        deleteItem.addActionListener(e -> {
+            if (selectedUser != null) UIController.deleteMessage(idMessage);
+            repaint();
+        });
+
+        JPopupMenu menu = new JPopupMenu();
+        menu.setBackground(BG_SIDEBAR);
+        menu.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1, true));
+        menu.add(pinItem);
+        menu.add(deleteItem);
+
+        bubble.addMouseListener(new MouseAdapter() {
+            @Override public void mousePressed(MouseEvent e)  { maybeShow(e); }
+            @Override public void mouseReleased(MouseEvent e) { maybeShow(e); }
+            private void maybeShow(MouseEvent e) {
+                if (e.isPopupTrigger()) menu.show(bubble, e.getX(), e.getY());
+            }
+        });
+    }
+
+    /** Muestra o actualiza el banner de mensaje fijado. */
+    private void displayPinnedBanner(String text) {
+        String preview = text.length() > 60 ? text.substring(0, 57) + "…" : text;
+        pinnedLabel.setText(preview);
+        pinnedBar.setVisible(true);
+        pinnedBar.revalidate();
+        pinnedBar.repaint();
+    }
+
+    // =========================================================================
+    // GESTIÓN DE CONTACTOS / CONVERSACIÓN
+    // =========================================================================
+
+    public void setController(ContactController controller) {
+        this.controller = controller;
+        renderContacts();
+    }
+
+    /** Callback al seleccionar un contacto de la lista. */
+    private void onContactSelected(User sel) {
+        if (sel == null) return;
+        selectedUser = sel;
+        chatTitle.setText(sel.getName() != null ? sel.getName() : sel.toString());
+        pinnedBar.setVisible(false);
+        currentPinnedId = null;
+        renderMessages(controller.returnMessages(userId, selectedUser.getId()));
+    }
+
+    /** Selecciona programáticamente un usuario por ID. */
+    private void selectUser(String targetUserId) {
+        for (int i = 0; i < chatListModel.size(); i++) {
+            if (chatListModel.get(i).getId().equals(targetUserId)) {
+                chatList.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    // =========================================================================
+    // DIÁLOGOS
+    // =========================================================================
+
+    private void showConnectDialog() {
+        String ip = JOptionPane.showInputDialog(
+                this, "Dirección IP del servidor:", "Nueva Conexión", JOptionPane.QUESTION_MESSAGE);
+        if (ip != null && !ip.trim().isEmpty()) UIController.connect(ip.trim());
+    }
+
+    private void showPaymentDialog() {
+        String[] options = {"🔐  Cripto", "🏦  Bob (Fiat)"};
+        int choice = JOptionPane.showOptionDialog(
+                this, "¿Tipo de pago?", "Nuevo Pago",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+        if (choice < 0) return;
+
+        Cobro res  = cobroController.cobrarController(choice);
+        String tipo = res.getRed().isEmpty() ? "FIAT" : "CRIPTO";
+        String red  = res.getRed().isEmpty() ? "" : "\nRed: " + res.getRed();
+        JOptionPane.showMessageDialog(this,
+                "Tipo: " + tipo + "\nImporte: " + res.getImporte() + "\nQR: " + res.getQr() + red,
+                "Pago", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void showThemeDialog() {
         JDialog dlg = new JDialog(this, "Elegir Tema", true);
         dlg.setSize(320, 300);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new BorderLayout(0, 0));
+        dlg.setLayout(new BorderLayout());
         dlg.getContentPane().setBackground(activeTheme.bgSidebar());
 
         JLabel title = new JLabel("  Tema de conversación");
@@ -879,13 +757,22 @@ public class JUi extends JFrame implements IChatView {
 
         ButtonGroup group = new ButtonGroup();
         for (ChatTheme t : THEMES) {
-            JPanel row = new JPanel(new BorderLayout(10, 0));
+            JPanel row  = new JPanel(new BorderLayout(10, 0));
             row.setOpaque(false);
             row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
             row.setBorder(new EmptyBorder(4, 4, 4, 4));
 
-            // Color swatch
-            JPanel swatch = getJPanel(t);
+            JPanel swatch = new JPanel() {
+                @Override protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(t.accent());
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2.dispose();
+                }
+            };
+            swatch.setOpaque(false);
+            swatch.setPreferredSize(new Dimension(28, 28));
 
             JRadioButton rb = new JRadioButton(t.label());
             rb.setFont(FONT_BODY);
@@ -893,68 +780,217 @@ public class JUi extends JFrame implements IChatView {
             rb.setOpaque(false);
             rb.setSelected(t.id().equals(activeTheme.id()));
             group.add(rb);
+            rb.addActionListener(e -> {
+                applyTheme(t);
+                if (selectedUser != null) UIController.sendTheme(t.id(), selectedUser);
+                dlg.dispose();
+            });
 
             row.add(swatch, BorderLayout.WEST);
             row.add(rb,     BorderLayout.CENTER);
             list.add(row);
-
-            rb.addActionListener(e -> {
-                applyTheme(t);
-                // Send to peer if a user is selected
-                if (selectedUser != null) UIController.sendTheme(t.id(), selectedUser);
-                dlg.dispose();
-            });
         }
 
         dlg.add(list, BorderLayout.CENTER);
         dlg.setVisible(true);
     }
 
-    private static JPanel getJPanel(ChatTheme t) {
-        JPanel swatch = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(t.accent());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                g2.dispose();
+    // =========================================================================
+    // TEMAS
+    // =========================================================================
+
+    private void applyTheme(ChatTheme t) {
+        activeTheme = t;
+        messagesPanel.setBackground(t.bgChat());
+        scrollPane.setBackground(t.bgChat());
+        scrollPane.getViewport().setBackground(t.bgChat());
+        getContentPane().setBackground(t.bgChat());
+        applyBgRecursive(getContentPane(), t);
+        messagesPanel.repaint();
+        repaint();
+    }
+
+    private void applyBgRecursive(Container c, ChatTheme t) {
+        for (Component comp : c.getComponents()) {
+            if (comp instanceof JPanel p && p.isOpaque()) {
+                Color bg = p.getBackground();
+                if (bg.equals(activeTheme.bgChat()) || bg.getRGB() == new Color(0xF7F8FA).getRGB())
+                    p.setBackground(t.bgChat());
+                else if (bg.equals(activeTheme.bgSidebar()) || bg.getRGB() == new Color(0xFFFFFF).getRGB())
+                    p.setBackground(t.bgSidebar());
             }
-        };
-        swatch.setOpaque(false);
-        swatch.setPreferredSize(new Dimension(28, 28));
-        return swatch;
+            if (comp instanceof Container sub) applyBgRecursive(sub, t);
+        }
+    }
+
+    // =========================================================================
+    // IMPLEMENTACIÓN IChatView
+    // =========================================================================
+
+    public void init() {
+        EventQueue.invokeLater(() -> setVisible(true));
     }
 
     @Override
-    public void changeThemeSelected(Theme theme) {
+    public void updateStatus(String status) {
+        statusLabel.setText(status);
+        statusDot.setForeground(status.toLowerCase().contains("offline") ? DANGER : ONLINE_GREEN);
+    }
+
+    @Override
+    public void showMessage(String message) {
+        addMessage(message, false, UUID.randomUUID().toString(),true);
+    }
+
+    @Override
+    public void showError(String error) {
+        JOptionPane.showMessageDialog(this, error, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    @Override
+    public boolean showInvitationDialog(String userName, String id) {
+        int res = JOptionPane.showConfirmDialog(
+                this, "Invitación de: " + userName + "\n¿Aceptar?",
+                "Nueva conexión", JOptionPane.YES_NO_OPTION);
+        return res == JOptionPane.YES_OPTION;
+    }
+
+    @Override
+    public void showBuzzNotification(String senderName) {
+        vibrateWindow();
+    }
+
+    /**
+     * Agita la ventana desplazándola rápidamente en el eje X para simular
+     * una vibración, luego ejecuta {@code onFinished} al terminar.
+     */
+    private void vibrateWindow() {
+        Point origin = getLocation();
+        int   amplitude  = 8;   // píxeles de desplazamiento
+        int   cycles     = 6;   // cantidad de oscilaciones
+        int   periodMs   = 40;  // milisegundos por fotograma
+
+        // Desplazamientos: derecha, izquierda, derecha, izquierda …
+        int[] offsets = new int[cycles * 2 + 1];
+        for (int i = 0; i < cycles; i++) {
+            offsets[i * 2]     =  amplitude;
+            offsets[i * 2 + 1] = -amplitude;
+        }
+        offsets[cycles * 2] = 0; // volver al origen
+
+        Timer timer = new Timer(periodMs, null);
+        int[] step = {0};
+
+        timer.addActionListener(e -> {
+            if (step[0] < offsets.length) {
+                setLocation(origin.x + offsets[step[0]], origin.y);
+                step[0]++;
+            } else {
+                timer.stop();
+                setLocation(origin);
+             //   if (onFinished != null) onFinished.run();
+            }
+        });
+
+        timer.start();
+    }
+
+    @Override
+    public void showChat(Chat chat) {
+        addMessage(chat.getMessage(), false, chat.getIdMessage(),true);
+    }
+
+    @Override
+    public void showUniqueMessage(UniqueMessage uni) {
+        addMessage(uni.getMessage(), false, uni.getIdMessage(),true);
+    }
+
+    @Override
+    public void renderContacts() {
+        chatListModel.clear();
+        try {
+            for (User u : controller.returnContacts(userId)) chatListModel.addElement(u);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    @Override
+    public void renderMessages(List<Message> messages) {
+        messagesPanel.removeAll();
+
+        for (Message m : messages) {
+            boolean isMine = m.getSendUser().equals(userId);
+            if (m.getTypeMessage() == TypeMessage.IMAGE) {
+                try {
+                    byte[] bytes = Base64.getDecoder().decode(m.getBody());
+                    addImage(new ImageIcon(bytes), isMine, m.getStatusMessage().equals(StatusMessage.READ));
+                } catch (Exception ignored) { /* imagen corrupta */ }
+            } else {
+                addMessage(m.getBody(), isMine, m.getIdMessage(), m.getStatusMessage().equals(StatusMessage.READ));
+            }
+        }
+
+        messagesPanel.revalidate();
+        messagesPanel.repaint();
         SwingUtilities.invokeLater(() -> {
-            THEMES.stream()
-                    .filter(t -> t.id().equals(theme.getIdTheme()))
-                    .findFirst()
-                    .ifPresent(this::applyTheme);
+            JScrollBar v = scrollPane.getVerticalScrollBar();
+            v.setValue(v.getMaximum());
         });
     }
 
     @Override
-    public void showImage(Image image){
-        try {
-
-            byte[] imageBytes = Base64.getDecoder().decode(image.getMessage());
-            ImageIcon icon = new ImageIcon(imageBytes);
-            boolean isMine = image.getSendUser().equals(userId);
-            addImage(icon, isMine);
-
-        } catch (Exception e) {
-            //addMessage("[Error al cargar imagen]", image.getSendUser().equals(userId));
-        }
+    public void showByeNotification(String id) {
+        JOptionPane.showMessageDialog(this,
+                id + " se desconectó", "Desconectado", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // ── Inner: Contact cell renderer ──────────────────────────
+    @Override
+    public void onNewConnectionEstablished(String userName, String userId) {
+        renderContacts();
+        updateStatus("Status: Online");
+        selectUser(userId);
+    }
+
+    @Override
+    public void showPinnedMessage(String messageId) {
+        String message = ClientController.getInstance().retrieveMessage(messageId);
+        if (message == null || message.isEmpty()) message = "Mensaje Pineado";
+        currentPinnedId = messageId;
+        displayPinnedBanner(message);
+    }
+
+    @Override
+    public void changeThemeSelected(Theme theme) {
+        SwingUtilities.invokeLater(() ->
+                THEMES.stream()
+                        .filter(t -> t.id().equals(theme.getIdTheme()))
+                        .findFirst()
+                        .ifPresent(this::applyTheme));
+    }
+
+    @Override
+    public void showImage(Image image) {
+        try {
+            byte[] bytes = Base64.getDecoder().decode(image.getMessage());
+            addImage(new ImageIcon(bytes), image.getSendUser().equals(userId),true);
+        } catch (Exception ignored) { /* imagen corrupta */ }
+    }
+
+    // =========================================================================
+    // RENDERIZADOR DE CELDA DE CONTACTO
+    // =========================================================================
 
     private static class ContactCellRenderer extends JPanel implements ListCellRenderer<User> {
-        private final JLabel avatarLabel  = new JLabel();
-        private final JLabel nameLabel    = new JLabel();
-        private final JLabel subLabel     = new JLabel();
+
+        private final JLabel avatarLabel = new JLabel();
+        private final JLabel nameLabel   = new JLabel();
+        private final JLabel subLabel    = new JLabel();
+
+        private static final Color[] AVATAR_PALETTE = {
+                new Color(0x5B5BD6), new Color(0xE5484D), new Color(0x30A46C),
+                new Color(0xF76B15), new Color(0x8E4EC6), new Color(0x0091FF)
+        };
 
         ContactCellRenderer() {
             setLayout(new BorderLayout(10, 0));
@@ -974,7 +1010,7 @@ public class JUi extends JFrame implements IChatView {
 
             JLabel dotLabel = new JLabel("●");
             dotLabel.setFont(FONT_SMALL);
-            dotLabel.setForeground(ONLINE_GREEN);
+            dotLabel.setForeground(Color.RED);
 
             JPanel textCol = new JPanel(new BorderLayout(0, 2));
             textCol.setOpaque(false);
@@ -988,40 +1024,32 @@ public class JUi extends JFrame implements IChatView {
 
         @Override
         public Component getListCellRendererComponent(
-                JList<? extends User> list, User user, int index, boolean isSelected, boolean focused) {
+                JList<? extends User> list, User user, int index,
+                boolean isSelected, boolean focused) {
 
-            String name   = user.getName() != null ? user.getName() : user.toString();
-            String initials = name.length() > 1
-                    ? String.valueOf(name.charAt(0)).toUpperCase()
-                    : name.toUpperCase();
+            String name     = user.getName() != null ? user.getName() : user.toString();
+            String initials = name.isEmpty() ? "?" : String.valueOf(name.charAt(0)).toUpperCase();
 
             avatarLabel.setText(initials);
+            avatarLabel.setBackground(AVATAR_PALETTE[Math.abs(name.hashCode()) % AVATAR_PALETTE.length]);
             nameLabel.setText(name);
             subLabel.setText(user.getId() != null ? user.getId() : "");
 
-            // Pastel avatar color derived from name hash
-            int hash  = name.hashCode();
-            Color[] palette = {
-                    new Color(0x5B5BD6), new Color(0xE5484D), new Color(0x30A46C),
-                    new Color(0xF76B15), new Color(0x8E4EC6), new Color(0x0091FF)
-            };
-            avatarLabel.setBackground(palette[Math.abs(hash) % palette.length]);
-
             setBackground(isSelected ? new Color(0x5B5BD6, true).darker() : BG_SIDEBAR);
-            nameLabel.setForeground(isSelected ? Color.WHITE : TEXT_PRIMARY);
-            subLabel.setForeground(isSelected ? new Color(0xCCCCDD) : TEXT_SECONDARY);
+            nameLabel.setForeground(isSelected ? Color.WHITE  : TEXT_PRIMARY);
+            subLabel .setForeground(isSelected ? new Color(0xCCCCDD) : TEXT_SECONDARY);
             setOpaque(true);
             return this;
         }
 
-        @Override protected void paintComponent(Graphics g) {
+        @Override
+        protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(getBackground());
             g2.fillRect(0, 0, getWidth(), getHeight());
             g2.dispose();
             super.paintComponent(g);
-            // Rounded avatar
         }
     }
 }
