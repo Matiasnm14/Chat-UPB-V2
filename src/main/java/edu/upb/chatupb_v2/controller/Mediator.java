@@ -645,11 +645,12 @@ public class Mediator implements SocketClient.SocketListener {
         }
         String finalName = name;
         String messageId = chat.getIdMessage();
-        SwingUtilities.invokeLater(() -> view.addChatMessage(chat.getMessage(), false, finalName, messageId));
         boolean activeNow = isActiveContact(chat.getIdUser(), socketIp);
         if (activeNow) {
+            SwingUtilities.invokeLater(() -> view.addChatMessage(chat.getMessage(), false, finalName, messageId));
             sendConfirmReceived(chat.getIdMessage(), sc);
         } else if (chat.getIdMessage() != null && !chat.getIdMessage().isBlank()) {
+            SwingUtilities.invokeLater(() -> view.markContactUnread(chat.getIdUser(), socketIp));
             String key = chat.getIdUser() != null && !chat.getIdUser().isBlank()
                     ? chat.getIdUser()
                     : (socketIp != null ? IP_KEY_PREFIX + socketIp : null);
@@ -698,6 +699,8 @@ public class Mediator implements SocketClient.SocketListener {
         boolean activeNow = isActiveContact(uniqueMessage.getIdUser(), socketIp);
         if (activeNow) {
             SwingUtilities.invokeLater(() -> view.addUniqueMessage(uniqueMessage.getMessage(), false, finalName, messageId));
+        } else {
+            SwingUtilities.invokeLater(() -> view.markContactUnread(uniqueMessage.getIdUser(), socketIp));
         }
     }
 
@@ -848,11 +851,12 @@ public class Mediator implements SocketClient.SocketListener {
         }
         String finalName = name;
         String messageId = imageMessage.getIdMessage();
-        SwingUtilities.invokeLater(() -> view.addImageMessage(imageMessage.getImageBase64(), false, finalName, messageId));
         boolean activeNow = isActiveContact(imageMessage.getIdUser(), socketIp);
         if (activeNow) {
+            SwingUtilities.invokeLater(() -> view.addImageMessage(imageMessage.getImageBase64(), false, finalName, messageId));
             sendConfirmReceived(imageMessage.getIdMessage(), sc);
         } else if (imageMessage.getIdMessage() != null && !imageMessage.getIdMessage().isBlank()) {
+            SwingUtilities.invokeLater(() -> view.markContactUnread(imageMessage.getIdUser(), socketIp));
             String key = imageMessage.getIdUser() != null && !imageMessage.getIdUser().isBlank()
                     ? imageMessage.getIdUser()
                     : (socketIp != null ? IP_KEY_PREFIX + socketIp : null);

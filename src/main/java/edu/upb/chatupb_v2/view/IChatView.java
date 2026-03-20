@@ -21,6 +21,7 @@ public interface IChatView {
     void unloadMessages(List<ChatMessageViewModel> messages);
     void reloadContacts();
     void refreshContactPresence();
+    void markContactUnread(String contactCode, String contactIp);
     void markMessageRead(String messageId);
     void removeMessage(String messageId);
     void showPinnedMessage(String messageId, String previewText);

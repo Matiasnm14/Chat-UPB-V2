@@ -127,9 +127,11 @@ public class JUi extends JFrame implements IChatView {
                 ContactListItem selected = contactList.getSelectedValue();
                 if (selected != null) {
                     selectedContactCode = selected.getCode();
+                    selected.clearUnread();
                     applyTheme(selected.getThemeId());
                     loadMessagesForContact(selected);
                     Mediator.getInstance().setActiveContact(selected.getCode(), selected.getIp());
+                    contactList.repaint();
                 }
             }
         });
@@ -401,6 +403,25 @@ public class JUi extends JFrame implements IChatView {
         contactList.repaint();
     }
 
+    @Override
+    public void markContactUnread(String contactCode, String contactIp) {
+        if ((contactCode == null || contactCode.isBlank()) && (contactIp == null || contactIp.isBlank())) {
+            return;
+        }
+        for (int i = 0; i < contactListModel.size(); i++) {
+            ContactListItem item = contactListModel.get(i);
+            boolean sameCode = contactCode != null && !contactCode.isBlank() && contactCode.equals(item.getCode());
+            boolean sameIp = contactIp != null && !contactIp.isBlank() && contactIp.equals(item.getIp());
+            if (sameCode || sameIp) {
+                if (selectedContactCode == null || !selectedContactCode.equals(item.getCode())) {
+                    item.incrementUnread();
+                }
+                contactList.repaint();
+                break;
+            }
+        }
+    }
+
     public void reloadContacts() {
         String currentCode = selectedContactCode;
         loadContacts();
@@ -631,7 +652,6 @@ public class JUi extends JFrame implements IChatView {
 
     @Override
     public void showClientOffline(String senderName) {
-        JOptionPane.showMessageDialog(null, senderName + " se ha desconectado", "Desconectado", JOptionPane.INFORMATION_MESSAGE);
         refreshContactPresence();
     }
 
@@ -1073,18 +1093,13 @@ public class JUi extends JFrame implements IChatView {
                 add(imageLabel, BorderLayout.CENTER);
             } else {
                 String displayMessage = type == TypeMessage.UNIQUE ? "Toca para abrir" : (message == null ? "" : message);
-                JTextArea messageArea = new JTextArea(displayMessage);
-                messageArea.setLineWrap(true);
-                messageArea.setWrapStyleWord(true);
-                messageArea.setEditable(false);
-                messageArea.setOpaque(false);
-                messageArea.setBorder(BorderFactory.createEmptyBorder());
-                messageArea.setMargin(new Insets(0, 0, 0, 0));
-                messageArea.setFocusable(false);
-                messageArea.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                messageArea.setForeground(currentTextPrimary);
-                configureMessageAreaSize(messageArea, displayMessage);
-                add(messageArea, BorderLayout.CENTER);
+                JLabel messageLabel = new JLabel();
+                messageLabel.setVerticalAlignment(SwingConstants.TOP);
+                messageLabel.setBorder(BorderFactory.createEmptyBorder());
+                messageLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                messageLabel.setForeground(currentTextPrimary);
+                configureMessageLabel(messageLabel, displayMessage);
+                add(messageLabel, BorderLayout.CENTER);
             }
 
             JLabel timeLabel = new JLabel(time == null || time.isBlank() ? LocalTime.now().format(TIME_FORMAT) : time);
@@ -1125,20 +1140,38 @@ public class JUi extends JFrame implements IChatView {
             return outgoing ? currentBubbleOut : currentBubbleIn;
         }
 
-        private void configureMessageAreaSize(JTextArea messageArea, String text) {
-            int maxTextWidth = Math.max(120, MESSAGE_MAX_WIDTH - 28);
-            FontMetrics metrics = messageArea.getFontMetrics(messageArea.getFont());
+        private void configureMessageLabel(JLabel messageLabel, String text) {
+            int maxTextWidth = MESSAGE_MAX_WIDTH - 28;
+            FontMetrics metrics = messageLabel.getFontMetrics(messageLabel.getFont());
             String safeText = text == null ? "" : text;
             int naturalWidth = 0;
             for (String line : safeText.split("\\R", -1)) {
                 naturalWidth = Math.max(naturalWidth, metrics.stringWidth(line));
             }
-            int targetWidth = Math.max(42, Math.min(maxTextWidth, naturalWidth + 8));
-            messageArea.setSize(new Dimension(targetWidth, Short.MAX_VALUE));
-            Dimension preferredSize = messageArea.getPreferredSize();
-            Dimension finalSize = new Dimension(targetWidth, preferredSize.height);
-            messageArea.setPreferredSize(finalSize);
-            messageArea.setMinimumSize(finalSize);
+            int targetWidth = Math.max(16, Math.min(maxTextWidth, naturalWidth + 2));
+            messageLabel.setText(buildMessageHtml(safeText, targetWidth));
+        }
+
+        private String buildMessageHtml(String text, int width) {
+            StringBuilder builder = new StringBuilder("<html><body style='width:");
+            builder.append(width).append("px; margin:0; padding:0;'>");
+            String safeText = text == null ? "" : text;
+            for (int i = 0; i < safeText.length(); i++) {
+                char current = safeText.charAt(i);
+                switch (current) {
+                    case '&' -> builder.append("&amp;");
+                    case '<' -> builder.append("&lt;");
+                    case '>' -> builder.append("&gt;");
+                    case '"' -> builder.append("&quot;");
+                    case '\n' -> builder.append("<br>");
+                    case '\r' -> {
+                    }
+                    case ' ' -> builder.append("&nbsp;");
+                    default -> builder.append(current);
+                }
+            }
+            builder.append("</body></html>");
+            return builder.toString();
         }
 
         private void lockBubbleWidth() {
@@ -1223,7 +1256,11 @@ public class JUi extends JFrame implements IChatView {
         JPanel entry = new JPanel(new BorderLayout());
         entry.setOpaque(false);
         entry.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        entry.setAlignmentX(Component.LEFT_ALIGNMENT);
         entry.add(row, BorderLayout.CENTER);
+        Dimension preferred = entry.getPreferredSize();
+        entry.setPreferredSize(preferred);
+        entry.setMaximumSize(new Dimension(Integer.MAX_VALUE, preferred.height));
         if (row.getMessageId() != null && !row.getMessageId().isBlank()) {
             messageContainersById.put(row.getMessageId(), entry);
         }
@@ -1289,6 +1326,7 @@ public class JUi extends JFrame implements IChatView {
         private final String code;
         private String themeId;
         private boolean online;
+        private int unreadCount;
 
         private ContactListItem(String name, String ip, String code, String themeId, boolean online) {
             this.name = name;
@@ -1318,12 +1356,24 @@ public class JUi extends JFrame implements IChatView {
             return online;
         }
 
+        public int getUnreadCount() {
+            return unreadCount;
+        }
+
         public void setThemeId(String themeId) {
             this.themeId = themeId;
         }
 
         public void setOnline(boolean online) {
             this.online = online;
+        }
+
+        public void incrementUnread() {
+            unreadCount++;
+        }
+
+        public void clearUnread() {
+            unreadCount = 0;
         }
 
         @Override
@@ -1371,6 +1421,7 @@ public class JUi extends JFrame implements IChatView {
         private final JLabel dotLabel = new JLabel();
         private final JLabel nameLabel = new JLabel();
         private final JLabel ipLabel = new JLabel();
+        private final JLabel unreadLabel = new JLabel();
 
         private ContactRenderer() {
             setLayout(new BorderLayout(10, 0));
@@ -1386,12 +1437,18 @@ public class JUi extends JFrame implements IChatView {
             ipLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
             ipLabel.setForeground(currentTextMuted);
             ipLabel.setVisible(false);
+            unreadLabel.setFont(new Font("SansSerif", Font.BOLD, 11));
+            unreadLabel.setOpaque(true);
+            unreadLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            unreadLabel.setBorder(BorderFactory.createEmptyBorder(2, 7, 2, 7));
+            unreadLabel.setVisible(false);
 
             textPanel.add(nameLabel);
             textPanel.add(ipLabel);
 
             add(dotLabel, BorderLayout.WEST);
             add(textPanel, BorderLayout.CENTER);
+            add(unreadLabel, BorderLayout.EAST);
         }
 
         @Override
@@ -1404,11 +1461,19 @@ public class JUi extends JFrame implements IChatView {
         ) {
             if (value != null) {
                 nameLabel.setText(value.getName());
-                nameLabel.setForeground(currentTextPrimary);
+                nameLabel.setForeground(value.getUnreadCount() > 0 ? currentAccent : currentTextPrimary);
                 ipLabel.setForeground(currentTextMuted);
                 ipLabel.setText("");
                 DotIcon icon = new DotIcon(value.isOnline() ? currentPresenceOnline : new Color(0xE74C3C), 10);
                 dotLabel.setIcon(icon);
+                if (value.getUnreadCount() > 0) {
+                    unreadLabel.setText(value.getUnreadCount() > 9 ? "9+" : String.valueOf(value.getUnreadCount()));
+                    unreadLabel.setBackground(currentAccent);
+                    unreadLabel.setForeground(Color.WHITE);
+                    unreadLabel.setVisible(true);
+                } else {
+                    unreadLabel.setVisible(false);
+                }
             }
             setBackground(isSelected ? blendColors(currentAccent, currentPanel, 0.15f) : currentPanel);
             return this;
