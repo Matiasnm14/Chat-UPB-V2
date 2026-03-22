@@ -3,11 +3,13 @@ package edu.upb.chatupb_v2;
 import edu.upb.chatupb_v2.model.network.ChatServer;
 import edu.upb.chatupb_v2.controller.Mediator;
 import edu.upb.chatupb_v2.controller.ProfileController;
+import edu.upb.chatupb_v2.model.repository.ConnectionDB;
 import edu.upb.chatupb_v2.view.JUi;
 import edu.upb.chatupb_v2.view.LoginDialog;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        ConnectionDB.initDataBase();
         String userId = UserIdentity.loadOrCreateUserId().toString();
         ProfileController profileController = new ProfileController();
         String username = profileController.findUserName(userId);
@@ -27,7 +29,3 @@ public class Main {
         jUi.init();
     }
 }
-//HORA, NOMBRE,ICONO
-//La diferencia entre strategy y fachada es lo mismo pero depennde en que lo usas
-//en controller deberia de llamar un metodo
-//
