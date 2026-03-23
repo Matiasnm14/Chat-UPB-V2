@@ -1,7 +1,6 @@
 package edu.upb.chatupb_v2;
 
 import edu.upb.chatupb_v2.Controller.ContactController;
-import edu.upb.chatupb_v2.Controller.UIController;
 import edu.upb.chatupb_v2.Model.network.ChatServer;
 import edu.upb.chatupb_v2.VIews.JUi;
 
