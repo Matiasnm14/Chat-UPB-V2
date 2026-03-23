@@ -232,15 +232,27 @@ public class JUi extends JFrame implements IChatView {
 
         JMenuItem itemConectar = styledMenuItem("Conectar",          ACCENT);
         JMenuItem itemEliminar = styledMenuItem("Eliminar Contacto", TEXT_SECONDARY);
+        JMenuItem itemBloquear = styledMenuItem("Bloquear", TEXT_SECONDARY);
+        JMenuItem itemDesBloquear = styledMenuItem("Desbloquear", TEXT_SECONDARY);
 
         itemConectar.addActionListener(e -> UIController.connectPrev(chatList.getSelectedValue()));
         itemEliminar.addActionListener(e -> {
             UIController.deleteUser(chatList.getSelectedValue());
             repaint();
         });
+        itemBloquear.addActionListener(e -> {
+            UIController.blockUser(chatList.getSelectedValue());
+            updateStatus("BLOQUEADO");
+        });
+        itemDesBloquear.addActionListener(e -> {
+            UIController.unblockUser(chatList.getSelectedValue());
+            updateStatus("Online");
+        });
 
         popup.add(itemConectar);
         popup.add(itemEliminar);
+        popup.add(itemBloquear);
+        popup.add(itemDesBloquear);
         return popup;
     }
 

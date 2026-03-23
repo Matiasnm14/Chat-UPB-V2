@@ -1,5 +1,6 @@
 package edu.upb.chatupb_v2.Model.network;
 
+import edu.upb.chatupb_v2.Controller.ClientController;
 import edu.upb.chatupb_v2.Controller.exceptions.ChatException;
 import edu.upb.chatupb_v2.Model.entities.comands.*;
 import edu.upb.chatupb_v2.Model.factory.SocketListener;
@@ -62,94 +63,97 @@ public class SocketClient extends Thread {
                 String[] split = message.split(Pattern.quote("|"));
                 System.out.println(message);
                 if(split.length == 0) continue;
-
-                switch (split[0]) {
-                    case "001": {
-                        Invitation inv = Invitation.parse(message);
-                        this.uid = inv.getIdUser();
-                        this.name = inv.getUserName();
-                        socketListener.onInvitationReceived(inv, this);
-                        break;
-                    }
-                    case "002": {
-                        Accept acp = Accept.parse(message);
-                        this.uid = acp.getIdUser();
-                        this.name = acp.getUserName();
-                        socketListener.onAcceptReceived(acp,this);
-                        break;
-                    }
-                    case "003": {
-                        Decline dec = Decline.parse(message);
-                        socketListener.onDeclineReceived(dec);
-                        break;
-                    }
-                    case "004": {
-                        Hello hel = Hello.parse(message);
-                        this.uid = hel.getIdUser();
-                        socketListener.onHelloReceived(hel, this);
-                        break;
-                    }
-                    case "005": {
-                        AcceptHello acpHel = AcceptHello.parse(message);
-                        socketListener.onAcceptHelloReceived(acpHel, this);
-                        break;
-                    }
-                    case "006": {
-                        DeclineHello decHel = DeclineHello.parse(message);
-                        socketListener.onDeclineHelloReceived(decHel, this);
-                        break;
-                    }
-                    case "007": {
-                        Chat cht = Chat.parse(message);
-                        socketListener.onChatReceived(cht);
-                        break;
-                    }
-                    case "008": {
-                        ConfirmRecived conRec = ConfirmRecived.parse(message);
-                        socketListener.onConfirmedReceived(conRec);
-                        break;
-                    }
-                    case "009": {
-                        DeleteMessage delMes = DeleteMessage.parse(message);
-                        socketListener.onDeleteMessageReceived(delMes);
-                        break;
-                    }
-                    case "010": {
-                        Buzzing buz = Buzzing.parse(message);
-                        socketListener.onBuzzingReceived(buz);
-                        break;
-                    }
-                    case "011": {
-                        PinMessage pinMes = PinMessage.parse(message);
-                        socketListener.onPinMessageReceived(pinMes);
-                        break;
-                    }
-                    case "012": {
-                        UniqueMessage uniMes = UniqueMessage.parse(message);
-                        socketListener.onUniqueMessageReceived(uniMes);
-                        break;
-                    }
-                    case "013": {
-                        Theme thm = Theme.parse(message);
-                        socketListener.onThemeReceived(thm);
-                        break;
-                    }
-                    case "0018": {
-                        Bye bye = Bye.parse(message);
-                        socketListener.onByeReceived(bye);
-                        break;
-                    }
-                    case "020": {
-                        NewFriend nf = NewFriend.parse(message);
-                        socketListener.onNewFriendReceived(nf);
-                        break;
-                    }
-                    case "021": {
-                        Image img = Image.parse(message);
-                        socketListener.onImageReceived(img);
-                        break;
+                boolean b = (ClientController.getInstance().verificarBlock(this.uid));
+                if (!b) {
+                    switch (split[0]) {
+                        case "001": {
+                            Invitation inv = Invitation.parse(message);
+                            this.uid = inv.getIdUser();
+                            this.name = inv.getUserName();
+                            socketListener.onInvitationReceived(inv, this);
+                            break;
+                        }
+                        case "002": {
+                            Accept acp = Accept.parse(message);
+                            this.uid = acp.getIdUser();
+                            this.name = acp.getUserName();
+                            socketListener.onAcceptReceived(acp,this);
+                            break;
+                        }
+                        case "003": {
+                            Decline dec = Decline.parse(message);
+                            socketListener.onDeclineReceived(dec);
+                            break;
+                        }
+                        case "004": {
+                            Hello hel = Hello.parse(message);
+                            this.uid = hel.getIdUser();
+                            socketListener.onHelloReceived(hel, this);
+                            break;
+                        }
+                        case "005": {
+                            AcceptHello acpHel = AcceptHello.parse(message);
+                            socketListener.onAcceptHelloReceived(acpHel, this);
+                            break;
+                        }
+                        case "006": {
+                            DeclineHello decHel = DeclineHello.parse(message);
+                            socketListener.onDeclineHelloReceived(decHel, this);
+                            break;
+                        }
+                        case "007": {
+                            Chat cht = Chat.parse(message);
+                            socketListener.onChatReceived(cht);
+                            break;
+                        }
+                        case "008": {
+                            ConfirmRecived conRec = ConfirmRecived.parse(message);
+                            socketListener.onConfirmedReceived(conRec);
+                            break;
+                        }
+                        case "009": {
+                            DeleteMessage delMes = DeleteMessage.parse(message);
+                            socketListener.onDeleteMessageReceived(delMes);
+                            break;
+                        }
+                        case "010": {
+                            Buzzing buz = Buzzing.parse(message);
+                            socketListener.onBuzzingReceived(buz);
+                            break;
+                        }
+                        case "011": {
+                            PinMessage pinMes = PinMessage.parse(message);
+                            socketListener.onPinMessageReceived(pinMes);
+                            break;
+                        }
+                        case "012": {
+                            UniqueMessage uniMes = UniqueMessage.parse(message);
+                            socketListener.onUniqueMessageReceived(uniMes);
+                            break;
+                        }
+                        case "013": {
+                            Theme thm = Theme.parse(message);
+                            socketListener.onThemeReceived(thm);
+                            break;
+                        }
+                        case "0018": {
+                            Bye bye = Bye.parse(message);
+                            socketListener.onByeReceived(bye);
+                            break;
+                        }
+                        case "020": {
+                            NewFriend nf = NewFriend.parse(message);
+                            socketListener.onNewFriendReceived(nf);
+                            break;
+                        }
+                        case "021": {
+                            Image img = Image.parse(message);
+                            socketListener.onImageReceived(img);
+                            break;
+                        }
                     }
                 }
+
             }
         } catch (SocketException socketException){
             throw new ChatException(this);

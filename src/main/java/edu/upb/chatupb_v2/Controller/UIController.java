@@ -93,6 +93,13 @@ public class UIController implements SocketListener {
         }
     }
 
+    public void blockUser(User user){
+        ClientController.getInstance().bloquear(user.getId());
+    }
+    public void unblockUser(User user){
+        ClientController.getInstance().desbloquear(user.getId());
+    }
+
     /** Elimina un mensaje de la base de datos por su ID. */
     public void deleteMessage(String id) {
         try {

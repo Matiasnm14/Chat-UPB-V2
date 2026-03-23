@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 public class ConnectionDB {
 
-    private static final String URL = generarUrlBaseDeDatos();
+    private static final String URL = "jdbc:sqlite:chat_upb_v2.sqlite";
     private static final ConnectionDB connection = new ConnectionDB();
     
     private ConnectionDB(){

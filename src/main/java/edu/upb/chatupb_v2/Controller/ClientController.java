@@ -11,14 +11,12 @@ import lombok.Getter;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 
 public class ClientController {
     @Getter
     private Map<String, SocketClient> clients = new HashMap<>();
+    private List<String> blocked = new ArrayList<>();
     private static ClientController instance;
     public static synchronized ClientController getInstance(){
         if (instance == null) instance = new ClientController();
@@ -56,6 +54,21 @@ public class ClientController {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void bloquear(String id){
+        blocked.add(id);
+    }
+
+    public void desbloquear(String id){
+        blocked.remove(id);
+    }
+
+    public boolean verificarBlock(String id){
+        if (blocked.contains(id)){
+            return true;
+        }
+        return false;
     }
 
     public String retrieveMessage(String id){
